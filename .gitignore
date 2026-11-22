@@ -1,0 +1,4 @@
+# Vendor manuals are copyrighted and re-downloadable: see docs/manuals.tsv and scripts/fetch-manuals.sh
+docs/manuals/
+docs/text/
+__pycache__/

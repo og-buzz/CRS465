@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Serial terminal for the CRS C500C controller's Console port, with session logging.
+
+Defaults are the factory console settings from the C500C Controller User Guide
+(UMI-33-CON, "Setting the Baud Rate"): 57600 baud, 8 data bits, no parity,
+1 stop bit, no handshake. Use --baud 38400 for a C500 / C500B controller.
+
+Everything shown on screen is also written to sessions/<timestamp>.log.
+Exit with Ctrl-] .
+"""
+import argparse
+import datetime
+import os
+import select
+import sys
+import termios
+import time
+
+import serial
+from serial.tools import list_ports
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+EXIT_KEY = b"\x1d"  # Ctrl-]
+EOLS = {"cr": b"\r", "lf": b"\n", "crlf": b"\r\n"}
+
+
+def usb_serial_ports():
+    return sorted(
+        (p for p in list_ports.comports() if p.device.startswith(("/dev/ttyUSB", "/dev/ttyACM"))),
+        key=lambda p: p.device,
+    )
+
+
+def print_ports():
+    ports = usb_serial_ports()
+    if not ports:
+        print("No USB serial ports found. Plug in the USB-to-RS232 adapter.")
+        return
+    for p in ports:
+        print(f"{p.device}  {p.description}  [{p.hwid}]")
+    by_id = "/dev/serial/by-id"
+    if os.path.isdir(by_id):
+        print("\nStable names:")
+        for name in sorted(os.listdir(by_id)):
+            print(f"  {by_id}/{name} -> {os.path.realpath(os.path.join(by_id, name))}")
+
+
+def pick_port(requested):
+    if requested:
+        return requested
+    ports = usb_serial_ports()
+    if len(ports) == 1:
+        return ports[0].device
+    if not ports:
+        sys.exit("No USB serial port found. Plug in the USB-to-RS232 adapter, or pass --port.")
+    print("More than one serial port is attached; choose one with --port (or A465_PORT):", file=sys.stderr)
+    for p in ports:
+        print(f"  {p.device}  {p.description}", file=sys.stderr)
+    sys.exit(2)
+
+
+def now():
+    return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def interactive(ser, show, eol, local_echo):
+    fd = sys.stdin.fileno()
+    saved = termios.tcgetattr(fd)
+    raw = termios.tcgetattr(fd)
+    # Raw keyboard input (no local echo, no line buffering, Ctrl-C goes to the
+    # controller). Output processing stays on so a bare LF still returns the carriage.
+    raw[0] &= ~(termios.BRKINT | termios.ICRNL | termios.INPCK | termios.ISTRIP | termios.IXON)
+    raw[3] &= ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG)
+    raw[6][termios.VMIN], raw[6][termios.VTIME] = 1, 0
+    termios.tcsetattr(fd, termios.TCSADRAIN, raw)
+    try:
+        while True:
+            ready, _, _ = select.select([fd, ser.fileno()], [], [])
+            if ser.fileno() in ready:
+                show(ser.read(ser.in_waiting or 1))
+            if fd in ready:
+                keys = os.read(fd, 1024)
+                if not keys or EXIT_KEY in keys:
+                    return
+                ser.write(keys.replace(b"\r", eol))
+                if local_echo:
+                    show(keys.replace(b"\r", b"\r\n"))
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+
+
+def piped(ser, show, eol, local_echo, quiet_s):
+    """stdin is not a keyboard: send it, then capture replies until the line goes quiet."""
+    data = sys.stdin.buffer.read().replace(b"\r\n", b"\n").replace(b"\n", eol)
+    ser.write(data)
+    if local_echo:
+        show(data.replace(eol, b"\r\n"))
+    last = time.monotonic()
+    while time.monotonic() - last < quiet_s:
+        if select.select([ser.fileno()], [], [], 0.1)[0]:
+            chunk = ser.read(ser.in_waiting or 1)
+            if chunk:
+                show(chunk)
+                last = time.monotonic()
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--port", default=os.environ.get("A465_PORT"),
+                    help="serial device (default: $A465_PORT, else the only USB serial port attached)")
+    ap.add_argument("--baud", type=int, default=57600, help="default 57600 (C500C); C500/C500B ship at 38400")
+    ap.add_argument("--eol", choices=EOLS, default="cr", help="what the Enter key sends (default: cr)")
+    ap.add_argument("--echo", action="store_true", help="local echo, if the controller does not echo typing")
+    ap.add_argument("--no-log", action="store_true", help="do not write a session log")
+    ap.add_argument("--quiet-seconds", type=float, default=2.0,
+                    help="piped input only: stop after this long with no reply (default 2)")
+    ap.add_argument("--list", action="store_true", help="list attached USB serial ports and exit")
+    args = ap.parse_args()
+
+    if args.list:
+        print_ports()
+        return
+
+    port = pick_port(args.port)
+    try:
+        ser = serial.Serial(port, args.baud, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
+                            stopbits=serial.STOPBITS_ONE, xonxoff=False, rtscts=False, dsrdtr=False,
+                            timeout=0, exclusive=True)
+    except serial.SerialException as e:
+        sys.exit(f"Cannot open {port}: {e}")
+
+    log = None
+    if not args.no_log:
+        os.makedirs(os.path.join(REPO, "sessions"), exist_ok=True)
+        path = os.path.join(REPO, "sessions", datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S") + ".log")
+        log = open(path, "wb")
+        log.write(f"# a465-term start={now()} port={port} {args.baud} 8N1 flow=none eol={args.eol}\n".encode())
+        log.flush()
+
+    out = sys.stdout.fileno()
+
+    def show(data):
+        if not data:
+            return
+        os.write(out, data)
+        if log:
+            log.write(data)
+            log.flush()
+
+    is_tty = sys.stdin.isatty()
+    if is_tty:
+        print(f"--- {port} {args.baud} 8N1 | exit: Ctrl-] | log: {log.name if log else 'off'} ---", flush=True)
+    status = 0
+    try:
+        if is_tty:
+            interactive(ser, show, EOLS[args.eol], args.echo)
+        else:
+            piped(ser, show, EOLS[args.eol], args.echo, args.quiet_seconds)
+    except (serial.SerialException, OSError) as e:
+        print(f"\r\n--- serial port error: {e} ---", file=sys.stderr)
+        status = 1
+    finally:
+        if log:
+            log.write(f"\n# a465-term end={now()}\n".encode())
+            log.close()
+        ser.close()
+    if is_tty:
+        print("\n--- disconnected ---")
+    sys.exit(status)
+
+
+if __name__ == "__main__":
+    main()

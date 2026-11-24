@@ -1,0 +1,22 @@
+# ask.py start=2026-11-23T18:40:09-05:00 38400 8N1
+help
+
+Commands built-in to the shell:
+cd        do        echo      exit      help      kill      mem       msleep
+shutdown  ver
+
+System (/bin) Commands:
+ash       chmod     cksum     copy      cp        crosver   date      del
+df        dir       ln        ls        md        mkdev     mkdir     mkfifo
+mksock    more      mount     mv        pause     ps        pwd       ren
+rm        rmdir     shell     siocfg    sync      unmount   v3make    v3update
+
+Robot (/bin) Commands:
+axst      calrdy    home      joint     limp      nolimp    pendant   ready
+speed     w0        wact
+
+Robot setup & diagnostic (/diag) Commands:
+cal       calgrip   calseek   encres     f3pack    setup    srvstat   xzero
+zero
+
+$ 

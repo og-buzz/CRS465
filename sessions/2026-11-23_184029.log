@@ -1,0 +1,7 @@
+# watch.py start=2026-11-23T18:40:29-05:00 38400 8N1 cmd='/diag/srvstat'
+/diag/srvstat
+Axis 1= 0x55fd55d7, Axis 2= 0xaa555555, Axis 3= 0xaafaeaaa
+Axis 4= 0x5dabafea, Axis 5= 0xd757fd5d, Axis 6= 0x555555d5
+Axis 7= 0x55dd5755, Axis 8= 0xaa555557
+$ 
+$ ^C equivalent - halting robot...q

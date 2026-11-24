@@ -1,0 +1,243 @@
+# Read from the controller on 2026-11-23T22:26:53-05:00 (this machine's clock).
+date
+Fri Apr 22 10:40:05 2022
+$ 
+-----
+odometer
+The robot has been running for 12.1336 hours.
+$ 
+-----
+ls -la /
+d---rwx 13     416 Dec 13 02:20 ./
+d---rwx 13     416 Dec 13 02:20 ../
+d---rwx  7     224 Jun 30 21:19 app/
+d---rwx  2    1536 Jun 30 21:19 bin/
+d---rwx  2     320 Jun 30 21:19 conf/
+d---rwx  2     576 Jun 30 21:19 dev/
+d---rwx  2     416 Jun 30 21:19 diag/
+d---rwx  2      64 Jun 30 21:19 host/
+d---rwx  3     352 Jun 30 21:19 lib/
+d---rwx  2     224 Jun 30 21:19 log/
+d---rwx  2      64 Jun 30 21:19 mnt/
+d---rwx  2     224 Jun 30 21:19 sbin/
+d---rwx  2      64 Jun 30 21:19 tmp/
+$ 
+-----
+ls -laR /app /conf /log /tmp /host /mnt
+/app:
+d---rwx  7     224 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+d---rwx  2      96 Dec 13 02:21 2/
+d---rwx  2      96 Apr 20 22:31 SampleProgram/
+d---rwx  2     128 Dec 13 02:21 caco/
+d---rwx  2      96 Apr 21 04:05 new _p0/
+d---rwx  2     224 Jun 30 21:19 test/
+
+/app/2:
+d---rwx  2      96 Dec 13 02:21 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1      24 Apr 22 06:18 2.v3 
+
+/app/SampleProgram:
+d---rwx  2      96 Apr 20 22:31 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1      48 Apr 20 23:02 SampleProgram.v3 
+
+/app/caco:
+d---rwx  2     128 Dec 13 02:21 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1      24 Apr 22 06:18 caco.v3 
+----rwx  1   30392 Apr 22 08:21 caco2.v3 
+
+/app/new _p0:
+d---rwx  2      96 Apr 21 04:05 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1     132 Apr 21 04:08 new _p0.v3 
+
+/app/test:
+d---rwx  2     224 Jun 30 21:19 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rwx  1     316 Dec 13 03:50 fib 
+----rwx  1     503 Dec 13 03:50 fib.r3 
+----rwx  1     314 Dec 13 03:50 sieve 
+----rwx  1     680 Dec 13 03:50 sieve.r3 
+----rw-  1     136 Apr 22 10:35 test.v3 
+
+/conf:
+d---rwx  2     320 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+----rwx  1     509 Dec 13 02:20 rc 
+----rwx  1     441 Dec 13 02:20 rc.sim 
+----rwx  1     441 Dec 13 02:20 rc.simsockd 
+----rwx  1      72 Dec 13 02:20 robot.cal 
+----rwx  1      72 Apr 22 08:21 robot.cal.bak 
+----rw-  1     412 Apr 21 05:51 robot.cfg 
+----rwx  1       8 Dec 13 02:21 servogrp.cal 
+----rwx  1     127 Dec 13 02:21 simsockd.cfg 
+
+/log:
+d---rwx  2     224 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+----rw-  1     119 Apr 22 07:52 acid.log 
+----rw-  1     119 Apr 22 06:46 acid.log.0 
+----rw-  1     119 Apr 22 06:09 acid.log.1 
+----rw-  1     119 Apr 22 03:36 acid.log.2 
+----rw-  1       8 Apr 22 09:25 robot.odo 
+
+/tmp:
+d---rwx  2      64 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+
+/host:
+d---rwx  2      64 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+
+/mnt:
+d---rwx  2      64 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+$ 
+-----
+ls -la /lib /lib/errors
+/lib:
+d---rwx  3     352 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+-f--r--  1   15112 Jun 30 21:19 ash.help 
+----r--  1     452 Apr 20 22:33 ash.ndx 
+d---rwx  2     352 Jun 30 21:19 errors/
+-f-Sr-x  1   43388 Jun 30 21:18 robotlib.r 
+-f--r--  1    9120 Jun 30 21:18 shell.help 
+----r--  1     284 Apr 21 08:54 shell.ndx 
+-f--r-x  3   45632 Jun 30 21:19 stp.r 
+-f-Sr-x  1   32428 Jun 30 21:18 syslib.r 
+-f-Sr-x  1    9196 Jun 30 21:18 v3access.r 
+
+/lib/errors:
+d---rwx  2     352 Jun 30 21:19 ./
+d---rwx  3     352 Jun 30 21:19 ../
+-f-Sr-x  1     822 Jun 30 21:18 sys000.err 
+-f-Sr-x  1      42 Jun 30 21:07 sys001.err 
+-f-Sr-x  1      33 Jun 30 21:18 sys002.err 
+-f-Sr-x  1     497 Jun 30 21:18 sys003.err 
+-f-Sr-x  1    1021 Jun 30 21:18 sys004.err 
+-f-Sr-x  1     120 Jun 30 21:18 sys005.err 
+-f-Sr-x  1     889 Jun 30 21:18 sys006.err 
+-f-Sr-x  1     649 Jun 30 21:18 sys007.err 
+-f-Sr-x  1     357 Jun 30 21:18 sys008.err 
+$ 
+-----
+more /log/acid.log
+Fri Apr 22 07:47:43 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 07:52:43 2022: caught SIGHUP
+$ 
+-----
+more /log/acid.log.0
+Fri Apr 22 06:41:56 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 06:46:56 2022: caught SIGHUP
+$ 
+-----
+more /log/acid.log.1
+Fri Apr 22 06:04:08 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 06:09:08 2022: caught SIGHUP
+$ 
+-----
+more /log/acid.log.2
+Fri Apr 22 03:31:31 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 03:36:31 2022: caught SIGHUP
+$ 
+-----
+ls -la /bin /sbin /diag /dev
+/bin:
+d---rwx  2    1536 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+-f--r-x  1   53680 Jun 30 21:19 ash 
+-f--r-x  1     540 Jun 30 21:18 axst 
+-f--r-x  1     448 Jun 30 21:18 calrdy 
+-f--r-x  1    1280 Jun 30 21:18 chmod 
+-f--r-x  1     660 Jun 30 21:18 cksum 
+-f--r-x  2    1592 Jun 30 21:18 copy 
+-f--r-x  2    1592 Jun 30 21:18 cp 
+-f--r-x  1     524 Jun 30 21:18 crosver 
+-f--r-x  1    1424 Jun 30 21:18 date 
+-f--r-x  2     400 Jun 30 21:18 del 
+-f--r-x  1    1444 Jun 30 21:18 df 
+-f--r-x  2    3712 Jun 30 21:18 dir 
+-f--r-x  1     732 Jun 30 21:18 home 
+-f--r-x  1     696 Jun 30 21:18 joint 
+-f--r-x  1     732 Jun 30 21:18 limp 
+-f--r-x  1     428 Jun 30 21:18 ln 
+-f--r-x  2    3712 Jun 30 21:18 ls 
+-f--r-x  2     404 Jun 30 21:18 md 
+-f--r-x  1     708 Jun 30 21:18 mkdev 
+-f--r-x  2     404 Jun 30 21:18 mkdir 
+-f--r-x  1     400 Jun 30 21:18 mkfifo 
+-f--r-x  1     400 Jun 30 21:18 mksock 
+-f--r-x  1     756 Jun 30 21:18 more 
+-f--r-x  1     696 Jun 30 21:18 motor 
+-f-Sr-x  1    1212 Jun 30 21:18 mount 
+-f--r-x  2    2152 Jun 30 21:18 mv 
+-f--r-x  1     732 Jun 30 21:18 nolimp 
+-f--r-x  1     832 Jun 30 21:18 odometer 
+-f--r-x  1     476 Jun 30 21:18 pause 
+-f--r-x  3   45632 Jun 30 21:19 pendant 
+-f--r-x  1    1536 Jun 30 21:18 ps 
+-f--r-x  1    1368 Jun 30 21:18 pwd 
+-f--r-x  1     448 Jun 30 21:18 ready 
+-f--r-x  2    2152 Jun 30 21:18 ren 
+-f--r-x  2     400 Jun 30 21:18 rm 
+-f--r-x  1     424 Jun 30 21:18 rmdir 
+-f-Sr-x  1   15340 Jun 30 21:18 shell 
+-f--r-x  1    4408 Jun 30 21:18 siocfg 
+-f--r-x  1     736 Jun 30 21:18 speed 
+-f--r-x  1     220 Jun 30 21:18 sync 
+-f-Sr-x  1     488 Jun 30 21:18 unmount 
+-f--r-x  1    4668 Jun 30 21:18 v3make 
+-f--r-x  2    1260 Jun 30 21:18 w0 
+-f--r-x  2    1260 Jun 30 21:18 w2 
+-f--r-x  2    1260 Jun 30 21:18 wact 
+-f--r-x  2    1260 Jun 30 21:18 wcmd 
+
+/sbin:
+d---rwx  2     224 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+-f--r-x  1    3308 Jun 30 21:18 f3adjust 
+-f-Sr-x  1    9372 Jun 30 21:18 fastacid 
+-f-Sr-x  1   43752 Jun 30 21:18 robotsrv 
+-f-Sr-x  1   11664 Jun 30 21:19 simsockd 
+-f--r-x  3   45632 Jun 30 21:19 stpv3 
+
+/diag:
+d---rwx  2     416 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+-f--r-x  1     732 Jun 30 21:18 cal 
+-f--r-x  1     844 Jun 30 21:18 calgrip 
+-f--r-x  1    1728 Jun 30 21:18 calseek 
+-f--r-x  1    1172 Jun 30 21:18 encres 
+-f--r-x  1    2944 Jun 30 21:18 f3diag 
+-f--r-x  1     576 Jun 30 21:18 f3pack 
+-f--r-x  1      80 Jun 30 21:18 f3pack.v3 
+-f--r-x  1    2500 Jun 30 21:18 setup 
+-f--r-x  1     696 Jun 30 21:18 srvstat 
+-f--r-x  1    1472 Jun 30 21:18 xzero 
+-f--r-x  1     472 Jun 30 21:18 zero 
+
+/dev:
+d---rwx  2     576 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+v---rw-  1    5  0 Jun 30 21:19 analog0 
+v---rw-  1    5  1 Jun 30 21:19 analog1 
+v---rw-  1    2  1 Jun 30 21:19 buttons 
+p---rw-  1       0 Jun 30 21:19 cin|
+v---rw-  1    1  1 Jun 30 21:19 console 
+p---rw-  1       0 Jun 30 21:19 cout|
+v---rw-  1    6  0 Jun 30 21:19 estop 
+v---rw-  1    3  0 Jun 30 21:19 gpio0 
+v---rw-  1    2  2 Jun 30 21:19 lights 
+v---rw-  1    0  0 Jun 30 21:19 null 
+s---rw-  1       0 Jun 30 21:19 robot=
+v---rw-  1    1  0 Jun 30 21:19 sio0 
+v---rw-  1    1  1 Jun 30 21:19 sio1 
+v---rw-  1    2  0 Jun 30 21:19 status 
+v---rw-  1    4  0 Jun 30 21:19 xputer0 
+v---rw-  1    4  1 Jun 30 21:19 xputer1 
+$ 
+-----

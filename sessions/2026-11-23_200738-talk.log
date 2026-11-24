@@ -1,0 +1,23 @@
+# talk.py start=2026-11-23T20:07:38-05:00
+ash caco caco2
+Loading  v3 file 'caco2.v3'...done.
+caco> list
+Variables: (* indicates not yet taught)
+  ploc[8]            carousel1                       
+  int              * close                           = 0
+  cloc[96,3]         incubator1                      
+  cloc[32,4]         passthrough1                    
+  cloc[16,3]         refer1                          
+  cloc               s_inc                           
+  cloc[2]            safe_incubator1                 
+  cloc               safe_passthrough1               
+  cloc[2]            safe_refer1                     
+  cloc[2]            safe_scanner1                   
+  cloc               safe_sealer1                    
+  cloc[2]            safe_tecan1                     
+  cloc[2]            safe_tecan2                     
+  cloc[1,4]          scanner1                        
+  cloc[1,3]          sealer1                         
+  cloc[10,3]         tecan1                          
+  cloc[10,3]         tecan2                          
+caco> 

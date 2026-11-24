@@ -1,0 +1,51 @@
+# ask.py start=2026-11-23T18:52:04-05:00 38400 8N1
+help joint
+joint <joint #> <units>
+
+  Rotates a rotational joint by a specified number of degrees, or
+moves a linear joint (ex. track) by a specified number of current
+units (metric or English).
+
+$ help motor
+There is no information on that topic.
+$ help speed
+speed                           ;; print the current speed value
+speed <value>
+
+  Displays or sets the robot speed in % of maximum speed.
+
+$ help limp
+limp    ;; limp all axes
+limp <axis #> [<axis #> ...]
+
+  Limps one, more than one, or all joints. WARNING - links can
+fall due to gravity.
+ 
+$ help nolimp
+nolimp    ;; unlimp all axes
+nolimp <axis #> [<axis #> ...]
+
+  Unlimps one, more than one, or all joints.
+ 
+$ help ready
+ready
+
+  Moves the robot to the ready position.
+
+$ speed
+Current Speed: 10% of max.
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +30689       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     110.480     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -4.631     12.399   1041.277    110.480    -88.906     -0.014
+             0.000      0.000
+$ 

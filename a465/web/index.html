@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRS A465</title>
+<link rel="stylesheet" href="/static/style.css">
+<script type="importmap">{"imports": {"three": "/static/vendor/three.module.min.js"}}</script>
+</head>
+<body>
+<header>
+  <h1>CRS A465</h1>
+  <span id="backend" class="chip warn">–</span>
+  <span id="homed" class="chip">–</span>
+  <span id="motion" class="chip">–</span>
+  <span id="source" class="chip dim" hidden></span>
+  <span id="notice" class="chip danger" hidden></span>
+  <span class="spacer"></span>
+  <span id="link" class="link down">offline</span>
+</header>
+<main>
+  <section id="view">
+    <canvas id="scene"></canvas>
+    <dl id="pose">
+      <div><dt>X</dt><dd id="pose-x">–</dd></div>
+      <div><dt>Y</dt><dd id="pose-y">–</dd></div>
+      <div><dt>Z</dt><dd id="pose-z">–</dd></div>
+      <div><dt>Yaw</dt><dd id="pose-yaw">–</dd></div>
+      <div><dt>Pitch</dt><dd id="pose-pitch">–</dd></div>
+      <div><dt>Roll</dt><dd id="pose-roll">–</dd></div>
+    </dl>
+    <p id="axes-key"><b class="x">X</b> forward <b class="y">Y</b> left <b class="z">Z</b> up · mm, degrees</p>
+    <p id="toast" hidden></p>
+  </section>
+  <aside>
+    <section class="card">
+      <div class="row">
+        <button id="power" class="big">Arm power</button>
+        <button id="halt" class="big danger">HALT</button>
+      </div>
+      <label class="speed">Speed <output id="speed-out">–</output>
+        <input id="speed" type="range" min="1" max="100" step="1" value="10">
+      </label>
+      <div class="row">
+        <button id="home">Home</button>
+        <button data-goto="ready">Ready</button>
+        <button data-goto="calrdy">Straight up</button>
+        <button data-goto="work">Work pose</button>
+      </div>
+      <div class="row">
+        <button id="cycle">Cycle start</button>
+        <button id="gripper">Gripper</button>
+      </div>
+      <div class="row">
+        <button id="light">Light</button>
+        <button id="tool">Tool</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Pick and place <span id="plan-state" class="chip dim">–</span></h2>
+      <div class="row">
+        <button id="choose">Choose cells</button>
+        <button id="top-view">Top view</button>
+        <button id="job-clear">Clear</button>
+        <button id="map-big">Enlarge map</button>
+      </div>
+      <div id="map-wrap">
+        <svg id="map" role="img" aria-label="Map of the work plane seen from above"></svg>
+      </div>
+      <div class="row">
+        <button id="track-moves">Move track in cycle</button>
+      </div>
+      <label class="field">Plane height <input id="plane-z" type="number" step="10" min="-200" max="400" value="0"> mm above the base</label>
+      <ol id="pairs"></ol>
+      <h3>Zones</h3>
+      <form id="zone-form" autocomplete="off">
+        <label class="field">Kind
+          <select id="zone-kind">
+            <option value="pick">Pick area</option>
+            <option value="place">Place area</option>
+            <option value="keepout">Keep-out zone</option>
+          </select></label>
+        <div class="zone-grid">
+          <label>X from <input id="zone-x0" type="number" step="10" required> mm</label>
+          <label>X to <input id="zone-x1" type="number" step="10" required> mm</label>
+          <label>Y from <input id="zone-y0" type="number" step="10" required> mm</label>
+          <label>Y to <input id="zone-y1" type="number" step="10" required> mm</label>
+          <label id="zone-top-label" hidden>Top Z <input id="zone-top" type="number" step="10" value="300"> mm</label>
+        </div>
+        <div class="row"><button id="zone-add" type="submit">Add</button></div>
+      </form>
+      <ol id="zones"></ol>
+      <p class="hint">Drag a rectangle on the map to fill in the X and Y fields (snapped to 50 mm).</p>
+      <ul id="plan-problems"></ul>
+      <details id="plan-steps"><summary></summary><ol></ol></details>
+      <p class="hint" id="job-hint">Choose cells, then click a cell to pick from and the cell to place into. Clicking a chosen cell removes it.
+        Cycle start runs the plan that is drawn.</p>
+    </section>
+    <section class="card">
+      <div class="tabs" id="frames"></div>
+      <div id="jog"></div>
+      <div class="row" id="hardware">
+        <button id="track-fitted">Track fitted</button>
+        <button id="carousel-fitted">Carousel fitted</button>
+      </div>
+      <div id="aux"></div>
+      <p class="hint">Hold a button to move. Releasing it stops the arm.</p>
+    </section>
+    <section class="card">
+      <h2>Controller <span id="pad-state" class="chip dim">–</span></h2>
+      <p id="pad-name" class="hint">–</p>
+      <div id="pad-live" hidden>
+        <div class="sticks">
+          <div class="stick"><i id="stick-l"></i></div>
+          <div class="stick"><i id="stick-r"></i></div>
+          <div id="pad-buttons"></div>
+        </div>
+        <dl id="pad-help"></dl>
+      </div>
+    </section>
+  </aside>
+</main>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+# calseek_test axis=6 start=2026-11-23T20:21:31-05:00
+
+$ 
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977    174.958
+             0.000      0.000
+$ /diag/calseek 6 &
+[Started process 75]
+$ wact
+Calibrating A465B
+Seeking axis 6...
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336      +3035
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019    -21.636
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977    171.095
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336      +6185
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019    -44.091
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977    148.639
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336      +9277
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019    -66.133
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977    126.597
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336     +12420
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019    -88.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977    104.192
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336     +15491
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019   -110.431
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977     82.299
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336     +18583
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019   -132.473
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977     60.257
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336     +21678
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019   -154.536
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977     38.194
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336     +24819
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019   -176.928
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977     15.803
+             0.000      0.000
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13265       +775     +25895      -8336     +27888
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.754     -2.312   -184.598     60.019   -198.806
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -294.124    329.816    840.398    -64.498    -74.977     -6.075
+             0.000      0.000
+$ wact
+S: Arm power is OFF
+Error 0x7000604
+Collision error on axis 6
+Actual Position :
+
+[75 killed by SIGABRT.]
+wact: device is being reset
+$ 
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13233       +795     +25895      -8336     +28163
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.639     -2.386   -184.598     60.019   -200.766
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -293.194    328.747    841.560    -64.313    -74.795     -8.228
+             0.000      0.000
+$ axst
+0000840f 0000840f 0000840f 0000840f 0000840f 0000840f 00008008 00008008
+0000840f 0000840f 0000840f 0000840f 0000840f 0000840f 00008008 00008008
+
+[87 killed by SIGINT.]
+$ 

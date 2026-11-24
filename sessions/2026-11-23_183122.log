@@ -1,0 +1,72 @@
+# a465-term start=2026-11-23T18:31:22-05:00 port=/dev/ttyUSB0 38400 8N1 flow=none eol=cr
+-f--r-x  1   53680 Jun 30 21:19 ash 
+-f--r-x  1     540 Jun 30 21:18 axst 
+-f--r-x  1     448 Jun 30 21:18 calrdy 
+-f--r-x  1    1280 Jun 30 21:18 chmod 
+-f--r-x  1     660 Jun 30 21:18 cksum 
+-f--r-x  2    1592 Jun 30 21:18 copy 
+-f--r-x  2    1592 Jun 30 21:18 cp 
+-f--r-x  1     524 Jun 30 21:18 crosver 
+-f--r-x  1    1424 Jun 30 21:18 date 
+-f--r-x  2     400 Jun 30 21:18 del 
+-f--r-x  1    1444 Jun 30 21:18 df 
+-f--r-x  2    3712 Jun 30 21:18 dir 
+-f--r-x  1     732 Jun 30 21:18 home 
+-f--r-x  1     696 Jun 30 21:18 joint 
+-f--r-x  1     732 Jun 30 21:18 limp 
+-f--r-x  1     428 Jun 30 21:18 ln 
+-f--r-x  2    3712 Jun 30 21:18 ls 
+-f--r-x  2     404 Jun 30 21:18 md 
+-f--r-x  1     708 Jun 30 21:18 mkdev 
+-f--r-x  2     404 Jun 30 21:18 mkdir 
+-f--r-x  1     400 Jun 30 21:18 mkfifo 
+-f--r-x  1     400 Jun 30 21:18 mksock 
+-f--r-x  1     756 Jun 30 21:18 more 
+-f--r-x  1     696 Jun 30 21:18 motor 
+-f-Sr-x  1    1212 Jun 30 21:18 mount 
+-f--r-x  2    2152 Jun 30 21:18 mv 
+-f--r-x  1     732 Jun 30 21:18 nolimp 
+-f--r-x  1     832 Jun 30 21:18 odometer 
+-f--r-x  1     476 Jun 30 21:18 pause 
+-f--r-x  3   45632 Jun 30 21:19 pendant 
+-f--r-x  1    1536 Jun 30 21:18 ps 
+-f--r-x  1    1368 Jun 30 21:18 pwd 
+-f--r-x  1     448 Jun 30 21:18 ready 
+-f--r-x  2    2152 Jun 30 21:18 ren 
+-f--r-x  2     400 Jun 30 21:18 rm 
+-f--r-x  1     424 Jun 30 21:18 rmdir 
+-f-Sr-x  1   15340 Jun 30 21:18 shell 
+-f--r-x  1    4408 Jun 30 21:18 siocfg 
+-f--r-x  1     736 Jun 30 21:18 speed 
+-f--r-x  1     220 Jun 30 21:18 sync 
+-f-Sr-x  1     488 Jun 30 21:18 unmount 
+-f--r-x  1    4668 Jun 30 21:18 v3make 
+-f--r-x  2    1260 Jun 30 21:18 w0 
+-f--r-x  2    1260 Jun 30 21:18 w2 
+-f--r-x  2    1260 Jun 30 21:18 wact 
+-f--r-x  2    1260 Jun 30 21:18 wcmd 
+$ ls -l /sbin
+-f--r-x  1    3308 Jun 30 21:18 f3adjust 
+-f-Sr-x  1    9372 Jun 30 21:18 fastacid 
+-f-Sr-x  1   43752 Jun 30 21:18 robotsrv 
+-f-Sr-x  1   11664 Jun 30 21:19 simsockd 
+-f--r-x  3   45632 Jun 30 21:19 stpv3 
+$ ls -l /dev
+v---rw-  1    5  0 Jun 30 21:19 analog0 
+v---rw-  1    5  1 Jun 30 21:19 analog1 
+v---rw-  1    2  1 Jun 30 21:19 buttons 
+p---rw-  1       0 Jun 30 21:19 cin|
+v---rw-  1    1  1 Jun 30 21:19 console 
+p---rw-  1       0 Jun 30 21:19 cout|
+v---rw-  1    6  0 Jun 30 21:19 estop 
+v---rw-  1    3  0 Jun 30 21:19 gpio0 
+v---rw-  1    2  2 Jun 30 21:19 lights 
+v---rw-  1    0  0 Jun 30 21:19 null 
+s---rw-  1       0 Jun 30 21:19 robot=
+v---rw-  1    1  0 Jun 30 21:19 sio0 
+v---rw-  1    1  1 Jun 30 21:19 sio1 
+v---rw-  1    2  0 Jun 30 21:19 status 
+v---rw-  1    4  0 Jun 30 21:19 xputer0 
+v---rw-  1    4  1 Jun 30 21:19 xputer1 
+$ 
+# a465-term end=2026-11-23T18:31:34-05:00

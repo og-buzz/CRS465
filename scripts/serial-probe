@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Identify the wires of an unknown RS-232 adapter, and find the controller's baud rate.
+
+  serial-probe wires   Live view for pinning a home-made cable. Raise one output
+                       at a time and find it with a voltmeter (a raised RS-232
+                       output reads positive against ground, an idle one negative).
+                       Jumper the TXD wire to another wire to find RXD, and a
+                       raised RTS/DTR wire to another wire to find CTS/DSR.
+  serial-probe scan    Send one Enter at each common baud rate and show the reply,
+                       to find the rate the controller is using.
+"""
+import argparse
+import os
+import select
+import sys
+import termios
+import time
+
+import serial
+from serial.tools import list_ports
+
+PATTERN = b"\x55\xaa\x55\xaa"
+SCAN_BAUDS = (38400, 57600, 19200, 9600)
+
+
+def pick_port(requested):
+    if requested:
+        return requested
+    ports = sorted(p.device for p in list_ports.comports() if p.device.startswith(("/dev/ttyUSB", "/dev/ttyACM")))
+    if len(ports) == 1:
+        return ports[0]
+    sys.exit("Pass --port: found %s" % (", ".join(ports) or "no USB serial ports"))
+
+
+def modem_lines(ser):
+    try:
+        return {"CTS": ser.cts, "DSR": ser.dsr, "DCD": ser.cd, "RI": ser.ri}
+    except (OSError, serial.SerialException):
+        return None
+
+
+def wires(port):
+    ser = serial.Serial()
+    ser.port, ser.baudrate, ser.timeout = port, 9600, 0
+    ser.rts = ser.dtr = False  # every output starts low
+    ser.open()
+    out = {"TXD": False, "RTS": False, "DTR": False}
+    keys = {b"t": "TXD", b"r": "RTS", b"d": "DTR"}
+    print(f"{port}: keys  t = raise/lower TXD   r = RTS   d = DTR   q = quit")
+    print("Outputs start low. Raise one, then meter each wire against ground.\n")
+    fd = sys.stdin.fileno()
+    saved = termios.tcgetattr(fd)
+    raw = termios.tcgetattr(fd)
+    raw[3] &= ~(termios.ECHO | termios.ICANON)
+    termios.tcsetattr(fd, termios.TCSADRAIN, raw)
+    heard_at = 0.0
+    try:
+        while True:
+            if not out["TXD"]:  # a raised TXD is a continuous break and cannot carry data
+                ser.reset_input_buffer()
+                ser.write(PATTERN)
+                time.sleep(0.05)
+                if ser.read(64) == PATTERN:
+                    heard_at = time.monotonic()
+            lines = modem_lines(ser)
+            ins = "  ".join(f"{k}:{'HIGH' if v else 'low '}" for k, v in lines.items()) if lines else "(input lines unreadable)"
+            outs = "  ".join(f"{k}:{'RAISED' if v else 'low   '}" for k, v in out.items())
+            rxd = "hears TXD" if time.monotonic() - heard_at < 0.5 else "silent   "
+            sys.stdout.write(f"\rOUT {outs}   |   IN RXD:{rxd}  {ins}   ")
+            sys.stdout.flush()
+            if select.select([fd], [], [], 0.15)[0]:
+                key = os.read(fd, 1).lower()
+                if key in (b"q", b"\x03", b""):
+                    break
+                name = keys.get(key)
+                if name:
+                    try:
+                        if name == "TXD":
+                            ser.break_condition = not out[name]
+                        elif name == "RTS":
+                            ser.rts = not out[name]
+                        else:
+                            ser.dtr = not out[name]
+                        out[name] = not out[name]
+                    except (OSError, serial.SerialException) as e:
+                        print(f"\r\n{name} cannot be driven on this port: {e}")
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+        ser.break_condition = False
+        ser.close()
+        print()
+
+
+def scan(port, bauds):
+    best = None
+    for baud in bauds:
+        with serial.Serial(port, baud, timeout=0, exclusive=True) as ser:
+            time.sleep(0.2)
+            ser.reset_input_buffer()
+            ser.write(b"\r")
+            time.sleep(0.8)
+            reply = ser.read(4096)
+        printable = sum(1 for b in reply if 32 <= b < 127 or b in (9, 10, 13))
+        score = printable / len(reply) if reply else 0.0
+        print(f"{baud:>6} baud: {len(reply):>3} bytes, {score:4.0%} readable  {reply[:60]!r}")
+        if reply and score > 0.9 and (best is None or score > best[1]):
+            best = (baud, score)
+    if best:
+        print(f"\nReadable reply at {best[0]} baud:  scripts/a465-term --baud {best[0]}")
+    else:
+        print("\nNo readable reply. Check controller power, cable wiring (swap TXD/RXD?) and ground.")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("mode", choices=("wires", "scan"))
+    ap.add_argument("--port", default=os.environ.get("A465_PORT"))
+    ap.add_argument("--baud", type=int, action="append", help="scan only: rate(s) to try instead of the defaults")
+    args = ap.parse_args()
+    port = pick_port(args.port)
+    try:
+        if args.mode == "wires":
+            wires(port)
+        else:
+            scan(port, args.baud or SCAN_BAUDS)
+    except serial.SerialException as e:
+        sys.exit(f"{port}: {e}")
+
+
+if __name__ == "__main__":
+    main()

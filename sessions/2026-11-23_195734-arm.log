@@ -1,0 +1,79 @@
+
+$ ash test
+Loading  v3 file 'test.v3'...done.
+test> online
+Online mode is ON
+test> online
+Online mode is ON
+test> arm_status
+
+Robot arm is of type 465
+Arm power is ON     Robot is not homed
+Units are Metric     Online is ON
+Physical stance: back up noflip
+
+
+Current Tool Transform is: 
+tx=0.00000, ty=0.00000, tz=0.00000, yaw=0.00000, pitch=0.00000, roll=0.00000
+
+Current Base Transform is: 
+wx=0.00000, wy=0.00000, wz=0.00000, xrot=0.00000, yrot=0.00000, zrot=0.00000
+
+Axis    locked   done   limped   homed
+ 1        N       Y       N       N
+ 2        N       Y       N       N
+ 3        N       Y       N       N
+ 4        N       Y       N       N
+ 5        N       Y       N       N
+ 6        N       Y       N       N
+
+test> speed 10
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13597     +10429     -22166     +25895      -8338      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.949     37.544     80.173   -184.598     60.034    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.165    405.523    458.838    135.756    -32.149    -22.580
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13597     +10429     -22166     +25895      -8338      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.949     37.544     80.173   -184.598     60.034    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.165    405.523    458.838    135.756    -32.149    -22.580
+             0.000      0.000
+test> 
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13597     +10429     -22166     +25895      -8338      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.949     37.544     80.173   -184.598     60.034    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.165    405.523    458.838    135.756    -32.149    -22.580
+             0.000      0.000
+test> exit
+Are you sure you want to exit? yes
+$ 

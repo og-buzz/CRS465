@@ -1,0 +1,88 @@
+# talk.py start=2026-11-23T20:09:20-05:00
+more /diag/calseek
+z7rxDT5V:RJPPP5VRXXTLP5i5gC555VgZ5
+5VDZ5V:RJh5VKRJFe?65PP5EZ5}PP5EZ55VDZ5PP5EZ5V:Z555VgZP5i5gC5V:ZP55VHRJ
+?d5i5gCDiP5i!5gC3XXT0hhh5VZRJ5V[RJ@  i&55g@3Di,55g@3D?PP5i25gC3DP5i?5gC3X5GePP5EZiL55g@3XXT$5[ ?55[
+RP5iN55gD5iX55gD55g55[
+RJPh5[RJ
+?P55[
+RP5i]55gDDmP5ElZ5VWR?5id5gCD5ii5gC5VZD5[
+RP5VRP55[
+RP5io55gD5VRJ55gn55gX<0u$P$<0u$Seeking axis {}...
+Calibrating axis {}...
+complete
+failed ({})
+Calibrating A456
+Calibrating A465B
+.0Calibrating extra axis ({}) of robot code: {}
+-0Calibrating nothing - unknown robot code: {}
+Ok
+$${}: invalid command line arguments.
+Usage: {} axis
+{}: invalid axis '{}'
+Hit <space> or <q>                    Robot is homed
+Robot is not homed
+{}: {}
+z7uH
+z7&syslibrobotlib
+$ ore /bin/home
+shell: ore: not found
+$ more /diag/cal
+z7XCDTL5[ R
+?I3DF3f
+?
+3DCP5[
+RJPh5[RJ
+?=P55[
+RP5i55gD55[
+RP5i 55gD55gF3f5[ R ?mg5[ R?T55VHZDc3DaFe?`P55VHZ
+?V5VZD5[
+RP5VRP55[
+RP5i55gD5VRJ55gn55gX {}: illegal axis number '{}'
+Usage: {} [axis_list]
+{}: {}
+z7uH
+z7&syslibrobotlib
+$ more /diag/zero
+z7FX1EDT5[ ?55[
+RP5i55gD55[
+RP5i
+55gD55gm'5VZ5VZDA5[
+RP5VRP55[
+RP5i55gD5VRJ55gn55gX$${}: invalid command line arguments.
+
+Usage: {}
+{}: {}
+z7uH
+z7&syslibrobotlib
+$ more /diag/xzero
+z7DT0P5[ R
+?55[
+RJG^?35[ R?755[
+RP5i55gD5i55gD5i55gD5i55gD55gJD\P5[
+RJPh5[RJ
+?VP55[
+RP5i#55gDD%F3f5[ R ?9m5VZhhh5VZZh55VZhh5[?5i,5gCPPPPPPPPi25gC3DFe? ?PP55[
+RP5i<55 gD5VZ55g5P5V ZP5iJ5gCF3f
+?5VZ?h55VZhh5[5iO5gCPPPPPPPPiT5gCD5[
+RP5VRP55[
+RP5i]55gD5VRJ55gn55gX-v$${}: invalid command line arguments.
+Usage: {} [-v] axislist
+  Options:
+),    -v         print diagnostic messages
+ {}: illegal axis number '{}'
+
+Current location:
+!${8} {8} {8} {8} {8} {8} {8} {8}
+
+34{}: tried to zero axis {}; robot has only {} axes.
+Hit <space> or <q>                     axis {} zeroed
+
+New location:
+  {8} {8} {8} {8} {8} {8} {8} {8}
+{}: {}
+z7uH
+z7&syslibrobotlib
+$ ore /bin/calrdy
+shell: ore: not found
+$ 

@@ -1,0 +1,15 @@
+# a465-term start=2026-11-23T18:31:37-05:00 port=/dev/ttyUSB0 38400 8N1 flow=none eol=cr
+ls -l /diag
+-f--r-x  1     732 Jun 30 21:18 cal 
+-f--r-x  1     844 Jun 30 21:18 calgrip 
+-f--r-x  1    1728 Jun 30 21:18 calseek 
+-f--r-x  1    1172 Jun 30 21:18 encres 
+-f--r-x  1    2944 Jun 30 21:18 f3diag 
+-f--r-x  1     576 Jun 30 21:18 f3pack 
+-f--r-x  1      80 Jun 30 21:18 f3pack.v3 
+-f--r-x  1    2500 Jun 30 21:18 setup 
+-f--r-x  1     696 Jun 30 21:18 srvstat 
+-f--r-x  1    1472 Jun 30 21:18 xzero 
+-f--r-x  1     472 Jun 30 21:18 zero 
+$ 
+# a465-term end=2026-11-23T18:31:41-05:00

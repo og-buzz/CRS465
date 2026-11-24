@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Jog the REAL arm with the PlayStation controller, one joint at a time, and watch its home switches.
+
+Same controls as the web page's mock: hold L1 and push a stick (or the D-pad) to move a joint,
+let go to stop, Square to stop. L1 + R1 + triggers change the speed (held to 25% while the arm is
+not homed). Everything else on the pad is refused here.
+L1 + L2 + stick is fine stepping (0.5 degrees a step, no pause afterwards).
+
+Without --zero-at nothing stops a joint short of its hard stop. With it, the program works in true
+joint angles and ends a jog 3 degrees inside each joint's range.
+
+Prints where the arm stopped after each jog, and every change of a status bit (such as a home
+switch) with the joint angle it happened at. Also written to sessions/<time>-arm-events.csv.
+Stop with Ctrl-C or SIGTERM: the arm is halted and the controller is left at its `$` prompt.
+"""
+import argparse
+import asyncio
+import os
+import signal
+import sys
+import time
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from a465 import crs                      # noqa: E402
+from a465.gamepad import Gamepad          # noqa: E402
+from a465.sim import RobotError           # noqa: E402
+
+START = time.monotonic()
+
+
+def say(text):
+    print(f"{time.monotonic() - START:8.1f}  {text}", flush=True)
+
+
+async def run(args):
+    try:
+        zero_at = [float(v) for v in args.zero_at.split(",")] if args.zero_at else None
+        if zero_at is not None and len(zero_at) != 6:
+            sys.exit("--zero-at needs six numbers, one per joint")
+        arm = crs.RealArm(args.port, args.baud, say=say, zero_at=zero_at)
+    except RobotError as err:
+        sys.exit(f"cannot start: {err}")
+    task = None
+    try:
+        arm.speed = args.speed
+        switches = arm.state()["home_switches"]
+        say(("connected to the arm, true angles (soft limits on).  " if arm.zero_at else "connected to the arm, NO soft limits.  ")
+            + "  ".join(f"J{i + 1} {a:8.2f}" for i, a in enumerate(arm.true_joints() or arm.joints))
+            + ("   home switches " + "".join(str(b) for b in switches) if switches else ""))
+        pad = Gamepad(arm, args.gamepad)
+        task = asyncio.ensure_future(pad.run())
+        stop = asyncio.Event()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            asyncio.get_running_loop().add_signal_handler(sig, stop.set)
+        last = None
+        while not stop.is_set() and not task.done():
+            status = pad.status()
+            now = (status["connected"], status["name"], status["message"], status["enabled"], status["frame"], arm.speed, arm.notice)
+            if now != last:
+                say(f"pad: {'connected' if now[0] else 'NOT connected'} ({now[1]})  L1 {'held' if now[3] else 'up'}  mode {now[4]}  speed {now[5]}%"
+                    + (f"  | {now[2]}" if now[2] else "") + (f"  | arm: {now[6]}" if now[6] else ""))
+                last = now
+            await asyncio.sleep(0.1)
+        if task.done() and not task.cancelled() and task.exception():
+            say(f"the controller-pad reader failed: {task.exception()!r}")
+    finally:                                  # whatever happens, stop the arm and leave the controller's shell properly
+        if task is not None:
+            task.cancel()
+        arm.close()
+        say("stopped; the controller is back at its system prompt")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--port", default=os.environ.get("A465_PORT", "/dev/ttyUSB0"))
+    ap.add_argument("--baud", type=int, default=38400)
+    ap.add_argument("--speed", type=int, default=10, choices=range(1, crs.MAX_SPEED_PCT + 1), metavar="PERCENT", help="starting speed (default 10)")
+    ap.add_argument("--zero-at", metavar="J1,J2,J3,J4,J5,J6",
+                    help="the controller's reading of each joint at the true zero pose (arm straight up, every joint mid-travel); "
+                         "use 0,0,0,0,0,0 after /diag/zero at that pose. Turns on soft limits")
+    ap.add_argument("--gamepad", metavar="DEVICE", help="input device to use instead of the first controller found")
+    asyncio.run(run(ap.parse_args()))
+
+
+if __name__ == "__main__":
+    main()

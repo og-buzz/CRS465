@@ -1,0 +1,24 @@
+# a465-term start=2026-11-23T18:31:41-05:00 port=/dev/ttyUSB0 38400 8N1 flow=none eol=cr
+ls -lR /lib
+-f--r--  1   15112 Jun 30 21:19 ash.help 
+----r--  1     452 Apr 20 22:33 ash.ndx 
+d---rwx  2     352 Jun 30 21:19 errors/
+-f-Sr-x  1   43388 Jun 30 21:18 robotlib.r 
+-f--r--  1    9120 Jun 30 21:18 shell.help 
+----r--  1     284 Apr 21 08:54 shell.ndx 
+-f--r-x  3   45632 Jun 30 21:19 stp.r 
+-f-Sr-x  1   32428 Jun 30 21:18 syslib.r 
+-f-Sr-x  1    9196 Jun 30 21:18 v3access.r 
+
+/lib/errors:
+-f-Sr-x  1     822 Jun 30 21:18 sys000.err 
+-f-Sr-x  1      42 Jun 30 21:07 sys001.err 
+-f-Sr-x  1      33 Jun 30 21:18 sys002.err 
+-f-Sr-x  1     497 Jun 30 21:18 sys003.err 
+-f-Sr-x  1    1021 Jun 30 21:18 sys004.err 
+-f-Sr-x  1     120 Jun 30 21:18 sys005.err 
+-f-Sr-x  1     889 Jun 30 21:18 sys006.err 
+-f-Sr-x  1     649 Jun 30 21:18 sys007.err 
+-f-Sr-x  1     357 Jun 30 21:18 sys008.err 
+$ 
+# a465-term end=2026-11-23T18:31:46-05:00

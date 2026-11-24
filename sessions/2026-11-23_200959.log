@@ -1,0 +1,43 @@
+# ask.py start=2026-11-23T20:09:59-05:00 38400 8N1
+more /diag/setup
+z7[  ]DTi55g@i55g@WT2-5[ R
+?&55[
+RP55[
+RP5i55gD55gm<hhhhhh5Z5i+5gC5i05gC5h5V!ZFG@_FGB_?QFP5iD5gC5VZ55ghh5gP5VZP5iP5gC5i^5gC5h5V!Zhh5g
+?}P5ih5gC5VZ55g
+?5iu5gC5h5V!Zhh5g?h5VZ5i5gC?5i5gCD5i5gC5
+h5V!Zhh5g5i5gC?5i5gCD5i5gC5
+h5V!Zhh5g55V|ZPPP5VoZD?i55g@i55g@5VZ55g55V|Z44P5VoZD55V|Z44P5VoZ5i5gC5h5V!Zhh5g?55V@ZD55V@Z?5i5gC?5755g ?-P5V{Z55VZ5VZ5VZ5i5gC5i
+RP5VRP55[
+RP5i55gD5VRJ55gn55gX%(Do not be concerned with this error.
+FHIt occurred because the track amplifier has not yet been initialized.
+.0{}: invalid command line arguments.
+Usage: {}
+
+Robot Setup
+:<
+Are your coordinates in English (0) or Metric (1) units?
+01*,Invalid units code '{}' -- must be 0 or 1
+24
+Your robot has {} axes. How many additional axes
+Hit <space> or <q>                    "$are connected to your controller?
+.0Invalid number of extra axes -- must be 0..{}
+/0
+Is the robot mounted on a track?(1=yes, 0=no)
+14
+Enter the positive travel limit of the track iinches.
+millimeters.
+14
+Enter the negative travel limit of the track in
+78The only extra axis allowed on a F3 system is a track.
+#$Think about this and re-run setup.
+68
+Do you have a servo gripper installed? (1=yes, 0=no)
+<<This may cause a PIC TIMEOUT ERROR and a LOSS OF ARM POWER
+
+Setup is now complete
+@@Please restart controller to allow new settings to take effect.
+{}: {}
+z7uH
+z7&syslibrobotlib
+Hit <space> or <q>                    $ 

@@ -1,0 +1,40 @@
+# talk.py start=2026-11-23T20:10:52-05:00
+ash test
+Loading  v3 file 'test.v3'...done.
+test> help here
+here                          ;; just display our position
+here <loc_name>
+
+  Stores the current arm coordinates into a specified location
+variable.
+
+test> help new
+new <variable>
+
+  Allow a new variable to be created and optionally dimensioned.
+
+Examples:
+  new i                 ;; create a new integer variable
+  new %spd              ;; create a new float variable
+  new $s[20]            ;; create a new string[20] variable
+  new _x[5][2]          ;; create a 2-d array of cloc variables
+  new #y                ;; create a new ploc variable
+
+Type "help variables" for more information on the syntax of variables.
+
+test> help variables
+Variable references: these take one of the following forms:
+  * variable_name                   -- for scalar variables
+  * variable_name[index]            -- for 1-d arrays
+  * <variable name>[index][index]   -- for 2-d arrays
+
+  Note that "index" must be a simple integer constant.
+
+test> help use
+use $server_socket
+use
+
+  The first form changes which server we are using to access the robot;
+the second form prints out which server we are currently using.
+
+test> 

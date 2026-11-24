@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""Copy files off the controller byte for byte, through the serial console. Read-only on the controller.
+
+The controller's shell has no file transfer of its own (that needs Robcomm3), but
+`cp <file> /dev/console` prints a file's raw bytes on the console line. This sends that for each
+file, captures the bytes, and checks them against the controller's own `cksum`, which prints the
+file's size and a plain sum of its bytes. A file is saved only if both match.
+
+    scripts/a465-getfile /conf/robot.cal /conf/robot.cfg
+    scripts/a465-getfile --out controller/backup-2026-11-23 /conf/rc /app/caco/caco2.v3
+
+Run it from the `$` system prompt with nothing else using the port (stop scripts/a465-padjog first).
+Files land under --out with the controller's path kept, e.g. <out>/conf/robot.cal.
+Measured 2026-11-23: no byte is altered on the way (696 bytes of a program and the 72-byte
+calibration file both matched), at about 3800 bytes a second.
+"""
+import argparse
+import os
+import re
+import sys
+import time
+
+import serial
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def grab(ser, quiet=1.2, limit=300.0, done=None):
+    """What the controller sends until `done(bytes so far)` is true, or the line has been quiet for `quiet` seconds."""
+    got, last, start = b"", time.monotonic(), time.monotonic()
+    while time.monotonic() - start < limit:
+        chunk = ser.read(4096)
+        if chunk:
+            got += chunk
+            last = time.monotonic()
+            if done is not None and done(got):
+                break
+        elif done is None and time.monotonic() - last > quiet:
+            break
+        else:
+            time.sleep(0.01)
+    return got
+
+
+def fetch(ser, path):
+    """(bytes, None) for a verified copy of the file, or (None, why not)."""
+    # The controller reads the whole file to add it up, which takes several seconds for a large one,
+    # so wait for the prompt that follows the answer rather than for a pause.
+    ser.write(f"cksum {path}\r".encode())
+    reply = grab(ser, limit=60.0, done=lambda g: g.endswith(b"$ ") and path.encode() in g[len(path) + 6:]).decode("latin-1")
+    found = re.search(r"0x([0-9a-fA-F]+)\s+(\d+)\s+" + re.escape(path), reply)
+    if not found:
+        return None, "cksum said: " + " ".join(reply.split())[:120]
+    want_sum, size = int(found.group(1), 16), int(found.group(2))
+    command = f"cp {path} /dev/console"
+    ser.write(command.encode() + b"\r")
+    echo = len(command) + 2             # the echoed command line and its line end
+    raw = grab(ser, limit=30.0 + size / 1000.0, done=lambda g: len(g) >= echo + size + 2 and g.endswith(b"$ "))
+    body = raw[raw.find(command.encode()) + len(command):]
+    if body.startswith(b"\r\n"):
+        body = body[2:]
+    if body.endswith(b"$ "):
+        body = body[:-2]                # the prompt that follows the file
+    if len(body) != size or sum(body) & 0xFFFFFFFF != want_sum:
+        return None, f"got {len(body)} bytes with sum {sum(body):#x}, controller says {size} bytes with sum {want_sum:#x}"
+    return body, None
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("paths", nargs="+", help="files on the controller, e.g. /conf/robot.cal")
+    ap.add_argument("--port", default=os.environ.get("A465_PORT", "/dev/ttyUSB0"))
+    ap.add_argument("--baud", type=int, default=38400)
+    ap.add_argument("--out", default=os.path.join(REPO, "controller", "files"), help="folder to save under (default controller/files)")
+    args = ap.parse_args()
+    failed = 0
+    with serial.Serial(args.port, args.baud, timeout=0, exclusive=True) as ser:
+        ser.write(b"\r")
+        if not grab(ser, 0.8).rstrip(b" ").endswith(b"$"):
+            sys.exit("the controller is not at its `$` system prompt")
+        for path in args.paths:
+            data, why = fetch(ser, path)
+            if data is None:
+                failed += 1
+                print(f"{path}: NOT saved ({why})")
+                continue
+            target = os.path.join(args.out, path.lstrip("/"))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, "wb") as out:
+                out.write(data)
+            print(f"{path}: {len(data)} bytes, sum {sum(data):#x}, verified -> {os.path.relpath(target, REPO)}")
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()

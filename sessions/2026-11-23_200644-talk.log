@@ -1,0 +1,44 @@
+# talk.py start=2026-11-23T20:06:44-05:00
+exit
+Are you sure you want to exit? yes
+$ ls -laR /app
+d---rwx  7     224 Jun 30 21:19 ./
+d---rwx 13     416 Dec 13 02:20 ../
+d---rwx  2      96 Dec 13 02:21 2/
+d---rwx  2      96 Apr 20 22:31 SampleProgram/
+d---rwx  2     128 Dec 13 02:21 caco/
+d---rwx  2      96 Apr 21 04:05 new _p0/
+d---rwx  2     224 Jun 30 21:19 test/
+
+/app/2:
+d---rwx  2      96 Dec 13 02:21 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1      24 Apr 22 06:18 2.v3 
+
+/app/SampleProgram:
+d---rwx  2      96 Apr 20 22:31 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1      48 Apr 20 23:02 SampleProgram.v3 
+
+/app/caco:
+d---rwx  2     128 Dec 13 02:21 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1      24 Apr 22 06:18 caco.v3 
+----rwx  1   30392 Dec 13 02:22 caco2.v3 
+
+/app/new _p0:
+d---rwx  2      96 Apr 21 04:05 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rw-  1     132 Apr 21 04:08 new _p0.v3 
+
+/app/test:
+d---rwx  2     224 Jun 30 21:19 ./
+d---rwx  7     224 Jun 30 21:19 ../
+----rwx  1     316 Dec 13 03:50 fib 
+----rwx  1     503 Dec 13 03:50 fib.r3 
+----rwx  1     314 Dec 13 03:50 sieve 
+----rwx  1     680 Dec 13 03:50 sieve.r3 
+----rw-  1      24 Apr 22 08:19 test.v3 
+$ df
+.            (mfs)    :     94K/    213K bytes ( 44%) free
+$ 

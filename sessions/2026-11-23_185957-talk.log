@@ -1,0 +1,66 @@
+# talk.py start=2026-11-23T18:59:57-05:00
+help armpower
+armpower <1|on|0|off>
+
+  Enable or disable the arm power switch.  Note that 'arm' is an alias
+for this command.
+
+test> help arm_status
+arm_status
+armstat
+
+  Displays robot arm status information. Note that 'armstat' is an alias
+for this command.
+
+test> help lock
+lock <axis #>[,<axis #>...]
+
+  Locks one or more joints.
+
+test> help clrerror
+clrerror
+
+  Clears persistent error bits on the F3 robot DSP set as a result of
+runaways, collisions, overspeeds, and encoder faults. After an error
+of this type, clrerror must be run before the arm power can be
+re-engaged. Does nothing on A series robots.
+
+test> joint 1,30
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -32095       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS    -115.542     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+            -5.707    -11.942   1041.277   -115.542    -88.906     -0.014
+             0.000      0.000
+test> arm_status
+
+Robot arm is of type 465
+Arm power is ON     Robot is not homed
+Units are Metric     Online is ON
+Physical stance: forward up noflip
+
+
+Current Tool Transform is: 
+tx=0.00000, ty=0.00000, tz=0.00000, yaw=0.00000, pitch=0.00000, roll=0.00000
+
+Current Base Transform is: 
+wx=0.00000, wy=0.00000, wz=0.00000, xrot=0.00000, yrot=0.00000, zrot=0.00000
+
+Axis    locked   done   limped   homed
+ 1        N       Y       N       N
+ 2        N       Y       N       N
+ 3        N       Y       N       N
+ 4        N       Y       N       N
+ 5        N       Y       N       N
+ 6        N       Y       N       N
+
+test> 

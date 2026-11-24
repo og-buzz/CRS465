@@ -1,0 +1,6 @@
+# CRS A465 interface: let the logged-in user read a PlayStation controller's motion-sensor node.
+# That node reports continuously, so the server uses it to notice a dead radio link within a
+# fraction of a second (the kernel alone keeps the last stick position for up to 20 s).
+# Install: sudo cp udev/70-a465-gamepad.rules /etc/udev/rules.d/ && sudo udevadm control --reload
+#          then reconnect the controller. The name must sort before 73-seat-late.rules.
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_ACCELEROMETER}=="1", ATTRS{id/vendor}=="054c", TAG+="uaccess"

@@ -1,0 +1,28 @@
+
+$ ash test
+Loading  v3 file 'test.v3'...done.
+test> arm_status
+
+Robot arm is of type 465
+Arm power is ON     Robot is not homed
+Units are Metric     Online is ON
+Physical stance: forward up noflip
+
+
+Current Tool Transform is: 
+tx=0.00000, ty=0.00000, tz=0.00000, yaw=0.00000, pitch=0.00000, roll=0.00000
+
+Current Base Transform is: 
+wx=0.00000, wy=0.00000, wz=0.00000, xrot=0.00000, yrot=0.00000, zrot=0.00000
+
+Axis    locked   done   limped   homed
+ 1        N       Y       N       N
+ 2        N       Y       N       N
+ 3        N       Y       N       N
+ 4        N       Y       N       N
+ 5        N       Y       N       N
+ 6        N       Y       N       N
+
+test> online 1
+
+Press the PAUSE/CONTINUE button to gain robot point of control.

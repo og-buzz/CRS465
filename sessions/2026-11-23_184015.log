@@ -1,0 +1,44 @@
+# ask.py start=2026-11-23T18:40:15-05:00 38400 8N1
+help home
+home    ;; home all axes
+home <axis #> [<axis #> ...] 
+
+  Homes one or more axes. If no axis is specified then all robot
+axes, including the a track if any, are homed.
+
+$ help calseek
+/diag/calseek <axis #>
+
+
+$ help cal
+/diag/cal    ;; calibrate all robot axes
+/diag/cal <axis #> [<axis #> ...]
+
+  Calibrates one, more than one, or all axes. WARNING - this will
+overwrite the existing calibration file (/conf/robot.cal).
+
+$ help srvstat
+/diag/srvstat
+
+ Displays low level information axis servo information. 
+
+$ help zero
+/diag/zero
+
+  Zeros the position registers of all robot axes.
+WARNING: this command is generally used in preparation for
+calibrating the robot and is not used in normal operations.
+
+$ help xzero
+/diag/xzero <axis #>
+
+  Zeros the position registers of a particular robot axis.
+WARNING: this command is generally used in preparation for 
+calibrating the robot and is not used in normal operations.
+
+$ help calrdy
+calrdy
+
+  Moves the robot the calibration ready position.
+
+$ 

@@ -1,0 +1,320 @@
+
+test> online
+Online mode is ON
+test> online
+Online mode is ON
+test> arm_status
+
+Robot arm is of type 465
+Arm power is ON     Robot is not homed
+Units are Metric     Online is ON
+Physical stance: forward up noflip
+
+
+Current Tool Transform is: 
+tx=0.00000, ty=0.00000, tz=0.00000, yaw=0.00000, pitch=0.00000, roll=0.00000
+
+Current Base Transform is: 
+wx=0.00000, wy=0.00000, wz=0.00000, xrot=0.00000, yrot=0.00000, zrot=0.00000
+
+Axis    locked   done   limped   homed
+ 1        N       Y       N       N
+ 2        N       Y       N       N
+ 3        N       Y       N       N
+ 4        N       Y       N       N
+ 5        N       Y       N       N
+ 6        N       Y       N       N
+
+test> speed 10
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> joint 4,25.65
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: Abort in progress
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> 
+test> w2
+ash: device is being reset
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> joint 2,^C equivalent - halting robot.[ash: Caught S..IGABRT]
+-27.00
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: device is being reset
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> 
+test> w2
+ash: device is being reset
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> w2
+ash: device is being reset
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> 
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> joint 3,^C equivalent - halting robot...27[ash: Caught SIGABRT]
+.00
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: device is being reset
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> 
+test> w2
+ash: device is being reset
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> joint 4,25.65
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: device is being reset
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> 
+test> w2
+ash: device is being reset
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> joint 4^C equivalent - halt,[ash: Caught SIGABRTing robot...]
+25.65
+ash: device is being reset
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> 
+test> w2
+ash: device is being reset
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> 
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +35263       -359         +8         +0      +1441      +1759
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     126.947     -1.292     -0.042      0.000    -10.375    -12.539
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -18.049     23.998   1039.647    126.947    -78.291    -12.539
+             0.000      0.000
+test> exit
+Are you sure you want to exit? yes
+$ 

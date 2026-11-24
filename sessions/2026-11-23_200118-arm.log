@@ -1,0 +1,276 @@
+
+$ ash test
+Loading  v3 file 'test.v3'...done.
+test> online
+Online mode is ON
+test> online
+Online mode is ON
+test> arm_status
+
+Robot arm is of type 465
+Arm power is ON     Robot is not homed
+Units are Metric     Online is ON
+Physical stance: back up noflip
+
+
+Current Tool Transform is: 
+tx=0.00000, ty=0.00000, tz=0.00000, yaw=0.00000, pitch=0.00000, roll=0.00000
+
+Current Base Transform is: 
+wx=0.00000, wy=0.00000, wz=0.00000, xrot=0.00000, yrot=0.00000, zrot=0.00000
+
+Axis    locked   done   limped   homed
+ 1        N       Y       N       N
+ 2        N       Y       N       N
+ 3        N       Y       N       N
+ 4        N       Y       N       N
+ 5        N       Y       N       N
+ 6        N       Y       N       N
+
+test> speed 10
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +10426     -22165     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     37.534     80.169   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.109    405.564    458.947    135.748    -32.149    -22.581
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +10426     -22165     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     37.534     80.169   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.109    405.564    458.947    135.748    -32.149    -22.581
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +10426     -22165     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     37.534     80.169   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.109    405.564    458.947    135.748    -32.149    -22.581
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +10426     -22165     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     37.534     80.169   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.109    405.564    458.947    135.748    -32.149    -22.581
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +10426     -22165     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     37.534     80.169   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -360.109    405.564    458.947    135.748    -32.149    -22.581
+             0.000      0.000
+test> joint 3,45.00
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> w2
+ash: device is being reset
+test> joint 3,-45.00
+test> joint 3,-45.00
+test> joint 3,-45.00
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> w2
+ash: device is being reset
+test> w2
+ash: device is being reset
+test> joint 2,45.00
+test> joint 2,45.00
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: Abort in progress
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> 
+test> joint 2,-45.00
+ash: device is being reset
+test> joint 2,-45.00
+test> joint 2,-^C equivalent - halting robot...[ash: Caught SIGABRT]
+45.00
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: device is being reset
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+test> 
+test> w2
+ash: device is being reset
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> 
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13599     +13307       +758     +25895      -8336      +2493
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.956     47.905     -2.250   -184.598     60.019    -17.772
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -295.247    331.063    838.992    -64.711    -75.183    175.183
+             0.000      0.000
+test> exit
+Are you sure you want to exit? yes
+$ 

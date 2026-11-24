@@ -1,0 +1,47 @@
+# talk.py start=2026-11-23T20:05:52-05:00
+ash test
+Loading  v3 file 'test.v3'...done.
+test> robotver
+Version string: 'Rapl-3 Kin Core build 141
+A465 Kinematics Model v2.00, Jun 28 1999 15:03:09'
+test> help home
+home    ;; home all axes
+home <axis #>[,<axis #>, ...]
+
+  Homes one or more axes. If no axis is specified then all robot
+axes, including the a track if any, are homed.
+
+test> help cal
+/diag/cal    ;; calibrate all robot axes
+/diag/cal <axis #> [<axis #> ...]
+
+  Calibrates one, more than one, or all axes. WARNING - this will
+overwrite the existing calibration file (/conf/robot.cal).
+
+test> help calseek
+/diag/calseek <axis #>
+
+
+test> help zero
+/diag/zero
+
+  Zeros the position registers of all robot axes.
+WARNING: this command is generally used in preparation for
+calibrating the robot and is not used in normal operations.
+
+test> help robotver
+robotver
+
+  Display the robot kinematics version string.
+
+test> help constants
+Constants: ash recognizes:
+  * signed integer constants
+  * signed floating point constants
+  * simple string constants (quoted strings with no '\' characters)
+  * cloc constants of the form:
+      cloc { flags, x, y, z, yaw, pitch, roll, e1, e2 }
+  * ploc constants of the form:
+      ploc { machine, flags, a1, a2, a3, a4, a5, a6, a7, a8 }
+
+test> 

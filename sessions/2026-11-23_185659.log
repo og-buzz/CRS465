@@ -1,0 +1,29 @@
+# ask.py start=2026-11-23T18:56:59-05:00 38400 8N1
+help kill
+kill [-<signal>] <pid> ...
+
+  Sends a signal a set of processes, identified by pid #. The pid #
+can be determined by the ps command. Some of the standard process
+signals are:
+
+#   Name    Description
+
+1   KILL    Kill process. Cannot be masked or trapped.
+6   ABRT    Abort process.
+7   INT     Interrupt process.
+9   HUP     Hang up process. Sent when parent process terminates.
+12  RPWR    Robot power fail.
+
+$ ps
+  pid  ppid  status flags prio  time      mem     command
+   12    10  READY  t-pr   2   213        14.1K  /sbin/robotsrv 
+  252    14  RUN    ---r   2   0.191       6.6K  ps 
+   10     1  WSOCK  --pr   2   91.9       14.1K  /sbin/robotsrv 
+    9     7  IWIO   --pr   2   10.8       12.6K  /sbin/fastacid 
+    8     7  READY  --pr   2   46.4       12.6K  /sbin/fastacid 
+    7     1  WSEM   --pr   2   0.369      12.6K  /sbin/fastacid 
+   14     1  READY  t-pr   2   94.7       10.2K  shell 
+    1     0  WAIT   --p-   2   0.167       2.0K  (init) 
+
+  System has been running for    0.473 hours
+$ 

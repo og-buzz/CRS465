@@ -1,0 +1,35 @@
+# ask.py start=2026-11-23T18:38:14-05:00 38400 8N1
+wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES          +0         +0         +0         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS       0.000      0.000      0.000      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -0.000      0.000   1041.400      0.000    -90.000     -0.014
+             0.000      0.000
+$ wcmd
+Commanded Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES          +0         +0         +0         +1         +0         +3
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS       0.000      0.000      0.000     -0.007      0.000     -0.021
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -0.000      0.000   1041.400      0.000    -90.000     -0.029
+             0.000      0.000
+$ odometer
+The robot has been running for 9.12528 hours.
+$ more /log/acid.log
+Fri Apr 22 06:41:56 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 06:46:56 2022: caught SIGHUP
+$ 

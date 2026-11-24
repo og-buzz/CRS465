@@ -1,0 +1,14 @@
+# ask.py start=2026-11-23T19:14:02-05:00 38400 8N1
+ps
+  pid  ppid  status flags prio  time      mem     command
+  273    14  RUN    ---r   2   0.165       6.6K  ps 
+   12    10  READY  t-pr   2   354        14.1K  /sbin/robotsrv 
+   10     1  READY  t-pr   2   190        14.1K  /sbin/robotsrv 
+    9     7  IWIO   --pr   2   13.7       12.6K  /sbin/fastacid 
+    8     7  READY  --pr   2   85.6       12.6K  /sbin/fastacid 
+    7     1  WSEM   --pr   2   0.405      12.6K  /sbin/fastacid 
+   14     1  SLEEP  --pr   2   116        10.2K  shell 
+    1     0  WAIT   --p-   2   0.196       2.0K  (init) 
+
+  System has been running for    0.757 hours
+$ 

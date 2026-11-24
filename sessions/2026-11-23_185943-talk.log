@@ -1,0 +1,42 @@
+# talk.py start=2026-11-23T18:59:43-05:00
+help
+
+Ash Commands:
+  ?             cd            echo          erase         eraseall
+  exit          help          list          merge         new
+  pendant       print         refresh       run           save
+  set           ver
+
+Robot Related Commands:
+accel    align    ampstat  appro    appros   arm_status        armpower
+base_set calrdy   cfg_save clrerror depart   departs  finish
+gripdist_set      grip_close        grip_open         gtype    here
+home     input    joint    limp     linacc   linspd   lock     motor
+move     moves    nolimp   online   output   pitch    pitchs   ready
+robotver roll     rolls    rotacc_set        rotspd_set        servoerr
+speed    stance_set        tool_set tshift   tx       txs      ty
+tys      tz       tzs      units    unlock   use      w1       w3
+w5       wact     wcmd     wend     wgrip    wshift   wx       wxs
+wy       wys      wz       wzs      xrot     xrots    yaw      yaws
+yrot     yrots    zrot     zrots
+
+Aliases to Robot Commands:
+arm      armstat  base     gc       gclose   go       gopen    grip
+rotacc   rotspd   stance   tool     w0       w2       w4
+
+System (/bin) Commands:
+chmod    cksum    copy     cp       crosver  date     del      df
+dir      ln       ls       md       mkdev    mkdir    mkfifo   mksock
+more     mount    mv       pause    ps       pwd      ren      rm
+rmdir    shell    siocfg   sync     unmount  v3make   v3update
+
+Robot setup & diagnostic (/diag) Commands:
+cal       calgrip   calseek   encres     f3pack    setup
+srvstat   xzero     zero
+
+Topics:
+constants variables
+
+Type "help <topic/command>" for help on a specific topic or command.
+
+test> 

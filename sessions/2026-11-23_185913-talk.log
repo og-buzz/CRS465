@@ -1,0 +1,10 @@
+# talk.py start=2026-11-23T18:59:13-05:00
+ash test
+Loading  v3 file 'test.v3'...done.
+test> ver
+ash (application shell) Revision: 8 
+test> speed
+Current speed is 8
+test> online
+Online mode is OFF
+test> 

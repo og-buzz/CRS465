@@ -1,0 +1,13 @@
+# talk.py start=2026-11-23T20:31:13-05:00
+ash test
+Loading  v3 file 'test.v3'...done.
+test> list
+Variables: (* indicates not yet taught)
+  ploc               mt                              
+test> new #here2
+test> here here2
+test> print here2
+  = ploc[9,1,(-13600,13233,795,25895,-8336,28163,0,0)]
+test> move here2
+
+Press the PAUSE/CONTINUE button to gain robot point of control.

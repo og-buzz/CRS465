@@ -1,0 +1,8 @@
+# ask.py start=2026-11-23T18:38:21-05:00 38400 8N1
+more /conf/robot.cal
+ =)=A-b 
+$ cksum /conf/robot.cal
+0x00000e00 72 /conf/robot.cal
+$ more /conf/servogrp.cal
+PBk
+$ 

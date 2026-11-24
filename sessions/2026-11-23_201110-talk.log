@@ -1,0 +1,15 @@
+# talk.py start=2026-11-23T20:11:10-05:00
+here
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+          -294.112    329.802    840.411    -64.495    -74.973    174.955
+             0.000      0.000
+test> new #mt
+test> here mt
+test> print mt
+  = ploc[9,1,(-13600,13265,776,25895,-8336,2493,0,0)]
+test> list
+Variables: (* indicates not yet taught)
+  ploc               mt                              
+test> 

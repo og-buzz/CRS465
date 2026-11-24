@@ -1,0 +1,618 @@
+# step.py axis=1 step=-1.0 count=30 start=2026-11-23T18:52:47-05:00
+
+$ 
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +30411       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     109.480     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -4.414     12.478   1041.277    109.480    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[156 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +30132       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     108.475     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -4.194     12.553   1041.277    108.475    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[159 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +29853       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     107.471     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -3.974     12.625   1041.277    107.471    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[162 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +29576       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     106.474     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -3.753     12.692   1041.277    106.474    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[165 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +29297       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     105.469     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -3.530     12.756   1041.277    105.469    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[168 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +29020       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     104.472     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -3.308     12.816   1041.277    104.472    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[171 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +28742       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     103.471     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -3.083     12.871   1041.277    103.471    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[174 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +28464       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     102.470     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -2.858     12.923   1041.277    102.470    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[177 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +28186       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     101.470     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -2.632     12.971   1041.277    101.470    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[180 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +27908       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     100.469     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -2.405     13.015   1041.277    100.469    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[183 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +27630       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      99.468     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -2.177     13.055   1041.277     99.468    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[186 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +27351       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      98.464     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -1.948     13.091   1041.277     98.464    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[189 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +27074       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      97.466     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -1.720     13.123   1041.277     97.466    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[192 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +26795       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      96.462     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -1.490     13.151   1041.277     96.462    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[195 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +26518       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      95.465     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -1.260     13.175   1041.277     95.465    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[198 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +26240       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      94.464     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -1.030     13.195   1041.277     94.464    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[201 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +25962       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      93.463     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -0.800     13.211   1041.277     93.463    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[204 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +25684       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      92.462     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -0.569     13.223   1041.277     92.462    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[207 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +25406       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      91.462     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -0.338     13.231   1041.277     91.462    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[210 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +25128       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      90.461     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD       -0.106     13.235   1041.277     90.461    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[213 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +24849       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      89.456     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        0.126     13.235   1041.277     89.456    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[216 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +24572       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      88.459     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        0.356     13.231   1041.277     88.459    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[219 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +24294       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      87.458     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        0.587     13.222   1041.277     87.458    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[222 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +24016       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      86.458     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        0.818     13.210   1041.277     86.458    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[225 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +23738       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      85.457     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        1.048     13.194   1041.277     85.457    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[228 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +23459       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      84.452     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        1.280     13.173   1041.277     84.452    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[231 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +23182       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      83.455     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        1.509     13.149   1041.277     83.455    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[234 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +22904       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      82.454     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        1.738     13.121   1041.277     82.454    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[237 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +22626       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      81.454     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        1.967     13.089   1041.277     81.454    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[240 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +22347       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      80.449     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        2.196     13.052   1041.277     80.449    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[243 killed by SIGINT.]
+$ joint 1 -1
+$ wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      +22070       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS      79.452     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD        2.423     13.012   1041.277     79.452    -88.906     -0.014
+             0.000      0.000
+$ axst
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+[246 killed by SIGINT.]
+$ 
+$ 
+$ 

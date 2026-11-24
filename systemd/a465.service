@@ -1,0 +1,11 @@
+[Unit]
+Description=CRS A465 web interface (REST + live 3D view + gamepad), http://<this-box>:8465
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/dev/crs-a465
+ExecStart=/usr/bin/python3 -m a465.server --port 8465
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

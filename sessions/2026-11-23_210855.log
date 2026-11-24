@@ -1,0 +1,28 @@
+# ask.py start=2026-11-23T21:08:55-05:00 38400 8N1
+wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -13600     +13233       +794     +25895      -8336     +28162
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -48.960     47.639     -2.382   -184.598     60.019   -200.759
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -293.206    328.762    841.547    -64.316    -74.799     -8.217
+             0.000      0.000
+$ ps
+  pid  ppid  status flags prio  time      mem     command
+   99    14  RUN    ---r   2   0.162       6.6K  ps 
+   12    10  SLEEP  --pr   2   766        14.1K  /sbin/robotsrv 
+   10     1  WSOCK  --pr   2   916        14.1K  /sbin/robotsrv 
+    9     7  IWIO   --pr   2   25.1       12.6K  /sbin/fastacid 
+    8     7  READY  --pr   2   109        12.6K  /sbin/fastacid 
+    7     1  WSEM   --pr   2   0.495      12.6K  /sbin/fastacid 
+   14     1  READY  t-pr   2   128        10.2K  shell 
+    1     0  WAIT   --p-   2   0.171       2.0K  (init) 
+
+  System has been running for    1.575 hours
+$ 

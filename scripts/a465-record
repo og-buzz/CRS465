@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""Record what the controller reports while someone else moves the arm (for example a home from the pendant).
+
+Only display commands are sent, from the `$` system shell: `wact` (actual position) over and over,
+about every 1.5 s, and one line of `axst` (low-level axis status) whenever the arm has just stopped. Nothing here can start a motion, and Ctrl-C is
+never sent (at the shell prompt the controller treats it as "halt the robot").
+
+Writes sessions/<timestamp>-record.csv (one row per poll) and a raw log beside it, and prints a
+line whenever a position or a status word changes. Stops when the file named by --stop-file
+appears, after --idle seconds with no change once something has moved, or after --max seconds.
+"""
+import argparse
+import datetime
+import os
+import re
+import sys
+import time
+
+import serial
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROMPT = b"$ "
+CTRL_E = b"\x05"                      # ends a continuous display; harmless at the prompt
+NUMBER = re.compile(r"[-+]?\d+(?:\.\d+)?")
+STATUS = re.compile(rb"((?:[0-9a-fA-F]{8} +){7}[0-9a-fA-F]{8})\r?\n")
+
+
+class Console:
+    def __init__(self, port, baud, raw):
+        self.ser = serial.Serial(port, baud, timeout=0, exclusive=True)
+        self.raw = raw
+
+    def read(self):
+        chunk = self.ser.read(4096)
+        if chunk:
+            self.raw.write(chunk)
+        return chunk
+
+    def until(self, done, timeout):
+        """Collect replies until done(bytes so far) is true; returns (bytes, whether it was)."""
+        got, end = b"", time.monotonic() + timeout
+        while time.monotonic() < end:
+            chunk = self.read()
+            if chunk:
+                got += chunk
+                if done(got):
+                    return got, True
+            else:
+                time.sleep(0.005)
+        return got, False
+
+    def settle(self):
+        """Get back to a clean prompt whatever was going on."""
+        self.ser.write(CTRL_E)
+        self.until(lambda g: False, 0.6)
+        self.ser.write(b"\r")
+        got, ok = self.until(lambda g: g.endswith(PROMPT), 3.0)
+        return ok
+
+    def wact(self):
+        self.ser.write(b"wact\r")
+        got, ok = self.until(lambda g: b"WORLD" in g and g.endswith(PROMPT), 4.0)
+        if not ok:
+            return None
+        rows = {}
+        lines = got.decode("latin-1").replace("\r", "").split("\n")
+        for i, line in enumerate(lines):
+            for key in ("PULSES", "JOINTS", "WORLD"):
+                if line.startswith(key):
+                    rows[key] = [float(n) for n in NUMBER.findall(line[len(key):] + " " + (lines[i + 1] if i + 1 < len(lines) else ""))]
+        return rows if len(rows) == 3 and all(len(v) == 8 for v in rows.values()) else None
+
+    def axst(self):
+        self.ser.write(b"axst\r")
+        got, ok = self.until(lambda g: STATUS.search(g), 3.0)
+        self.ser.write(CTRL_E)
+        self.until(lambda g: g.endswith(PROMPT), 3.0)
+        found = STATUS.search(got)
+        return found.group(1).decode().split() if found else None
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--port", default=os.environ.get("A465_PORT", "/dev/ttyUSB0"))
+    ap.add_argument("--baud", type=int, default=38400)
+    ap.add_argument("--max", type=float, default=1800.0, help="give up after this many seconds (default 1800)")
+    ap.add_argument("--idle", type=float, default=120.0, help="stop this long after the last change, once something has changed (default 120)")
+    ap.add_argument("--polls", type=int, default=0, help="stop after this many polls (for timing tests)")
+    ap.add_argument("--stop-file", default=os.path.join(REPO, "sessions", "stop-recording"))
+    args = ap.parse_args()
+
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    base = os.path.join(REPO, "sessions", stamp + "-record")
+    if os.path.exists(args.stop_file):
+        os.remove(args.stop_file)
+    with open(base + ".log", "wb") as raw, open(base + ".csv", "w") as table:
+        raw.write(f"# a465-record start={datetime.datetime.now().astimezone().isoformat(timespec='seconds')} {args.port} {args.baud} 8N1\n".encode())
+        con = Console(args.port, args.baud, raw)
+        if not con.settle():
+            sys.exit("no prompt from the controller")
+        table.write("t," + ",".join(f"p{i}" for i in range(1, 9)) + "," + ",".join(f"j{i}" for i in range(1, 9)) + ","
+                    + "x,y,z,zrot,yrot,xrot,w7,w8," + ",".join(f"s{i}" for i in range(1, 9)) + "\n")
+        print(f"recording to {base}.csv", flush=True)
+        start = time.monotonic()
+        last, last_change, changed, polls, bad = None, start, False, 0, 0
+        status, status_at, was_moving = None, -1e9, False
+        while True:
+            now = time.monotonic() - start
+            if os.path.exists(args.stop_file):
+                why = "stop file"; break
+            if now > args.max:
+                why = "time limit"; break
+            if changed and time.monotonic() - last_change > args.idle:
+                why = f"no change for {args.idle:.0f} s"; break
+            if args.polls and polls >= args.polls:
+                why = "poll count"; break
+            where = con.wact()
+            polls += 1
+            if where is None:
+                bad += 1
+                print(f"{now:8.2f}  unreadable reply (wact)", flush=True)
+                con.settle()
+                continue
+            seen = tuple(round(v / 4) for v in where["PULSES"])                # ignore a few counts of jitter
+            moving = last is not None and seen != last
+            # Starting a program on the controller takes over a second, so the status words are read
+            # only when the arm has just stopped, and every ten seconds otherwise.
+            fresh = 0
+            if status is None or (was_moving and not moving) or (not moving and now - status_at > 10.0):
+                words = con.axst()
+                if words is None:
+                    bad += 1
+                    con.settle()
+                else:
+                    fresh = 1 if words != status else 0
+                    status, status_at = words, now
+            table.write(f"{now:.2f}," + ",".join(f"{v:.0f}" for v in where["PULSES"]) + "," + ",".join(f"{v:.3f}" for v in where["JOINTS"]) + ","
+                        + ",".join(f"{v:.3f}" for v in where["WORLD"]) + "," + ",".join(status or [""] * 8) + "\n")
+            table.flush()
+            if moving or fresh or last is None:
+                if last is not None:
+                    changed, last_change = True, time.monotonic()
+                print(f"{now:8.2f}  joints " + " ".join(f"{v:9.3f}" for v in where["JOINTS"][:6])
+                      + "  status " + " ".join(w[-4:] for w in (status or [])[:6]) + ("  (status changed)" if fresh and last is not None else ""), flush=True)
+            last, was_moving = seen, moving
+        con.settle()
+        took = time.monotonic() - start
+        print(f"stopped: {why}. {polls} polls in {took:.1f} s ({took / max(polls, 1):.2f} s each), {bad} unreadable.", flush=True)
+
+
+if __name__ == "__main__":
+    main()

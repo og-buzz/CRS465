@@ -1,0 +1,9 @@
+# a465-term start=2026-11-23T18:31:15-05:00 port=/dev/ttyUSB0 38400 8N1 flow=none eol=cr
+ls -l /app
+d---rwx  2      96 Dec 13 02:21 2/
+d---rwx  2      96 Apr 20 22:31 SampleProgram/
+d---rwx  2     128 Dec 13 02:21 caco/
+d---rwx  2      96 Apr 21 04:05 new _p0/
+d---rwx  2     224 Jun 30 21:19 test/
+$ 
+# a465-term end=2026-11-23T18:31:18-05:00

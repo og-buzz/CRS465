@@ -1,0 +1,16 @@
+# ask.py start=2026-11-23T21:21:17-05:00 38400 8N1
+wact
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -12396     +10743     -21722     +25330      -8477      +2531
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS     -44.626     38.675     78.586   -180.570     61.034    -18.043
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD     -390.010    384.014    459.271    135.975    -33.771    -18.653
+             0.000      0.000
+$ 

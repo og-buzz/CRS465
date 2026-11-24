@@ -1,0 +1,37 @@
+t,axis,old,new,changed,joint_deg,exact
+12.20,1,8407,0000,not home switch+not +limit+not -limit+not motor fault,-43.60,1
+12.20,2,8407,0000,not home switch+not +limit+not -limit+not motor fault,-1.03,1
+12.20,3,8407,0000,not home switch+not +limit+not -limit+not motor fault,-0.06,1
+12.20,4,8407,0000,not home switch+not +limit+not -limit+not motor fault,0.00,1
+12.20,5,8407,0000,not home switch+not +limit+not -limit+not motor fault,0.00,1
+12.20,6,8407,0000,not home switch+not +limit+not -limit+not motor fault,-0.01,1
+13.28,1,0000,8407,home switch++limit+-limit+motor fault,-43.60,1
+13.28,2,0000,8407,home switch++limit+-limit+motor fault,-1.03,1
+13.28,3,0000,8407,home switch++limit+-limit+motor fault,-0.06,1
+13.28,4,0000,8407,home switch++limit+-limit+motor fault,0.00,1
+13.28,5,0000,8407,home switch++limit+-limit+motor fault,0.00,1
+13.28,6,0000,8407,home switch++limit+-limit+motor fault,-0.01,1
+19.34,1,8407,0000,not home switch+not +limit+not -limit+not motor fault,-43.60,1
+19.34,2,8407,0000,not home switch+not +limit+not -limit+not motor fault,-1.03,1
+19.34,3,8407,0000,not home switch+not +limit+not -limit+not motor fault,-0.06,1
+19.34,4,8407,0000,not home switch+not +limit+not -limit+not motor fault,0.00,1
+19.34,5,8407,0000,not home switch+not +limit+not -limit+not motor fault,0.00,1
+19.34,6,8407,0000,not home switch+not +limit+not -limit+not motor fault,-0.01,1
+20.20,1,0000,8407,home switch++limit+-limit+motor fault,-43.60,1
+20.20,2,0000,8407,home switch++limit+-limit+motor fault,-1.03,1
+20.20,3,0000,8407,home switch++limit+-limit+motor fault,-0.06,1
+20.20,4,0000,8407,home switch++limit+-limit+motor fault,0.00,1
+20.20,5,0000,8407,home switch++limit+-limit+motor fault,0.00,1
+20.20,6,0000,8407,home switch++limit+-limit+motor fault,-0.01,1
+23.11,1,8407,0000,not home switch+not +limit+not -limit+not motor fault,-43.60,1
+23.11,2,8407,0000,not home switch+not +limit+not -limit+not motor fault,-1.03,1
+23.11,3,8407,0000,not home switch+not +limit+not -limit+not motor fault,-0.06,1
+23.11,4,8407,0000,not home switch+not +limit+not -limit+not motor fault,0.00,1
+23.11,5,8407,0000,not home switch+not +limit+not -limit+not motor fault,0.00,1
+23.11,6,8407,0000,not home switch+not +limit+not -limit+not motor fault,-0.01,1
+23.79,1,0000,8407,home switch++limit+-limit+motor fault,-43.60,1
+23.79,2,0000,8407,home switch++limit+-limit+motor fault,-1.03,1
+23.79,3,0000,8407,home switch++limit+-limit+motor fault,-0.06,1
+23.79,4,0000,8407,home switch++limit+-limit+motor fault,0.00,1
+23.79,5,0000,8407,home switch++limit+-limit+motor fault,0.00,1
+23.79,6,0000,8407,home switch++limit+-limit+motor fault,-0.01,1

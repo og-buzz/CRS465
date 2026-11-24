@@ -1,0 +1,19 @@
+#! /bin/shell
+#  $Id: rc.simsockd 1.1 1998/02/17 14:15:38 dcm Exp $
+#
+# Rotate the aci daemon log files:
+rm /log/acid.log.2
+mv -f /log/acid.log.1 /log/acid.log.2
+mv -f /log/acid.log.0 /log/acid.log.1
+mv -f /log/acid.log   /log/acid.log.0
+# Start the aci daemon
+/sbin/fastacid -q &
+# Start the robot server
+/sbin/robotsrv &
+msleep 1000
+/sbin/f3adjust
+# Start the socket daemon:
+/sbin/simsockd -rcv -prio &
+msleep 500
+
+exit

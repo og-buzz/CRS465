@@ -1,0 +1,4 @@
+# a465-term start=2026-11-23T18:31:18-05:00 port=/dev/ttyUSB0 38400 8N1 flow=none eol=cr
+ls -l /bin
+
+# a465-term end=2026-11-23T18:31:20-05:00

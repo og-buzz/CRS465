@@ -1,0 +1,8 @@
+# a465-term start=2026-11-23T18:30:39-05:00 port=/dev/ttyUSB0 38400 8N1 flow=none eol=cr
+crosver
+System type: 'CROS on a C500'
+Version:     1.16.471
+Click size:  64
+msec/tick:   10
+$ 
+# a465-term end=2026-11-23T18:30:42-05:00

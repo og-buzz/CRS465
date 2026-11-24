@@ -1,0 +1,69 @@
+# ask.py start=2026-11-23T18:32:27-05:00 38400 8N1
+more /conf/rc
+#! /bin/shell
+#  $Id: rc 1.8 1998/06/08 15:07:43 RMF Exp $
+#
+# See the release notes for instructions on how
+# to run a application from the rc file
+#
+
+# Rotate the aci daemon log files:
+rm /log/acid.log.2
+mv -f /log/acid.log.1 /log/acid.log.2
+mv -f /log/acid.log.0 /log/acid.log.1
+mv -f /log/acid.log   /log/acid.log.0
+# Start the aci daemon
+/sbin/fastacid -q &
+# Start the robot server
+/sbin/robotsrv &
+msleep 1000
+/sbin/f3adjust
+# Start the teach pendant:
+pendant &
+Hit <space> or <q>
+[no prompt within 20 s]                    msleep 500
+
+exit
+$ ore /log/acid.log
+shell: ore: not found
+$ more /log/acid.log.0
+Fri Apr 22 06:04:08 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 06:09:08 2022: caught SIGHUP
+$ more /log/acid.log.1
+Fri Apr 22 03:31:31 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 03:36:31 2022: caught SIGHUP
+$ more /lib/shell.ndx
+GS2p:) 
+S
+;
+aJZ_V\Ql3Occ7_b4=.@|)2,j3'/9@b<UGXK!> H   y!!!!@"3"
+$ more /lib/ash.ndx
+G) ju~om/>E{x^z?%|3=IBsI2YJC$)M"2
+( ) !7n!!;""1":###/$9y$$/%=%&*&'D'''+> ,,l-m-n-V.].d.+/0Z01'1(u1/1)1*D2.2+2,3{33oS4pY4q_4!5(5/5M5N5O66667D7]K899:
+$ ls -lR /app
+d---rwx  2      96 Dec 13 02:21 2/
+d---rwx  2      96 Apr 20 22:31 SampleProgram/
+d---rwx  2     128 Dec 13 02:21 caco/
+d---rwx  2      96 Apr 21 04:05 new _p0/
+d---rwx  2     224 Jun 30 21:19 test/
+
+/app/2:
+----rw-  1      24 Apr 22 06:18 2.v3 
+
+/app/SampleProgram:
+----rw-  1      48 Apr 20 23:02 SampleProgram.v3 
+
+/app/caco:
+----rw-  1      24 Apr 22 06:18 caco.v3 
+----rwx  1   30392 Dec 13 02:22 caco2.v3 
+
+/app/new _p0:
+----rw-  1     132 Apr 21 04:08 new _p0.v3 
+
+/app/test:
+----rwx  1     316 Dec 13 03:50 fib 
+----rwx  1     503 Dec 13 03:50 fib.r3 
+----rwx  1     314 Dec 13 03:50 sieve 
+----rwx  1     680 Dec 13 03:50 sieve.r3 
+----rw-  1      24 Apr 22 01:59 test.v3 
+$ 

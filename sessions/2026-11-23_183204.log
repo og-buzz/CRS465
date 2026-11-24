@@ -1,0 +1,14 @@
+# ask.py start=2026-11-23T18:32:04-05:00 38400 8N1
+type /conf/robot.cfg
+shell: type: not found
+$ type /conf/rc
+shell: type: not found
+$ type /log/acid.log
+shell: type: not found
+$ type /log/acid.log.0
+shell: type: not found
+$ type /lib/shell.ndx
+shell: type: not found
+$ type /lib/ash.ndx
+shell: type: not found
+$ 

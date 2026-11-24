@@ -1,0 +1,23 @@
+#! /bin/shell
+#  $Id: rc 1.8 1998/06/08 15:07:43 RMF Exp $
+#
+# See the release notes for instructions on how
+# to run a application from the rc file
+#
+
+# Rotate the aci daemon log files:
+rm /log/acid.log.2
+mv -f /log/acid.log.1 /log/acid.log.2
+mv -f /log/acid.log.0 /log/acid.log.1
+mv -f /log/acid.log   /log/acid.log.0
+# Start the aci daemon
+/sbin/fastacid -q &
+# Start the robot server
+/sbin/robotsrv &
+msleep 1000
+/sbin/f3adjust
+# Start the teach pendant:
+pendant &
+msleep 500
+
+exit

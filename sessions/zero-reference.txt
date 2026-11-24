@@ -1,0 +1,4 @@
+2026-11-23T21:21:31-05:00  /diag/zero run at the pose the owner set by eye as zero (arm straight up, every joint mid-travel).
+Controller readings just before, in the previous power-up's numbers: J1 -44.626  J2 38.675  J3 78.586  J4 -180.570  J5 61.034  J6 -18.043
+After: all joints 0.000, WORLD Z 1041.400. Valid until the controller is power-cycled; park the arm at this pose before switching off.
+Owner, same evening: J1 and J2 are very close by their arrows, J6 spot on. J3, J4 and J5 have no marks or only one, so their zero is by eye.

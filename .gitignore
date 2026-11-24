@@ -2,3 +2,8 @@
 docs/manuals/
 docs/text/
 __pycache__/
+.pytest_cache/
+
+# The controller's own programs, copied off it for study: the maker's code, not ours to publish
+sessions/controller-files/
+sessions/controller-strings/

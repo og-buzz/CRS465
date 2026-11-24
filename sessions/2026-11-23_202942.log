@@ -1,0 +1,26 @@
+# ask.py start=2026-11-23T20:29:42-05:00 38400 8N1
+cksum /bin/joint /bin/home /bin/calrdy /bin/speed /bin/motor /bin/ready /diag/
+0x0000b4d9 696 /bin/joint
+0x0000d2f4 732 /bin/home
+0x00005d4d 448 /bin/calrdy
+0x0000b95f 736 /bin/speed
+0x0000b134 696 /bin/motor
+0x00005d4c 448 /bin/ready
+0x00001da4 416 /diag/
+$ help echo
+echo [-n] <text>
+
+  Echoes a message <text> to the console. -n will suppress the
+printing of a new line after the text.
+
+$ help do
+do <file>
+
+  Execute the shell commands in <file>.
+
+$ echo hello > /tmp/t1
+hello > /tmp/t1
+$ ls -l /tmp
+$ more /tmp/t1
+more: /tmp/t1: not found
+$ 

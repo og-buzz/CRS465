@@ -1,0 +1,89 @@
+407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+
+test> 00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+ex00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+it
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+Are you sure you want to exit? 00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+yes
+$ init: process 268  terminated by signal 9
+ps
+  pid  ppid  status flags prio  time      mem     command
+   12    10  READY  t-pr   2   296        14.1K  /sbin/robotsrv 
+  269    14  RUN    ---r   2   0.190       6.6K  ps 
+   10     1  WSOCK  --pr   2   169        14.1K  /sbin/robotsrv 
+    9     7  IWIO   --pr   2   12.8       12.6K  /sbin/fastacid 
+    8     7  READY  --pr   2   79.8       12.6K  /sbin/fastacid 
+    7     1  WSEM   --pr   2   0.389      12.6K  /sbin/fastacid 
+   14     1  SLEEP  --pr   2   113        10.2K  shell 
+    1     0  WAIT   --p-   2   0.182       2.0K  (init) 
+
+  System has been running for    0.649 hours
+$ ^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: interrupted system call
+test> 
+test> 
+test> ^C equivalent - halting robot...[ash: Caught SIGABRT]
+ash: interrupted system call
+test> ps
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+  pid  ppid  status flags prio  time      mem     command
+  280   278  RUN    ---r   2   0.185       6.6K  ps 
+  279   278  WSOCK  ---r   2   1.39        7.6K  axst 
+   12    10  SLEEP  --pr   2   457        14.1K  /sbin/robotsrv 
+  278    14  WAIT   ---r   2   4.14       35.9K  ash 
+   10     1  READY  t-pr   2   258        14.1K  /sbin/robotsrv 
+    9     7  IWIO   --pr   2   14.9       12.6K  /sbin/fastacid 
+    8     7  READY  --pr   2   91.1       12.6K  /sbin/fastacid 
+    7     1  WSEM   --pr   2   0.420      12.6K  /sbin/fastacid 
+   14     1  SLEEP  --pr   2   120        10.2K  shell 
+    1     0  WAIT   --p-   2   0.206       2.0K  (init) 
+
+  System has been running for    0.944 hours
+test> w2
+[ash: Caught SIGABRT]
+^C equivalent - haltinash: intg robot...errupted system call
+[ash: Caught SIGABRT]
+test> 
+test> ps
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+  pid  ppid  status flags prio  time      mem     command
+  281   278  RUN    ---r   2   0.184       6.6K  ps 
+  279   278  WSOCK  ---r   2   1.39        7.6K  axst 
+   12    10  SLEEP  --pr   2   466        14.1K  /sbin/robotsrv 
+  278    14  WAIT   ---r   2   4.83       35.9K  ash 
+   10     1  READY  t-pr   2   281        14.1K  /sbin/robotsrv 
+    9     7  IWIO   --pr   2   15.0       12.6K  /sbin/fastacid 
+    8     7  READY  --pr   2   91.5       12.6K  /sbin/fastacid 
+    7     1  WSEM   --pr   2   0.420      12.6K  /sbin/fastacid 
+   14     1  SLEEP  --pr   2   123        10.2K  shell 
+    1     0  WAIT   --p-   2   0.206       2.0K  (init) 
+
+  System has been running for    0.964 hours
+test> crosver
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+System type: 'CROS on a C500'
+Version:     1.16.471
+Click size:  64
+msec/tick:   10
+test> 
+test> exit
+Are you sure you want to exit? 
+Please answer 'yes' or 'no': yes
+^C equivalent - halting robot...[ash: Caught SIGABRT]
+
+Please answer 'yes' or 'no': yes
+$ 

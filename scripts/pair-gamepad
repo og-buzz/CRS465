@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Pair a PS4/PS5 controller over Bluetooth: scan, then pair, trust and connect it.
+
+Run it, then unplug the controller's USB cable and hold Share + PS until the light bar
+double-blinks. Usage: scripts/pair-gamepad [seconds to scan, default 180]
+"""
+import os, re, select, subprocess, sys, time
+WAIT = int(sys.argv[1]) if len(sys.argv) > 1 else 180
+bt = subprocess.Popen(["bluetoothctl"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+fd = bt.stdout.fileno(); os.set_blocking(fd, False)
+ansi = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x01|\x02")
+log, pending = [], ""
+def send(cmd):
+    bt.stdin.write((cmd + "\n").encode()); bt.stdin.flush()
+def read(seconds, until=None):
+    """Collect output for up to `seconds` without ever blocking; stop early when a line matches `until`."""
+    global pending
+    end = time.time() + seconds
+    while time.time() < end:
+        if not select.select([fd], [], [], 0.2)[0]: continue
+        try: chunk = os.read(fd, 4096)
+        except BlockingIOError: continue
+        if not chunk: return None
+        pending += ansi.sub("", chunk.decode(errors="replace")).replace("\r", "\n")
+        *lines, pending = pending.split("\n")
+        for line in (l.strip() for l in lines):
+            if not line: continue
+            log.append(line)
+            if until:
+                m = re.search(until, line)
+                if m: return m
+    return None
+for c in ("power on", "agent NoInputNoOutput", "default-agent", "pairable on", "scan on"):
+    send(c); read(0.6)
+print(f"scanning for a controller in pairing mode (up to {WAIT} s)...", flush=True)
+m = read(WAIT, r"Device ([0-9A-F:]{17}) .*(Wireless Controller|DUALSHOCK|DualSense)")
+if not m:
+    seen = sorted({l.split("Device", 1)[1].strip() for l in log if "NEW" in l and "Device" in l})
+    print("no controller seen. Other devices that showed up:", seen[-8:] or "none", flush=True)
+    send("scan off"); read(1); send("quit"); sys.exit(2)
+mac = m.group(1); print("found:", m.group(0), flush=True)
+send(f"pair {mac}")
+r = read(30, r"Pairing successful|Failed to pair[^\n]*|AlreadyExists")
+print("pair ->", r.group(0) if r else "no answer in 30 s", flush=True)
+send(f"trust {mac}"); t = read(5, r"trust succeeded|Failed[^\n]*"); print("trust ->", t.group(0) if t else "no answer", flush=True)
+send(f"connect {mac}"); c = read(20, r"Connection successful|Failed to connect[^\n]*"); print("connect ->", c.group(0) if c else "no answer in 20 s", flush=True)
+send("scan off"); read(1); send(f"info {mac}"); read(2)
+print("\n".join(l for l in log[-40:] if re.search(r"Name:|Paired:|Bonded:|Trusted:|Connected:|Icon:", l)), flush=True)
+send("quit"); print("MAC", mac, flush=True)

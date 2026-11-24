@@ -1,0 +1,25 @@
+# talk.py start=2026-11-23T18:59:29-05:00
+joint 1,5
+test> online 1
+ash: Not homed or not calibrated
+test> joint 1,30
+test> halt
+ash: halt: not found
+test> w2
+Actual Position :
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+PULSES      -40424       -286        +15         +0         +0         +2
+                +0         +0
+
+          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6
+JOINTS    -145.526     -1.030     -0.064      0.000      0.000     -0.014
+             0.000      0.000
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           -10.911     -7.492   1041.277   -145.526    -88.906     -0.014
+             0.000      0.000
+test> online
+Online mode is ON
+test> 

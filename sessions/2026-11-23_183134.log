@@ -1,0 +1,9 @@
+# a465-term start=2026-11-23T18:31:34-05:00 port=/dev/ttyUSB0 38400 8N1 flow=none eol=cr
+ls -l /log
+----rw-  1      79 Apr 22 06:41 acid.log 
+----rw-  1     119 Apr 22 06:09 acid.log.0 
+----rw-  1     119 Apr 22 03:36 acid.log.1 
+----rw-  1      79 Apr 22 03:28 acid.log.2 
+----rw-  1       8 Apr 22 06:19 robot.odo 
+$ 
+# a465-term end=2026-11-23T18:31:37-05:00

@@ -81,6 +81,9 @@ that old file dates stay comparable; set it only after noting the error at that 
 
 - Opening an application's variable file in `ash` and leaving re-saves it, which changes its
   date. Copy files with `a465-getfile` first if their dates matter.
-- `/diag/zero` changes no file. `/diag/cal` overwrites `robot.cal` if it completes;
+- `/diag/zero` changes no file, but it does more than clear the counters: it marks every joint
+  homed and calibrated at the pose the arm is in (status bit 11 set, `arm_status` says "Robot is
+  calibrated and homed", joint limits enforced). Run it only at the true zero pose. A power cycle
+  undoes it. `/diag/cal` overwrites `robot.cal` if it completes;
   `/conf/robot.cal.bak` is a copy made on 2026-11-23.
 - `odometer` counts seconds of running, kept in `/log/robot.odo` as the same 32-bit number twice.

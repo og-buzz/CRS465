@@ -1,0 +1,32 @@
+# talk.py start=2026-11-23T23:01:10-05:00
+arm_status
+
+Robot arm is of type 465
+Arm power is ON     Robot is calibrated and homed
+Units are Metric     Online is ON
+Physical stance: forward up flip
+
+
+Current Tool Transform is: 
+tx=0.00000, ty=0.00000, tz=0.00000, yaw=0.00000, pitch=0.00000, roll=0.00000
+
+Current Base Transform is: 
+wx=0.00000, wy=0.00000, wz=0.00000, xrot=0.00000, yrot=0.00000, zrot=0.00000
+
+Axis    locked   done   limped   homed
+ 1        N       Y       N       Y
+ 2        N       Y       N       Y
+ 3        N       Y       N       Y
+ 4        N       Y       N       Y
+ 5        N       Y       N       Y
+ 6        N       Y       N       Y
+
+test> online
+Online mode is ON
+test> here
+
+          X/TrackX   Y/TrackY          Z      Z-Rot      Y-Rot      X-Rot
+WORLD         (mm)       (mm)       (mm)      (deg)      (deg)      (deg)
+           406.167      0.000    648.760      0.000     -1.940    177.006
+             0.000      0.000
+test> 

@@ -46,7 +46,7 @@ the controller time is recent enough for that error to be the measured one.
 | 2022-04-22 07:47:43 | Mon Nov 23, 19:34 | Power-up (after a test of mine hung the controller). | `acid.log`. |
 | 2022-04-22 08:21 | Mon Nov 23, 20:07 | **Changes made by this project**: `robot.cal.bak` created (a copy of `robot.cal`); `caco2.v3` re-saved when I opened it in `ash` to list it, which moved its `ls` date from Dec 13 02:22 to this time. Its size and the 2003 stamp inside are unchanged. | Session logs; `ls`. |
 | | Mon Nov 23, 20:21 | `/diag/calseek 6` test: tool roll driven 183 degrees into its stop, "Collision error on axis 6". | `sessions/2026-11-23_202131-calseek-j6.log`. |
-| | Mon Nov 23, about 21:35 | `/diag/zero` at the pose the owner set as zero. Writes no file. | `sessions/zero-reference.txt`. |
+| | Mon Nov 23, about 21:35 | `/diag/zero` at the pose the owner set as zero. Writes no file, but from then on the controller reports the arm calibrated and homed (status words 8407 before, 8c07 after). | `sessions/zero-reference.txt`; session logs. |
 | 2022-04-22 10:40 | Mon Nov 23, 22:26 | Listing and copies taken. Odometer: 12.13 hours. | `controller/backup-2026-11-23/`. |
 
 ## What it shows
@@ -54,7 +54,10 @@ the controller time is recent enough for that error to be the measured one.
 1. **The calibration file was last written on a Dec 13, as part of a bulk load, and nothing has
    written it since.** Its contents are specific and plausible for all six joints (see
    [CONTROLLER.md](CONTROLLER.md)). A calibration run after that date would have re-dated it.
-2. **No trace of the accident.** The owner recalls last homing it in about 2024 and then running
+2. **No trace of the accident, and a likely reason.** On this firmware `/diag/zero` marks the arm
+   homed at whatever pose it is in, without writing a file. Run at the wrong pose, that gives a
+   controller that says HOMED and moves wrongly until it is power-cycled.
+   **No trace in the files either way.** The owner recalls last homing it in about 2024 and then running
    "some cal or zero command". A `zero` writes nothing, so it leaves no trace and cannot break
    homing. A `cal` that completed would have re-dated `robot.cal`; one that failed part-way
    writes nothing.

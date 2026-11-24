@@ -358,10 +358,19 @@ arm has no home switches and that a `cal` or `zero` command erased a stored refe
 decoded file does not support the second part, and the first is not something that can be seen
 from the console.
 
-Meanwhile the arm is used with a manual zero: jogged to the straight-up pose (waist, shoulder and
-tool roll on their arrows, the rest by eye) and `/diag/zero` run there, which makes the
-controller's angles true until it is power-cycled. The controller still reports "not homed", so
-its straight-line moves and stored locations stay locked.
+**`/diag/zero` makes the controller treat the arm as homed.** Measured 2026-11-23: before it,
+`arm_status` said "Robot is not homed" and every status word was 8407; after `/diag/zero` at the
+straight-up pose it says "Robot is calibrated and homed", every joint shows homed, the status
+words are 8c07 (bit 11 set), and the controller refuses moves past a joint's range ("Joint 4
+limit exceeded"). So zeroing at the true zero pose is a working way to home this arm today:
+jog to the pose (waist, shoulder and tool roll on their arrows, the rest by eye), run
+`/diag/zero`, and the controller's straight-line moves, `ready` and stored locations should be
+open. It lasts until the controller is power-cycled, and it is only as accurate as the pose.
+
+It also explains the owner's account of the fault. A `zero` run with the arm anywhere else makes
+the controller believe it is homed with the wrong angles: the pendant shows HOMED, limits and
+moves are wrong, and nothing is written to any file. A power cycle clears it. That is not lasting
+damage. What still does not work is the automatic search above.
 
 The firmware's text names two variants, A465 and A465B; this unit runs as A465B. Earlier notes
 here read that as a mismatch. With the history above it is just this arm's name in the firmware.

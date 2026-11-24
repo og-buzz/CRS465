@@ -1,0 +1,11 @@
+# talk.py start=2026-11-23T23:00:48-05:00
+ash test
+Loading  v3 file 'test.v3'...done.
+test> help gtype
+gtype <1|air|2|servo|3|mag>
+
+  Set the gripper type, where n is one of air, servo or mag (magnetic.)
+
+test> gtype
+Gripper type set to 1--AIR
+test> 

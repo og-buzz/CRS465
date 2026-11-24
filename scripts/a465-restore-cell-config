@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Run the controller's own `/diag/setup` and answer it the way the old lab cell was set up.
+
+The owner ran `setup` to take the track and the servo gripper out of the configuration, and the
+arm has not homed since. This puts those answers back: two extra axes, on a track, servo gripper.
+Units stay metric. It changes /conf/robot.cfg (a copy of the present one is in
+controller/backup-2026-11-23/conf/) and takes effect when the controller is next switched on.
+
+Every prompt and answer is printed and logged. If `setup` asks anything this script does not
+expect, it stops without answering. It stops scripts/a465-padjog first if that is running.
+
+    scripts/a465-restore-cell-config                 # the old cell: 2 extra axes, track, servo gripper
+    scripts/a465-restore-cell-config --bare-arm      # back to 6 axes, no track, air gripper
+"""
+import datetime
+import os
+import signal
+import subprocess
+import sys
+import time
+
+import serial
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CELL = [("English (0) or Metric (1)", "1"), ("additional axes", "2"), ("mounted on a track", "1"),
+        ("positive travel limit", "2134"), ("negative travel limit", "0"), ("servo gripper", "1")]
+BARE = [("English (0) or Metric (1)", "1"), ("additional axes", "0"), ("mounted on a track", "0"), ("servo gripper", "0")]
+
+
+def grab(ser, log, quiet=1.5, limit=30.0):
+    """What the controller prints until it has been quiet for `quiet` seconds."""
+    got, last, start = b"", time.monotonic(), time.monotonic()
+    while time.monotonic() - start < limit:
+        chunk = ser.read(4096)
+        if chunk:
+            got += chunk
+            log.write(chunk)
+            log.flush()
+            last = time.monotonic()
+        elif time.monotonic() - last > quiet:
+            break
+        else:
+            time.sleep(0.01)
+    return got.decode("latin-1").replace("\r", "")
+
+
+def main():
+    answers = list(BARE if "--bare-arm" in sys.argv else CELL)
+    running = subprocess.run(["pgrep", "-f", "python3 scripts/a465-padjog"], capture_output=True, text=True).stdout.split()
+    for pid in running:
+        os.kill(int(pid), signal.SIGTERM)
+    if running:
+        print("stopping the pad program...")
+        time.sleep(8)
+    path = os.path.join(REPO, "sessions", datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S") + "-setup.log")
+    with serial.Serial(os.environ.get("A465_PORT", "/dev/ttyUSB0"), 38400, timeout=0, exclusive=True) as ser, open(path, "wb") as log:
+        ser.write(b"\r")
+        if not grab(ser, log, 1.0, 5.0).rstrip(" ").endswith("$"):
+            sys.exit("the controller is not at its `$` prompt")
+        ser.write(b"/diag/setup\r")
+        for _ in range(12):
+            text = grab(ser, log)
+            print(text.strip())
+            if "restart controller" in text or text.rstrip(" ").endswith("$"):
+                break
+            asked = " ".join(text.split("\n")[-4:])
+            for i, (key, answer) in enumerate(answers):
+                if key in asked:
+                    print(f"   >>> answering {answer}")
+                    ser.write(answer.encode() + b"\r")
+                    del answers[i]
+                    break
+            else:
+                print("   !!! a prompt this script does not know: stopping without answering")
+                ser.write(b"\x05")          # Ctrl-E ends the program; it saves nothing until its last step
+                grab(ser, log, 1.0, 5.0)
+                sys.exit(1)
+        print(grab(ser, log, 1.0, 5.0).strip())
+        ser.write(b"more /conf/robot.cfg\r")
+        print(grab(ser, log, 1.5, 8.0).strip())
+    print("log:", os.path.relpath(path, REPO))
+    print("Now switch the controller off and on for the new settings to take effect.")
+
+
+if __name__ == "__main__":
+    main()

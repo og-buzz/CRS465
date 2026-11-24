@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""One experiment: does the controller's gripper-type setting decide whether the home switches are seen?
+
+It sets the gripper type (default: 2, servo), reads the six home switch bits before and after, and
+puts the setting back to what it was unless the bits came alive. Nothing here moves the arm.
+
+    scripts/a465-try-gripper-type            # try servo
+    scripts/a465-try-gripper-type 3          # try magnetic
+
+Why: `/diag/setup` rewrote the configuration (gripper type is now 1, air; the old cell had a servo
+gripper), and since then no home switch signal is seen. With the elbow and wrist rotate parked
+past their stored home points, working switches show up as those two bits differing from the rest.
+
+Stops scripts/a465-padjog first if it is running (start it again afterwards).
+"""
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+
+import serial
+
+PORT, BAUD = os.environ.get("A465_PORT", "/dev/ttyUSB0"), 38400
+STATUS = re.compile(rb"((?:[0-9a-fA-F]{8} +){7}[0-9a-fA-F]{8})\r?\n")
+
+
+def grab(ser, seconds, done=None):
+    got, end = b"", time.monotonic() + seconds
+    while time.monotonic() < end:
+        chunk = ser.read(4096)
+        if chunk:
+            got += chunk
+            if done and done(got):
+                break
+        else:
+            time.sleep(0.01)
+    return got
+
+
+def say(ser, line, prompt, seconds=6.0):
+    ser.write(line.encode() + b"\r")
+    return grab(ser, seconds, lambda g: g.rstrip(b" ").endswith(prompt)).decode("latin-1").replace("\r", "")
+
+
+def switch_bits(ser):
+    """The home switch bit of each of the six joints, read with `axst` at the `$` prompt (ended with Ctrl-E)."""
+    ser.write(b"axst\r")
+    got = grab(ser, 4.0, lambda g: STATUS.search(g))
+    ser.write(b"\x05")
+    grab(ser, 3.0, lambda g: g.endswith(b"$ "))
+    found = STATUS.search(got)
+    if not found:
+        sys.exit("could not read the status words")
+    words = [int(w, 16) for w in found.group(1).split()[:6]]
+    return words
+
+
+def set_type(ser, kind):
+    """Set the gripper type from the application shell; returns what the shell said."""
+    out = say(ser, "ash test", b">", 8.0)
+    out += say(ser, f"gtype {kind}", b">")
+    out += say(ser, "gtype", b">")
+    out += say(ser, "arm_status", b">", 8.0)
+    ser.write(b"exit\r")
+    grab(ser, 2.0, lambda g: b"sure" in g)
+    out += say(ser, "yes", b"$")
+    return out
+
+
+def main():
+    kind = int(sys.argv[1]) if len(sys.argv) > 1 else 2
+    if kind not in (1, 2, 3):
+        sys.exit("gripper type must be 1 (air), 2 (servo) or 3 (magnetic)")
+    running = subprocess.run(["pgrep", "-f", "python3 scripts/a465-padjog"], capture_output=True, text=True).stdout.split()
+    for pid in running:
+        os.kill(int(pid), signal.SIGTERM)
+    if running:
+        print("stopping the pad program...")
+        time.sleep(8)
+    with serial.Serial(PORT, BAUD, timeout=0, exclusive=True) as ser:
+        ser.write(b"\r")
+        if not grab(ser, 1.5).rstrip(b" ").endswith(b"$"):
+            sys.exit("the controller is not at its `$` prompt")
+        before = switch_bits(ser)
+        print("before:  status words", " ".join(f"{w:04x}" for w in before), " home switch bits", "".join(str(w & 1) for w in before))
+        text = set_type(ser, kind)
+        for line in text.split("\n"):
+            if re.search(r"Gripper type|homed|rror|OFF|not ", line):
+                print("  controller:", line.strip())
+        time.sleep(1.0)
+        after = switch_bits(ser)
+        print(f"type {kind}:  status words", " ".join(f"{w:04x}" for w in after), " home switch bits", "".join(str(w & 1) for w in after))
+        changed = [i + 1 for i in range(6) if (before[i] ^ after[i]) & 1]
+        if changed:
+            print(f"RESULT: the home switch bit changed on joint(s) {changed}. The setting is LEFT at type {kind}.")
+        else:
+            print("RESULT: no home switch bit changed. Putting the gripper type back to 1 (air).")
+            set_type(ser, 1)
+            print("back:    status words", " ".join(f"{w:04x}" for w in switch_bits(ser)))
+        print(say(ser, "ls -l /conf/robot.cfg", b"$").strip().split("\n")[-2] if True else "")
+    print("done. Start the pad again with: scripts/a465-padjog --speed 10 --zero-at=0,0,0,0,0,0")
+
+
+if __name__ == "__main__":
+    main()

@@ -804,3 +804,20 @@ def test_threaded_smoke(tmp_path):
     assert port.moves() and arm.state()["moving"]
     arm.close()
     assert port.mode == "shell" and port.closed and not arm._thread.is_alive()
+
+
+def test_direction_only_runs_every_jog_at_the_speed_setting(rig):
+    rig.build(stick_speed=False)                            # the stick gives the direction; the speed is the pad's setting
+    for vec, text in (([0.2, 0, 0, 0, 0, 0], b"A25"), ([0.6, 0, 0, 0, 0, 0], b"A25"), ([-1.0, 0, 0, 0, 0, 0], b"a25")):
+        rig.run(0.5, vec)
+        rig.run(0.4, [0] * 6)
+        assert {d for _, d in rig.port.moves(rig.clock() - 0.9)} == {text}
+    rig.arm.speed = 12
+    rig.run(0.4, [0, 0.3, 0, 0, 0, 0])
+    assert rig.port.moves(rig.clock() - 0.4)[0][1] == b"B12"
+
+
+def test_direction_only_does_not_restart_when_the_stick_moves(rig):
+    rig.build(stick_speed=False)
+    stick(rig, [0.3] * 10 + [1.0] * 40 + [0.25] * 40)       # a light push, then full, then light again: one jog, one speed
+    assert {d for _, d in rig.port.moves()} == {b"A25"}

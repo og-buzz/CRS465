@@ -252,6 +252,65 @@ The program file format (header, check value, library stamps) is in the docstrin
 - This firmware refuses gzip-compressed programs ("not an executable"): `/app/test/fib` and `sieve`
   on the controller are gzip files of 2001 builds and do not run.
 
+## Motion: what was measured
+
+Measured on this arm (CRS A465, C500, CROS 1.16.471).
+
+### Jogging with the manual-move calls
+
+Measured 2026-11-24. These are the calls the teach pendant's routine uses.
+
+| Library call | Number | Meaning |
+|---|---|---|
+| `man_mode_set(mode)` | robotlib 0x52 | 0 off, 1 joint, 2 cylindrical, 3 world, 4 tool |
+| `man_move_start(joint, speed)` | 0x53 | signed joint number, speed in percent |
+| `man_move_stop(joint)` | 0x54 | |
+| `halt` | 0x21 | |
+| `speed_set` | 0x44 | |
+
+- Each library call takes about 0.1 s.
+- The speed is fixed when a jog starts. A second `man_move_start` or a `speed_set` on a joint that is
+  already moving returns no error and changes nothing (3% then 8% stayed at 2.2 deg/s on J6). "No error"
+  is not evidence that a call did anything; only a position measurement is.
+- Manual mode must be armed before every start, as the pendant does: [`speed_set` if the speed changed]
+  -> `man_mode_set(mode)` -> `man_move_start`. Stop: `man_move_stop` -> `halt` if that failed ->
+  `man_mode_set(0)`. With manual mode armed only once, reversing direction swept the joint fast through
+  its starting point to the mirror-image angle (J6 at 5%: peaks of 24 and 47 deg/s). With the per-jog
+  sequence, all four moves of the reversal test peaked at 3.65 to 4.19 deg/s.
+- A start is acknowledged 250-300 ms after the command; a stop takes about 200 ms. J6 runs about
+  0.73 deg/s per percent in manual mode.
+- Ctrl-Z (0x1a) on the console stops the arm and also kills the program that holds control: the
+  controller prints `^C equivalent - halting robot...` and `[NNN killed by SIGABRT.]`. Control stays
+  held; the next program that takes control prints "Press the PAUSE/CONTINUE button to gain robot point
+  of control." So a PC-side driver must not use Ctrl-Z as its normal stop.
+- From reading the controller's own programs (`robotsrv`, `robotlib`): no message to the servo board
+  updates the speed or target of a move that is already running. Each call costs one servo-board reply
+  plus the server's polling (a 20 ms delay and a 21 ms poll).
+- `controller/programs/jogd` is our own jog program for the controller; its console protocol is
+  described in `a465/jogprog.py`.
+
+### Back-to-back moves and paths
+
+Measured 2026-11-25 on J6 with `scripts/a465-segtest`, online mode on.
+
+| What was run | Result |
+|---|---|
+| One joint move, 12 deg at 5% | cruises at 8.6 deg/s, about 0.1 s ramps, 1.5 s in all |
+| One joint move, 6 deg at 15% | reached at least 23 deg/s |
+| Six joint moves of 2 deg (5% then 15%) | 2.6 s for the 12 deg, mean 4.4 deg/s, half of cruise: the joint slows or stops at every join. The first call returns in 65 ms; each later call blocks 277-353 ms, until the move before it has ended |
+| Six `move()` calls to locations 2 deg apart | the same: mean 4.4 deg/s, calls block 260-352 ms |
+| Six motor moves of 281 pulses (2 deg) | stop and go; each call blocks about 1.75 s at 5% and 0.53 s at 15%; a `speed_set` between moves applies to the next move issued |
+| `cpath` through six points 2 deg apart at 5% | runs through the points without slowing (steady 2.8 deg/s across four joins, sampled every 0.1-0.2 s) |
+| The same with `speed_set(15)` sent right after `cpath` returned | no change: still 2.8 deg/s to the end |
+| `cpath` at 15% | 8.7 deg/s: the path takes its speed from the speed setting when it is sent |
+| `cpath` through points 1 deg apart at 5% | 2.8 deg/s again: spacing of the points does not change the speed |
+| How long `cpath` holds the program | 2343 ms (5%, 2 deg spacing), 1802 ms (5%, 1 deg), 1113 ms (15%, 2 deg); the joint was about at the first point when it returned |
+
+What follows from these measurements: moves issued one after another by a program do not run through;
+each ends before the next begins. Only `cpath` runs through its points, and it holds one speed, set
+before it starts, and needs 1-2 s to load six points. So none of the controller's motion calls gives a
+speed that changes while the joint keeps moving. In no run did any joint other than J6 move.
+
 ## `/diag/setup` and the old cell configuration
 
 `/diag/setup` was run again on 2026-11-24 with the old cell's answers (2 extra axes, track, servo

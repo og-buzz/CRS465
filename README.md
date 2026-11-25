@@ -512,6 +512,17 @@ time, the next sent only once the last has answered and finished and not sooner 
 Letting go of the stick or changing joint sends no Ctrl-Z, so the controller's two-second lock-out never
 starts and small corrections can follow one another at once; only the Square stop button writes Ctrl-Z.
 
+### Motion: what was measured
+
+Jogging with the controller's manual-move calls (the pendant's routine) fixes the speed when a jog
+starts, and manual mode must be armed before every start or a reversal sweeps the joint fast through
+its starting point (measured 2026-11-24). Moves issued back to back by a program do not run through:
+each ends before the next begins, so six 2 degree joint moves averaged 4.4 deg/s against a cruise of
+8.6 deg/s. Only `cpath` runs through its points, at one speed set before it starts (measured
+2026-11-25, J6, with `scripts/a465-segtest`). So none of the controller's motion calls gives a speed
+that changes while the joint keeps moving. The numbers and the call sequences are in
+`docs/CONTROLLER.md`, "Motion: what was measured".
+
 ### Making a cable from a Cisco USB console cable and an RJ45-to-DB25 adapter
 
 A straight-through cable to a PC means the controller port expects the PC's own

@@ -12,12 +12,13 @@ joint angles and ends a jog 3 degrees inside each joint's range.
 Prints where the arm stopped after each jog, and every change of a status bit (such as a home
 switch) with the joint angle it happened at. Also written to sessions/<time>-arm-events.csv.
 --jogd uses a465/jogd.py instead: a program that runs on the controller (controller/programs/jogd, put there
-by this tool when it differs). The speed of a jog is set when it starts, from the largest stick deflection in its
-first 0.12 s (1 percent at the start of the stick's travel, the pad's speed setting at the end; --max-speed is the
-most it may ever go). It is not chased afterwards: jogd has to stop and restart a move to change its speed, which
-costs about half a second of standstill, so a new speed is sent only if the stick has asked for one at least 1.6
-times bigger or smaller for 0.4 s (--no-respeed: never, the speed stays until the stick is let go). Delay from
-stick to motion is about 0.4 s. It does not apply soft limits and --zero-at only gives true angles.
+by this tool when it differs). The stick gives the direction only: every jog runs at the pad's speed setting
+(L1 + R1 + L2 / R2, from 1 percent up to --max-speed, which may be at most 99). The controller fixes a jog's speed
+when it starts; if the setting is changed by a factor of 1.6 or more for 0.4 s while a joint is moving, the jog is
+stopped and started again at the new speed, which costs about half a second of standstill (--no-respeed: never).
+With --stick-speed the speed of a jog is instead set when it starts from the largest stick deflection in its first
+0.12 s (1 percent at the start of the stick's travel, the speed setting at the end). Delay from stick to motion is
+about 0.4 s. It does not apply soft limits and --zero-at only gives true angles.
 If the controller asks for it, press the PAUSE/CONTINUE button on its front panel; if jogd is killed it restarts
 by itself (and asks for the button). Without --jogd nothing changes.
 Stop with Ctrl-C or SIGTERM: the arm is halted and the controller is left at its `$` prompt.
@@ -48,7 +49,8 @@ async def run(args):
         if zero_at is not None and len(zero_at) != 6:
             sys.exit("--zero-at needs six numbers, one per joint")
         if args.jogd:
-            arm = jogd.JogdArm(args.port, args.baud, say=say, zero_at=zero_at, max_speed=args.max_speed, respeed=not args.no_respeed)
+            arm = jogd.JogdArm(args.port, args.baud, say=say, zero_at=zero_at, max_speed=args.max_speed, respeed=not args.no_respeed,
+                                  stick_speed=args.stick_speed)
         else:
             arm = crs.RealArm(args.port, args.baud, say=say, zero_at=zero_at)
     except RobotError as err:
@@ -88,18 +90,27 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--port", default=os.environ.get("A465_PORT", "/dev/ttyUSB0"))
     ap.add_argument("--baud", type=int, default=38400)
-    ap.add_argument("--speed", type=int, default=10, choices=range(1, crs.MAX_SPEED_PCT + 1), metavar="PERCENT", help="starting speed (default 10)")
+    ap.add_argument("--speed", type=int, default=10, choices=range(1, 100), metavar="PERCENT",
+                    help=f"starting speed (default 10); at most {crs.MAX_SPEED_PCT} without --jogd, at most --max-speed with it")
     ap.add_argument("--zero-at", metavar="J1,J2,J3,J4,J5,J6",
                     help="the controller's reading of each joint at the true zero pose (arm straight up, every joint mid-travel); "
                          "use 0,0,0,0,0,0 after /diag/zero at that pose. Turns on soft limits")
     ap.add_argument("--jogd", action="store_true", help="jog through the jogd program on the controller: proportional speed, less delay")
     ap.add_argument("--no-respeed", action="store_true", help="with --jogd: never change the speed of a jog that is running (it stays what the first 0.12 s picked)")
-    ap.add_argument("--max-speed", type=int, default=jogd.DEFAULT_MAX_SPEED, choices=range(1, 51), metavar="1-50",
+    ap.add_argument("--stick-speed", action="store_true",
+                    help="with --jogd: how far the stick is pushed sets the speed of a jog when it starts. Without it the stick "
+                         "gives the direction only and every jog runs at the pad's speed setting (L1 + R1 + L2 / R2)")
+    ap.add_argument("--max-speed", type=int, default=jogd.DEFAULT_MAX_SPEED, choices=range(1, 101), metavar="1-100",
                     help="with --jogd: the most speed (percent) the arm is ever sent, also jogd's own clamp (default %(default)s)")
     ap.add_argument("--gamepad", metavar="DEVICE", help="input device to use instead of the first controller found")
     args = ap.parse_args()
-    if not args.jogd and (args.max_speed != jogd.DEFAULT_MAX_SPEED or args.no_respeed):
-        ap.error("--max-speed and --no-respeed need --jogd")
+    if not args.jogd and (args.max_speed != jogd.DEFAULT_MAX_SPEED or args.no_respeed or args.stick_speed):
+        ap.error("--max-speed, --no-respeed and --stick-speed need --jogd")
+    if args.jogd and args.max_speed > jogd.TOP_SPEED:
+        print(f"--max-speed {args.max_speed}: jogd's command carries two digits, so {jogd.TOP_SPEED} is the top; using {jogd.TOP_SPEED}")
+        args.max_speed = jogd.TOP_SPEED
+    if args.speed > (args.max_speed if args.jogd else crs.MAX_SPEED_PCT):
+        ap.error(f"--speed {args.speed} is above the limit of {args.max_speed if args.jogd else crs.MAX_SPEED_PCT}")
     asyncio.run(run(args))
 
 

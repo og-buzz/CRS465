@@ -36,8 +36,11 @@ offset 0x544c):
 
 Builtins provided (by number, see r3dis.BUILTINS): exit, msleep, argc, argv, time, mtime, open,
 close, reads, print, fprint, printf, fprintf, str_len, str_chr_get, str_to_int, error_code and
-loc_pdata_get (as the interpreter's 0x7020: location words 1..8 to the array, no result). A
-format "{}" prints one argument (tag 1 an int, tag 19 a string); other format specs raise, so a
+the location builtins loc_pdata_get/set, loc_class/machtype/flags_get/set, loc_check and
+loc_re_check (as the interpreter's 0x6e94..0x70a0: header bytes class, machine type, flags,
+check; data in words 1..8). Also itof, push9/pop9, ldp9/stp9 and the memcopy opcode. A
+format "{}" prints one argument (tag 1 an int, tag 2 a float as %g, the manual's default for
+floats, tag 19 a string); other format specs raise, so a
 test never passes on a guess about the controller's formatter.
 """
 import struct
@@ -45,11 +48,28 @@ import struct
 from a465 import r3dis
 
 STACK, HEAP, DATA, TEXT = 1, 2, 3, 4
-TAG_INT, TAG_STRING = 1, 19
+TAG_INT, TAG_FLOAT, TAG_STRING = 1, 2, 19
 EAGAIN = 35            # syslib's EAGAIN (its constant record); fastacid treats -35 as "no data yet"
 O_NONBLOCK = 4         # syslib's O_NONBLOCK
 MASK = 0xFFFFFFFF
 LOC_WORDS, LOC_PDATA_WORDS = 9, 8   # a location is 9 words (push9/pop9); its precision data 8
+
+
+def to_float(word):
+    return struct.unpack("<f", struct.pack("<I", word & MASK))[0]
+
+
+def from_float(x):
+    return struct.unpack("<I", struct.pack("<f", x))[0]
+
+
+def _fdiv(x, y):
+    if y == 0:
+        raise R3VMError("float division by zero")
+    return x / y
+
+
+FLOAT_BINARY = {0x2b: lambda x, y: x + y, 0x2c: lambda x, y: x - y, 0x2d: lambda x, y: x * y, 0x2e: _fdiv}
 
 
 def s32(v):
@@ -266,7 +286,7 @@ class VM:
         out, k = [], 0
         while k < len(args):
             tag, value = s32(args[k]), args[k + 1]
-            if tag not in (TAG_INT, TAG_STRING):
+            if tag not in (TAG_INT, TAG_FLOAT, TAG_STRING):
                 raise R3VMError(f"variadic value with tag {tag} is not supported")
             out.append((tag, value))
             k += 2
@@ -282,7 +302,8 @@ class VM:
                     raise R3VMError(f"format spec {fmt[i:j + 1]!r} is not supported")
                 tag, value = values[k]
                 k += 1
-                out += self.string(value) if tag == TAG_STRING else str(s32(value)).encode()
+                out += (self.string(value) if tag == TAG_STRING else
+                        f"{to_float(value):g}".encode() if tag == TAG_FLOAT else str(s32(value)).encode())
                 i = j + 1
                 continue
             out += ch
@@ -408,6 +429,49 @@ class VM:
             self.store(args[1], k, self.load(args[0], 1 + k))
         return None
 
+    def b_loc_pdata_set(self, args):      # loc_pdata_set(&loc, &ints): 0x70a0, ints[0..7] to words 1..8
+        for k in range(LOC_PDATA_WORDS):
+            self.store(args[0], 1 + k, self.load(args[1], k))
+        return None
+
+    # A location's word 0: byte 0 class, byte 1 machine type, byte 2 flags, byte 3 the check byte
+    # (0x6e94..0x6f70); loc_re_check (0x6fe4) makes its 36 bytes sum to 0, loc_check (0x6f9c) is 1
+    # when they do not.
+    def _loc_byte(self, ptr, n, value=None):
+        word = self.load(ptr, 0)
+        if value is None:
+            return word >> (8 * n) & 0xFF
+        self.store(ptr, 0, word & ~(0xFF << (8 * n)) | (value & 0xFF) << (8 * n))
+        return None
+
+    def b_loc_class_get(self, args):
+        return self._loc_byte(args[0], 0)
+
+    def b_loc_class_set(self, args):
+        return self._loc_byte(args[0], 0, args[1])
+
+    def b_loc_machtype_get(self, args):
+        return self._loc_byte(args[0], 1)
+
+    def b_loc_machtype_set(self, args):
+        return self._loc_byte(args[0], 1, args[1])
+
+    def b_loc_flags_get(self, args):
+        return self._loc_byte(args[0], 2)
+
+    def b_loc_flags_set(self, args):
+        return self._loc_byte(args[0], 2, args[1])
+
+    def _loc_sum(self, ptr):
+        return sum(struct.pack(f"<{LOC_WORDS}I", *(self.load(ptr, k) for k in range(LOC_WORDS)))) & 0xFF
+
+    def b_loc_re_check(self, args):
+        self._loc_byte(args[0], 3, 0)
+        return self._loc_byte(args[0], 3, -self._loc_sum(args[0]))
+
+    def b_loc_check(self, args):
+        return int(self._loc_sum(args[0]) != 0)
+
     # -- exceptions ---------------------------------------------------------------------------
     def raise_(self, code, at):
         while True:
@@ -480,6 +544,14 @@ class VM:
             S(a, ~F(b))
         elif op == 0x21:
             S(a, int(not F(b)))
+        elif op == 0x22:
+            S(a, from_float(float(s32(F(b)))))
+        elif op in FLOAT_BINARY:              # 0x2b..0x2e: single-precision +. -. *. /.
+            S(a, from_float(FLOAT_BINARY[op](to_float(F(b)), to_float(F(c)))))
+        elif op == 0x2f:
+            S(a, from_float(-to_float(F(b))))
+        elif op == 0x31:
+            S(a, int(to_float(F(b))))
         elif op == 0x32:
             S(a, code[self.pc])
             self.pc += 1
@@ -503,6 +575,12 @@ class VM:
             S(a, self.load(F(b), c))
         elif op == 0x3b:
             self.store(F(b), c, F(a))
+        elif op == 0x3c:                      # A..+8 = B@[c..+8]
+            for k in range(9):
+                S(a + k, self.load(F(b), c + k))
+        elif op == 0x3d:                      # B@[c..+8] = A..+8
+            for k in range(9):
+                self.store(F(b), c + k, F(a + k))
         elif op == 0x3e:
             if F(a):
                 self.pc = u16
@@ -541,8 +619,15 @@ class VM:
         elif op == 0x50:
             self.push(F(i16))
             self._tag(a)
+        elif op == 0x51:                      # push9 R: R+8 first, so the callee's A3 is word 0 (0x3ce4)
+            for k in range(8, -1, -1):
+                self.push(F(i16 + k))
+            self._tag(a)
         elif op == 0x52:
             S(i16, self.pop())
+        elif op == 0x53:
+            for k in range(9):
+                S(i16 + k, self.pop())
         elif op == 0x54:
             self.sp -= -i16
             if self.sp < 0:
@@ -583,6 +668,9 @@ class VM:
                     self.raise_(result, at)
             else:
                 self.push(result)
+        elif op == 0x5c:                      # memcopy(A, B, C words): to A from B
+            for k in range(s32(F(c))):
+                self.store(F(a), k, self.load(F(b), k))
         elif op in (0x5e, 0x5f):
             same = self.string(F(b)) == self.string(F(c))
             S(a, int(same if op == 0x5e else not same))

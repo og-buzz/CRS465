@@ -41,6 +41,7 @@ from .sim import RobotError
 REMOTE = "/tmp/jogd"
 LOCAL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "controller", "programs", "jogd")
 DEFAULT_MAX_SPEED = 25
+TOP_SPEED = 99                    # jogd's start command carries two digits (a465/jogprog.py)
 READY_WAIT_S = 10.0               # `jogd ready` is printed about 1.1 s after the start command
 BUTTON_WAIT_S = homezc.BUTTON_WAIT_S
 KEEPALIVE_S = 0.100               # repeat the command in force this often (jogd's dead-man is 300 ms)
@@ -113,9 +114,9 @@ class JogdArm:
 
     def __init__(self, port="/dev/ttyUSB0", baud=38400, say=print, zero_at=None, max_speed=DEFAULT_MAX_SPEED,
                  log_dir=None, serial_port=None, clock=time.monotonic, sleep=time.sleep, threaded=True,
-                 local=LOCAL, remote=REMOTE, upload=None, respeed=True):
-        if not 1 <= max_speed <= 100:
-            raise RobotError("max_speed must be 1 to 100")
+                 local=LOCAL, remote=REMOTE, upload=None, respeed=True, stick_speed=True):
+        if not 1 <= max_speed <= TOP_SPEED:
+            raise RobotError(f"max_speed must be 1 to {TOP_SPEED}")
         self._say = say
         self._clock, self._sleep = clock, sleep
         self.max_speed = int(max_speed)
@@ -129,6 +130,7 @@ class JogdArm:
         self._pick, self._pick_since, self._pick_peak = None, 0.0, 0.0
         self._want_start = 0.0              # the deflection that sets the speed of a new jog (peak of the pick window)
         self.respeed = bool(respeed)
+        self.stick_speed = bool(stick_speed)    # False: the stick gives the direction only; every jog runs at the speed setting
         self._active_want = None
         self._fresh = True                  # the next start of this wanted jog is its first: it uses the picked speed
         self._diff_since = None             # since when the wanted speed has differed from the commanded one by RESPEED_FACTOR
@@ -357,7 +359,7 @@ class JogdArm:
             raise RobotError("speed must be 1 to 100")
         self.speed = int(min(percent, self.max_speed))
         if percent > self.max_speed:
-            raise RobotError(f"speed is held to {self.max_speed}% while the arm is not homed")
+            raise RobotError(f"speed is held to {self.max_speed}% (--max-speed)")
 
     def set_arm_power(self, on):
         raise RobotError("arm power is switched at the controller's front panel")
@@ -457,8 +459,12 @@ class JogdArm:
         target = wanted = None
         if want is not None and want != self._blocked:
             full = min(self.speed, self.max_speed)
-            wanted = speed_for(mag, full)
-            target = (want[0], want[1], speed_for(start, full) if self._fresh else wanted)
+            if self.stick_speed:
+                wanted = speed_for(mag, full)
+                target = (want[0], want[1], speed_for(start, full) if self._fresh else wanted)
+            else:                               # direction only: the speed is the pad's speed setting
+                wanted = max(MIN_SPEED_PCT, int(full))
+                target = (want[0], want[1], wanted)
         self._drive(target, now, wanted)
         if self._respeed_pending is not None and now - self._respeed_pending >= RESPEED_WAIT_S:
             self.say(f"  no `+` within {RESPEED_WAIT_S:.0f} s of the speed change: the move is taken as stopped (it is started again if the stick is held)")

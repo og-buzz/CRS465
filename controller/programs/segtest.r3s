@@ -1,0 +1,890 @@
+; segtest: back-to-back moves on one axis, timed. Built by a465/segprog.py; see its docstring.
+.build 0x6b05f9d0
+.entry main
+.lib syslib 2 0x377a8993 0x0a0d4875 5
+.lib robotlib 3 0x377a899b 0xae952686 2
+.equ P_MS 50
+.equ CHECK_MS 200
+.equ POLL_LIMIT_MS 6000
+.equ POLL_WAIT_MS 10
+
+.data
+s_bad:      string "{}: invalid command line arguments.\n"
+s_usage:    string "Usage: {} j|m|l|c axis step count speed1 speed2\n"
+s_j:        string "j"
+s_m:        string "m"
+s_l:        string "l"
+s_c:        string "c"
+f_m:        string "M {} {} {} {} {}\n"
+f_p:        string "P {} {} {} {} {} {} {}\n"
+f_e:        string "E {} {}\n"
+f_i:        string "I {} {} {} {} {} {} {}\n"
+s_done:     string "done\n"
+n_ctl_get:         string "ctl_get"
+n_ctl_rel:         string "ctl_rel"
+n_pos_get:         string "pos_get"
+n_joint:           string "joint"
+n_motor:           string "motor"
+n_halt:            string "halt"
+n_move:            string "move"
+n_cpath:           string "cpath"
+n_finish:          string "finish"
+n_robotisfinished: string "robotisfinished"
+n_online:          string "online"
+n_speed_get:       string "speed_get"
+n_speed_set:       string "speed_set"
+cpd:        word 27778, 27778, -27778, -14028, -13889, -14028    ; counts per degree x 100, joints 1..6
+kind:       word 0              ; 1 j, 2 m, 3 l, 4 c
+axis:       word 0
+step:       word 0
+count:      word 0
+speed1:     word 0
+speed2:     word 0
+half:       word 0              ; speed_set(speed2) after this many moves
+dpulses:    word 0              ; l, c: pulses per step (for the I line)
+v0:         word 0              ; l, c: the axis's commanded counts at the start
+c100:       word 0
+tmpint:     word 0
+t0:         word 0, 0           ; mtime() at the start
+tm:         word 0, 0
+tcall:      word 0
+tlastp:     word -100000
+tlastc:     word -100000
+tpoll:      word 0
+mindex:     word 0
+saved:      word 0              ; speed_get()
+havectl:    word 0
+haveonline: word 0
+havespeed:  word 0
+base:       zeros 9             ; pos_get(2)
+ints:       zeros 8
+locs:       zeros 72            ; the targets, 9 words each
+trig:       zeros 32            ; cpath's trigger table: 16 rows of {index, setting}, all 0
+ploc:       zeros 9             ; pos_get(1) for P lines
+pint1:      word 0
+pint2:      word 0
+pint3:      word 0
+pint4:      word 0
+pint5:      word 0
+pint6:      word 0
+            zeros 2
+
+.code
+main:
+    enter 24
+    pushleag t0
+    pushi 1
+    builtinx mtime
+    pushi 0                         ; ---- segtest kind axis step count speed1 speed2
+    builtin argc
+    pop L6
+    eqc L5, L6, 7
+    if L5, a_kind
+    pushi 0
+    call usage
+a_kind:
+    pushi 1
+    pushi 1
+    builtin argv
+    pop L7
+    ldi L8, 0
+    leag L5, s_j
+    streq L4, L7, L5
+    ifnot L4, a_not_j
+    ldi L8, 1
+a_not_j:
+    leag L5, s_m
+    streq L4, L7, L5
+    ifnot L4, a_not_m
+    ldi L8, 2
+a_not_m:
+    leag L5, s_l
+    streq L4, L7, L5
+    ifnot L4, a_not_l
+    ldi L8, 3
+a_not_l:
+    leag L5, s_c
+    streq L4, L7, L5
+    ifnot L4, a_not_c
+    ldi L8, 4
+a_not_c:
+    if L8, a_kind_ok
+    pushi 0
+    call usage
+a_kind_ok:
+    putg L8, kind
+    pushi 2
+    pushi 1
+    call iarg
+    pop L6
+    putg L6, axis
+    pushi 3
+    pushi 1
+    call iarg
+    pop L6
+    putg L6, step
+    pushi 4
+    pushi 1
+    call iarg
+    pop L6
+    putg L6, count
+    pushi 5
+    pushi 1
+    call iarg
+    pop L6
+    putg L6, speed1
+    pushi 6
+    pushi 1
+    call iarg
+    pop L6
+    putg L6, speed2
+    getg L6, axis                   ; ---- limits, before anything is called
+    ltc L5, L6, 1
+    gtc L4, L6, 6
+    lor L5, L5, L4
+    getg L6, count
+    ltc L4, L6, 1
+    lor L5, L5, L4
+    gtc L4, L6, 8
+    lor L5, L5, L4
+    getg L6, speed1
+    ltc L4, L6, 1
+    lor L5, L5, L4
+    gtc L4, L6, 25
+    lor L5, L5, L4
+    getg L6, speed2
+    ltc L4, L6, 1
+    lor L5, L5, L4
+    gtc L4, L6, 25
+    lor L5, L5, L4
+    getg L6, step
+    eqc L4, L6, 0
+    lor L5, L5, L4
+    ifnot L5, a_travel
+    pushi 0
+    call usage
+a_travel:
+    getg L6, step
+    ltc L5, L6, 0
+    ifnot L5, a_abs
+    neg L6, L6
+a_abs:
+    getg L5, count
+    mul L6, L6, L5                  ; |step| x count
+    ldi L5, 20
+    getg L4, kind
+    eqc L4, L4, 2
+    ifnot L4, a_cmp
+    ldi L5, 3000
+a_cmp:
+    gt L4, L6, L5
+    ifnot L4, a_ok
+    pushi 0
+    call usage
+a_ok:
+    getg L6, count                  ; half = (count + 1) / 2
+    addc L6, L6, 1
+    divc L6, L6, 2
+    putg L6, half
+    getg L6, kind                   ; l, c: pulses per step, from the counts per degree
+    ltc L5, L6, 3
+    if L5, a_info
+    getg L6, axis
+    subc L6, L6, 1
+    leag L5, cpd
+    ldx L4, L5, L6
+    putg L4, c100
+    getg L6, step
+    mul L6, L6, L4
+    ldi L5, 100
+    div L6, L6, L5
+    putg L6, dpulses
+a_info:
+    getg L6, dpulses
+    push L6 tag 1
+    getg L6, speed2
+    push L6 tag 1
+    getg L6, speed1
+    push L6 tag 1
+    getg L6, count
+    push L6 tag 1
+    getg L6, step
+    push L6 tag 1
+    getg L6, axis
+    push L6 tag 1
+    push L7 tag 19
+    pushi 7
+    pushleag f_i
+    pushi 16
+    builtinx printf
+    pushi 0
+    call pre
+    pushi 0
+    libcall robotlib:0x02      ; ctl_get
+    pop L5
+    push L5
+    pushleag n_ctl_get
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok1
+    push L5
+    pushi 1
+    call fail
+ok1:
+    ldi L6, 1
+    putg L6, havectl
+    pushi 0
+    call pre
+    pushleag saved
+    pushi 1
+    libcall robotlib:0x43      ; speed_get
+    pop L5
+    push L5
+    pushleag n_speed_get
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok2
+    push L5
+    pushi 1
+    call fail
+ok2:
+    ldi L6, 1
+    putg L6, havespeed
+    pushi 0
+    call pre
+    getg L6, speed1
+    push L6
+    pushi 1
+    libcall robotlib:0x44      ; speed_set
+    pop L5
+    push L5
+    pushleag n_speed_set
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok3
+    push L5
+    pushi 1
+    call fail
+ok3:
+    getg L6, kind                   ; ---- l, c: the target locations
+    ltc L5, L6, 3
+    if L5, no_locs
+    pushi 0
+    call pre
+    pushleag base
+    pushi 2
+    pushi 2
+    libcall robotlib:0x0e      ; pos_get
+    pop L5
+    push L5
+    pushleag n_pos_get
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok4
+    push L5
+    pushi 1
+    call fail
+ok4:
+    pushleag ints
+    pushleag base
+    pushi 2
+    builtin loc_pdata_get
+    getg L6, axis
+    subc L6, L6, 1
+    leag L5, ints
+    ldx L7, L5, L6
+    putg L7, v0
+    ldi L8, 1
+bl_loop:
+    getg L6, count
+    gt L5, L8, L6
+    if L5, no_locs
+    getg L6, step                   ; target = v0 + k * step * c100 / 100
+    mul L6, L6, L8
+    getg L5, c100
+    mul L6, L6, L5
+    ldi L5, 100
+    div L6, L6, L5
+    getg L5, v0
+    add L6, L6, L5
+    getg L5, axis
+    subc L5, L5, 1
+    leag L4, ints
+    stx L6, L4, L5
+    leag L7, locs                   ; &locs[k - 1]
+    subc L5, L8, 1
+    mulc L5, L5, 9
+    add L7, L7, L5
+    leag L6, base
+    ldi L5, 9
+    memcopy L7, L6, L5              ; the commanded location, header and all ...
+    pushleag ints
+    push L7
+    pushi 2
+    builtin loc_pdata_set           ; ... with the one axis changed ...
+    push L7
+    pushi 1
+    builtin loc_re_check            ; ... and its check byte made good, as the server does
+    addc L8, L8, 1
+    goto bl_loop
+no_locs:
+    pushi 0
+    call pre
+    pushi 1
+    pushi 1
+    libcall robotlib:0x3f      ; online
+    pop L5
+    push L5
+    pushleag n_online
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok5
+    push L5
+    pushi 1
+    call fail
+ok5:
+    ldi L6, 1
+    putg L6, haveonline
+    pushi 1
+    pushi 1
+    call psample
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, mv_begin
+    push L5
+    pushi 1
+    call fail
+mv_begin:
+    getg L6, kind
+    eqc L5, L6, 4
+    if L5, mv_path
+    ldi L8, 1                       ; ---- j, m, l: count moves back to back
+mv_loop:
+    getg L6, count
+    gt L5, L8, L6
+    if L5, poll_begin
+    getg L6, kind
+    eqc L5, L6, 1
+    if L5, mv_j
+    eqc L5, L6, 2
+    if L5, mv_m
+    leag L6, locs                   ; l: move(locs[k - 1]), by value
+    subc L5, L8, 1
+    mulc L5, L5, 9
+    add L6, L6, L5
+    ldp9 L20, L6, 0
+    pushi 0
+    call pre
+    push9 L20
+    pushi 9
+    libcall robotlib:0x2c      ; move
+    pop L5
+    push L5
+    pushleag n_move
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok6
+    push L5
+    pushi 1
+    call fail
+ok6:
+    goto mv_next
+mv_j:
+    pushi 0
+    call pre
+    getg L6, step
+    itof L5, L6
+    push L5
+    getg L6, axis
+    push L6
+    pushi 2
+    libcall robotlib:0x1a      ; joint
+    pop L5
+    push L5
+    pushleag n_joint
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok7
+    push L5
+    pushi 1
+    call fail
+ok7:
+    goto mv_next
+mv_m:
+    pushi 0
+    call pre
+    pushi 0
+    getg L6, step
+    push L6
+    getg L6, axis
+    push L6
+    pushi 3
+    libcall robotlib:0x1b      ; motor
+    pop L5
+    push L5
+    pushleag n_motor
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok8
+    push L5
+    pushi 1
+    call fail
+ok8:
+mv_next:
+    pushi 0
+    pushi 1
+    call psample
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, mv_half
+    push L5
+    pushi 1
+    call fail
+mv_half:
+    getg L6, half
+    eq L5, L8, L6
+    ifnot L5, mv_inc
+    pushi 0
+    call pre
+    getg L6, speed2
+    push L6
+    pushi 1
+    libcall robotlib:0x44      ; speed_set
+    pop L5
+    push L5
+    pushleag n_speed_set
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok9
+    push L5
+    pushi 1
+    call fail
+ok9:
+mv_inc:
+    addc L8, L8, 1
+    goto mv_loop
+mv_path:                            ; ---- c: one continuous path, then the second speed
+    pushi 0
+    call pre
+    pushleag trig
+    getg L6, count
+    subc L6, L6, 1
+    push L6
+    pushi 0
+    pushleag locs
+    pushi 4
+    libcall robotlib:0x39      ; cpath
+    pop L5
+    push L5
+    pushleag n_cpath
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok10
+    push L5
+    pushi 1
+    call fail
+ok10:
+    pushi 0
+    call pre
+    getg L6, speed2
+    push L6
+    pushi 1
+    libcall robotlib:0x44      ; speed_set
+    pop L5
+    push L5
+    pushleag n_speed_set
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok11
+    push L5
+    pushi 1
+    call fail
+ok11:
+poll_begin:                         ; ---- until robotisfinished says done, or the limit
+    pushi 0
+    call now
+    pop L6
+    putg L6, tpoll
+poll:
+    pushi 0
+    pushi 1
+    call psample
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, poll_check
+    push L5
+    pushi 1
+    call fail
+poll_check:
+    pushi 0
+    call now
+    pop L6
+    getg L5, tlastc
+    sub L4, L6, L5
+    ldi L5, CHECK_MS
+    lt L3, L4, L5
+    if L3, poll_time
+    putg L6, tlastc
+    pushi 0
+    call pre
+    pushi 0
+    libcall robotlib:0x3e      ; robotisfinished
+    pop L5
+    push L5
+    pushleag n_robotisfinished
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok12
+    push L5
+    pushi 1
+    call fail
+ok12:
+    gtc L4, L5, 0
+    if L4, poll_done
+poll_time:
+    pushi 0
+    call now
+    pop L6
+    getg L5, tpoll
+    sub L4, L6, L5
+    ldi L5, POLL_LIMIT_MS
+    ge L3, L4, L5
+    if L3, poll_done
+    pushi POLL_WAIT_MS
+    pushi 1
+    libcall syslib:delay
+    chkpop
+    goto poll
+poll_done:
+    pushi 0
+    call pre
+    pushi 0
+    libcall robotlib:0x3a      ; finish
+    pop L5
+    push L5
+    pushleag n_finish
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok13
+    push L5
+    pushi 1
+    call fail
+ok13:
+    pushi 1
+    pushi 1
+    call psample
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, end_seq
+    push L5
+    pushi 1
+    call fail
+end_seq:
+    pushi 0
+    call pre
+    pushi 0
+    pushi 1
+    libcall robotlib:0x3f      ; online
+    pop L5
+    push L5
+    pushleag n_online
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok14
+    push L5
+    pushi 1
+    call fail
+ok14:
+    ldi L6, 0
+    putg L6, haveonline
+    pushi 0
+    call pre
+    getg L6, saved
+    push L6
+    pushi 1
+    libcall robotlib:0x44      ; speed_set
+    pop L5
+    push L5
+    pushleag n_speed_set
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok15
+    push L5
+    pushi 1
+    call fail
+ok15:
+    pushi 0
+    call pre
+    pushi 0
+    libcall robotlib:0x04      ; ctl_rel
+    pop L5
+    push L5
+    pushleag n_ctl_rel
+    pushi 2
+    call mline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ok16
+    push L5
+    pushi 1
+    call fail
+ok16:
+    ldi L6, 0
+    putg L6, havectl
+    pushi 0
+    pushleag s_done
+    pushi 2
+    builtinx printf
+    pushi 0
+    pushi 1
+    builtinx exit
+    retv 0
+
+usage:                              ; usage(): print it, exit 1
+    enter 6
+    pushi 0
+    pushi 1
+    builtin argv
+    pop L6
+    push L6 tag 19
+    pushi 1
+    pushleag s_bad
+    pushi 2
+    pushi 5
+    builtinx fprintf
+    pushi 0
+    pushi 1
+    builtin argv
+    pop L6
+    push L6 tag 19
+    pushi 1
+    pushleag s_usage
+    pushi 2
+    pushi 5
+    builtinx fprintf
+    pushi 1
+    pushi 1
+    builtinx exit
+    ret
+
+iarg:                               ; iarg(n): argv(n) as an int, or usage()
+    enter 8
+    push A3
+    pushi 1
+    builtin argv
+    pop L6
+    push L6
+    pushleag tmpint
+    pushi 2
+    builtin str_to_int              ; as homezc reads its argument
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, i_ok
+    pushi 0
+    call usage
+i_ok:
+    getg L6, tmpint
+    retv L6
+    retv 0
+
+now:                                ; now(): ms since the start
+    enter 6
+    pushleag tm
+    pushi 1
+    builtinx mtime
+    getg L6, tm
+    getg L5, t0
+    sub L4, L6, L5
+    retv L4
+    retv 0
+
+pre:                                ; pre(): the time at a call
+    enter 6
+    pushi 0
+    call now
+    pop L6
+    putg L6, tcall
+    ret
+
+mline:                              ; mline(name, r): "M index name call return r"; returns r
+    enter 8
+    pushi 0
+    call now
+    pop L7
+    getg L6, mindex
+    push A4 tag 1
+    push L7 tag 1
+    getg L5, tcall
+    push L5 tag 1
+    push A3 tag 19
+    push L6 tag 1
+    pushi 5
+    pushleag f_m
+    pushi 12
+    builtinx printf
+    addc L6, L6, 1
+    putg L6, mindex
+    get L5, A4
+    retv L5
+    retv 0
+
+psample:                            ; psample(force): a P line unless one was printed less than P_MS ago
+    enter 10
+    pushi 0
+    call now
+    pop L7
+    if A3, ps_go
+    getg L6, tlastp
+    sub L5, L7, L6
+    ldi L4, P_MS
+    lt L3, L5, L4
+    if L3, ps_skip
+ps_go:
+    putg L7, tlastp
+    pushleag ploc
+    pushi 1                         ; POSITION_ACTUAL
+    pushi 2
+    libcall robotlib:0x0e           ; pos_get
+    pop L5
+    pushi 0
+    call now
+    pop L6
+    ltc L4, L5, 0
+    ifnot L4, ps_ok
+    putg L7, tcall                  ; an error: its M line, and the caller fails
+    push L5
+    pushleag n_pos_get
+    pushi 2
+    call mline
+    pop L5
+    retv L5
+ps_ok:
+    add L4, L7, L6
+    divc L4, L4, 2                  ; the middle of the call
+    pushleag pint1
+    pushleag ploc
+    pushi 2
+    builtin loc_pdata_get
+    getg L3, pint6
+    push L3 tag 1
+    getg L3, pint5
+    push L3 tag 1
+    getg L3, pint4
+    push L3 tag 1
+    getg L3, pint3
+    push L3 tag 1
+    getg L3, pint2
+    push L3 tag 1
+    getg L3, pint1
+    push L3 tag 1
+    push L4 tag 1
+    pushi 7
+    pushleag f_p
+    pushi 16
+    builtinx printf
+ps_skip:
+    ldi L5, 0
+    retv L5
+    retv 0
+
+fail:                               ; fail(r): E line; halt, online(OFF), the speed back, ctl_rel; exit 1
+    enter 10
+    neg L5, A3
+    push L5
+    pushi 1
+    libcall syslib:str_error
+    pop L6
+    push L6 tag 19
+    push A3 tag 1
+    pushi 2
+    pushleag f_e
+    pushi 6
+    builtinx printf
+    getg L6, havectl
+    ifnot L6, f_exit
+    ldi L6, 0
+    putg L6, havectl
+    pushi 0
+    call pre
+    pushi 0
+    libcall robotlib:0x21      ; halt
+    pop L5
+    push L5
+    pushleag n_halt
+    pushi 2
+    call mline
+    pop L5
+    getg L6, haveonline
+    ifnot L6, f_speed
+    pushi 0
+    call pre
+    pushi 0
+    pushi 1
+    libcall robotlib:0x3f      ; online
+    pop L5
+    push L5
+    pushleag n_online
+    pushi 2
+    call mline
+    pop L5
+f_speed:
+    getg L6, havespeed
+    ifnot L6, f_rel
+    pushi 0
+    call pre
+    getg L6, saved
+    push L6
+    pushi 1
+    libcall robotlib:0x44      ; speed_set
+    pop L5
+    push L5
+    pushleag n_speed_set
+    pushi 2
+    call mline
+    pop L5
+f_rel:
+    pushi 0
+    call pre
+    pushi 0
+    libcall robotlib:0x04      ; ctl_rel
+    pop L5
+    push L5
+    pushleag n_ctl_rel
+    pushi 2
+    call mline
+    pop L5
+f_exit:
+    pushi 1
+    pushi 1
+    builtinx exit
+    ret

@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""Bench run of the `segtest` program (a465/segprog.py) on the real controller. Stand at the E-stop.
+
+    scripts/a465-segtest j 6 2 6 5 15     # joint 6: six joint() moves of 2 degrees, 5 % then 15 %
+    scripts/a465-segtest m 6 280 6 5 15   # the same with motor() and pulses
+    scripts/a465-segtest l 6 2 6 5 15     # move() to locations 2 degrees apart
+    scripts/a465-segtest c 6 2 6 5 15     # the same locations as one continuous path (cpath)
+
+See the docstring of a465/segtest.py. Log: sessions/<time>-segtest.log. Exit code 0 if the program printed
+`done` and no `E` line, and the tool did not have to stop it.
+"""
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+from a465 import segtest      # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(segtest.main(repo=REPO))

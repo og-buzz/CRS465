@@ -1,0 +1,843 @@
+; segtest: 762 code words, 266 data words, libraries {2: 'syslib', 3: 'robotlib'}
+  0000 [00040] 00000044  ; word 0: 00000044
+func_0001:
+  0001 [00044] ffe80054  enter 24   ; frame of 24 words; initialiser sets 92 bytes to zero
+  0003 [0004c] 00730069  push &G115
+  0004 [00050] 00010035  push 1
+  0005 [00054] 00180067  builtin! 0x18 mtime   ; (&G115)
+  0006 [00058] 00000035  push 0
+  0007 [0005c] 0009005b  builtin 0x9 argc   ; ()
+  0008 [00060] fffa0052  pop L6
+  0009 [00064] 07fafb06  L5 = L6 == 7
+  000a [00068] 000dfb3e  if L5 goto 0x000d
+  000b [0006c] 00000035  push 0
+  000c [00070] 022d8145  call 0x022d   ; ()
+loc_000d:
+  000d [00074] 00010035  push 1
+  000e [00078] 00010035  push 1
+  000f [0007c] 000a005b  builtin 0xa argv   ; (1)
+  0010 [00080] fff90052  pop L7
+  0011 [00084] 0000f833  L8 = 0
+  0012 [00088] 0017fb47  L5 = &G23   ; 'j'
+  0013 [0008c] fbf9fc5e  L4 = strcmp(L7, L5) == 0
+  0014 [00090] 0016fc3f  ifnot L4 goto 0x0016
+  0015 [00094] 0001f833  L8 = 1
+loc_0016:
+  0016 [00098] 0019fb47  L5 = &G25   ; 'm'
+  0017 [0009c] fbf9fc5e  L4 = strcmp(L7, L5) == 0
+  0018 [000a0] 001afc3f  ifnot L4 goto 0x001a
+  0019 [000a4] 0002f833  L8 = 2
+loc_001a:
+  001a [000a8] 001bfb47  L5 = &G27   ; 'l'
+  001b [000ac] fbf9fc5e  L4 = strcmp(L7, L5) == 0
+  001c [000b0] 001efc3f  ifnot L4 goto 0x001e
+  001d [000b4] 0003f833  L8 = 3
+loc_001e:
+  001e [000b8] 001dfb47  L5 = &G29   ; 'c'
+  001f [000bc] fbf9fc5e  L4 = strcmp(L7, L5) == 0
+  0020 [000c0] 0022fc3f  ifnot L4 goto 0x0022
+  0021 [000c4] 0004f833  L8 = 4
+loc_0022:
+  0022 [000c8] 0025f83e  if L8 goto 0x0025
+  0023 [000cc] 00000035  push 0
+  0024 [000d0] 022d8145  call 0x022d   ; ()
+loc_0025:
+  0025 [000d4] 0068f84b  G104 = L8
+  0026 [000d8] 00020035  push 2
+  0027 [000dc] 00010035  push 1
+  0028 [000e0] 02478145  call 0x0247   ; (2)
+  0029 [000e4] fffa0052  pop L6
+  002a [000e8] 0069fa4b  G105 = L6
+  002b [000ec] 00030035  push 3
+  002c [000f0] 00010035  push 1
+  002d [000f4] 02478145  call 0x0247   ; (3)
+  002e [000f8] fffa0052  pop L6
+  002f [000fc] 006afa4b  G106 = L6
+  0030 [00100] 00040035  push 4
+  0031 [00104] 00010035  push 1
+  0032 [00108] 02478145  call 0x0247   ; (4)
+  0033 [0010c] fffa0052  pop L6
+  0034 [00110] 006bfa4b  G107 = L6
+  0035 [00114] 00050035  push 5
+  0036 [00118] 00010035  push 1
+  0037 [0011c] 02478145  call 0x0247   ; (5)
+  0038 [00120] fffa0052  pop L6
+  0039 [00124] 006cfa4b  G108 = L6
+  003a [00128] 00060035  push 6
+  003b [0012c] 00010035  push 1
+  003c [00130] 02478145  call 0x0247   ; (6)
+  003d [00134] fffa0052  pop L6
+  003e [00138] 006dfa4b  G109 = L6
+  003f [0013c] 0069fa49  L6 = G105
+  0040 [00140] 01fafb0e  L5 = L6 < 1
+  0041 [00144] 06fafc0a  L4 = L6 > 6
+  0042 [00148] fcfbfb00  L5 = L5 || L4
+  0043 [0014c] 006bfa49  L6 = G107
+  0044 [00150] 01fafc0e  L4 = L6 < 1
+  0045 [00154] fcfbfb00  L5 = L5 || L4
+  0046 [00158] 08fafc0a  L4 = L6 > 8
+  0047 [0015c] fcfbfb00  L5 = L5 || L4
+  0048 [00160] 006cfa49  L6 = G108
+  0049 [00164] 01fafc0e  L4 = L6 < 1
+  004a [00168] fcfbfb00  L5 = L5 || L4
+  004b [0016c] 19fafc0a  L4 = L6 > 25
+  004c [00170] fcfbfb00  L5 = L5 || L4
+  004d [00174] 006dfa49  L6 = G109
+  004e [00178] 01fafc0e  L4 = L6 < 1
+  004f [0017c] fcfbfb00  L5 = L5 || L4
+  0050 [00180] 19fafc0a  L4 = L6 > 25
+  0051 [00184] fcfbfb00  L5 = L5 || L4
+  0052 [00188] 006afa49  L6 = G106
+  0053 [0018c] 00fafc06  L4 = L6 == 0
+  0054 [00190] fcfbfb00  L5 = L5 || L4
+  0055 [00194] 0058fb3f  ifnot L5 goto 0x0058
+  0056 [00198] 00000035  push 0
+  0057 [0019c] 022d8145  call 0x022d   ; ()
+loc_0058:
+  0058 [001a0] 006afa49  L6 = G106
+  0059 [001a4] 00fafb0e  L5 = L6 < 0
+  005a [001a8] 005cfb3f  ifnot L5 goto 0x005c
+  005b [001ac] 00fafa1f  L6 = -L6
+loc_005c:
+  005c [001b0] 006bfb49  L5 = G107
+  005d [001b4] fbfafa19  L6 = L6 * L5
+  005e [001b8] 0014fb33  L5 = 20
+  005f [001bc] 0068fc49  L4 = G104
+  0060 [001c0] 02fcfc06  L4 = L4 == 2
+  0061 [001c4] 0063fc3f  ifnot L4 goto 0x0063
+  0062 [001c8] 0bb8fb33  L5 = 3000
+loc_0063:
+  0063 [001cc] fbfafc09  L4 = L6 > L5
+  0064 [001d0] 0067fc3f  ifnot L4 goto 0x0067
+  0065 [001d4] 00000035  push 0
+  0066 [001d8] 022d8145  call 0x022d   ; ()
+loc_0067:
+  0067 [001dc] 006bfa49  L6 = G107
+  0068 [001e0] 01fafa16  L6 = L6 + 1
+  0069 [001e4] 02fafa1c  L6 = L6 / 2
+  006a [001e8] 006efa4b  G110 = L6
+  006b [001ec] 0068fa49  L6 = G104
+  006c [001f0] 03fafb0e  L5 = L6 < 3
+  006d [001f4] 0078fb3e  if L5 goto 0x0078
+  006e [001f8] 0069fa49  L6 = G105
+  006f [001fc] 01fafa18  L6 = L6 - 1
+  0070 [00200] 0062fb47  L5 = &G98
+  0071 [00204] fafbfc65  L4 = L5@[L6]
+  0072 [00208] 0071fc4b  G113 = L4
+  0073 [0020c] 006afa49  L6 = G106
+  0074 [00210] fcfafa19  L6 = L6 * L4
+  0075 [00214] 0064fb33  L5 = 100
+  0076 [00218] fbfafa1b  L6 = L6 / L5
+  0077 [0021c] 006ffa4b  G111 = L6
+loc_0078:
+  0078 [00220] 006ffa49  L6 = G111
+  0079 [00224] fffa0150  push L6 tag 1
+  007a [00228] 006dfa49  L6 = G109
+  007b [0022c] fffa0150  push L6 tag 1
+  007c [00230] 006cfa49  L6 = G108
+  007d [00234] fffa0150  push L6 tag 1
+  007e [00238] 006bfa49  L6 = G107
+  007f [0023c] fffa0150  push L6 tag 1
+  0080 [00240] 006afa49  L6 = G106
+  0081 [00244] fffa0150  push L6 tag 1
+  0082 [00248] 0069fa49  L6 = G105
+  0083 [0024c] fffa0150  push L6 tag 1
+  0084 [00250] fff91350  push L7 tag 19
+  0085 [00254] 00070035  push 7
+  0086 [00258] 002f0069  push &G47   ; 'I {} {} {} {} {} {} {}\n'
+  0087 [0025c] 00100035  push 16
+  0088 [00260] 00430067  builtin! 0x43 printf   ; (&G47 'I {} {} {} {} {} {} {}\n', 7, L7:19, L6:1, L6:1, L6:1, L6:1, L6:1, L6:1)
+  0089 [00264] 00000035  push 0
+  008a [00268] 02638145  call 0x0263   ; ()
+  008b [0026c] 00000035  push 0
+  008c [00270] 00028356  call robotlib:0x2 ctl_get   ; ()
+  008d [00274] fffb0052  pop L5
+  008e [00278] fffb0050  push L5
+  008f [0027c] 00390069  push &G57   ; 'ctl_get'
+  0090 [00280] 00020035  push 2
+  0091 [00284] 026a8145  call 0x026a   ; (&G57 'ctl_get', L5)
+  0092 [00288] fffb0052  pop L5
+  0093 [0028c] 00fbfc0e  L4 = L5 < 0
+  0094 [00290] 0098fc3f  ifnot L4 goto 0x0098
+  0095 [00294] fffb0050  push L5
+  0096 [00298] 00010035  push 1
+  0097 [0029c] 02b68145  call 0x02b6   ; (L5)
+loc_0098:
+  0098 [002a0] 0001fa33  L6 = 1
+  0099 [002a4] 007dfa4b  G125 = L6
+  009a [002a8] 00000035  push 0
+  009b [002ac] 02638145  call 0x0263   ; ()
+  009c [002b0] 007c0069  push &G124
+  009d [002b4] 00010035  push 1
+  009e [002b8] 00438356  call robotlib:0x43 speed_get   ; (&G124)
+  009f [002bc] fffb0052  pop L5
+  00a0 [002c0] fffb0050  push L5
+  00a1 [002c4] 005a0069  push &G90   ; 'speed_get'
+  00a2 [002c8] 00020035  push 2
+  00a3 [002cc] 026a8145  call 0x026a   ; (&G90 'speed_get', L5)
+  00a4 [002d0] fffb0052  pop L5
+  00a5 [002d4] 00fbfc0e  L4 = L5 < 0
+  00a6 [002d8] 00aafc3f  ifnot L4 goto 0x00aa
+  00a7 [002dc] fffb0050  push L5
+  00a8 [002e0] 00010035  push 1
+  00a9 [002e4] 02b68145  call 0x02b6   ; (L5)
+loc_00aa:
+  00aa [002e8] 0001fa33  L6 = 1
+  00ab [002ec] 007ffa4b  G127 = L6
+  00ac [002f0] 00000035  push 0
+  00ad [002f4] 02638145  call 0x0263   ; ()
+  00ae [002f8] 006cfa49  L6 = G108
+  00af [002fc] fffa0050  push L6
+  00b0 [00300] 00010035  push 1
+  00b1 [00304] 00448356  call robotlib:0x44 speed_set   ; (L6)
+  00b2 [00308] fffb0052  pop L5
+  00b3 [0030c] fffb0050  push L5
+  00b4 [00310] 005e0069  push &G94   ; 'speed_set'
+  00b5 [00314] 00020035  push 2
+  00b6 [00318] 026a8145  call 0x026a   ; (&G94 'speed_set', L5)
+  00b7 [0031c] fffb0052  pop L5
+  00b8 [00320] 00fbfc0e  L4 = L5 < 0
+  00b9 [00324] 00bdfc3f  ifnot L4 goto 0x00bd
+  00ba [00328] fffb0050  push L5
+  00bb [0032c] 00010035  push 1
+  00bc [00330] 02b68145  call 0x02b6   ; (L5)
+loc_00bd:
+  00bd [00334] 0068fa49  L6 = G104
+  00be [00338] 03fafb0e  L5 = L6 < 3
+  00bf [0033c] 00fafb3e  if L5 goto 0x00fa
+  00c0 [00340] 00000035  push 0
+  00c1 [00344] 02638145  call 0x0263   ; ()
+  00c2 [00348] 00800069  push &G128
+  00c3 [0034c] 00020035  push 2
+  00c4 [00350] 00020035  push 2
+  00c5 [00354] 000e8356  call robotlib:0xe pos_get   ; (2, &G128)
+  00c6 [00358] fffb0052  pop L5
+  00c7 [0035c] fffb0050  push L5
+  00c8 [00360] 003f0069  push &G63   ; 'pos_get'
+  00c9 [00364] 00020035  push 2
+  00ca [00368] 026a8145  call 0x026a   ; (&G63 'pos_get', L5)
+  00cb [0036c] fffb0052  pop L5
+  00cc [00370] 00fbfc0e  L4 = L5 < 0
+  00cd [00374] 00d1fc3f  ifnot L4 goto 0x00d1
+  00ce [00378] fffb0050  push L5
+  00cf [0037c] 00010035  push 1
+  00d0 [00380] 02b68145  call 0x02b6   ; (L5)
+loc_00d1:
+  00d1 [00384] 00890069  push &G137
+  00d2 [00388] 00800069  push &G128
+  00d3 [0038c] 00020035  push 2
+  00d4 [00390] 00c8005b  builtin 0xc8 loc_pdata_get   ; (&G128, &G137)
+  00d5 [00394] 0069fa49  L6 = G105
+  00d6 [00398] 01fafa18  L6 = L6 - 1
+  00d7 [0039c] 0089fb47  L5 = &G137
+  00d8 [003a0] fafbf965  L7 = L5@[L6]
+  00d9 [003a4] 0070f94b  G112 = L7
+  00da [003a8] 0001f833  L8 = 1
+loc_00db:
+  00db [003ac] 006bfa49  L6 = G107
+  00dc [003b0] faf8fb09  L5 = L8 > L6
+  00dd [003b4] 00fafb3e  if L5 goto 0x00fa
+  00de [003b8] 006afa49  L6 = G106
+  00df [003bc] f8fafa19  L6 = L6 * L8
+  00e0 [003c0] 0071fb49  L5 = G113
+  00e1 [003c4] fbfafa19  L6 = L6 * L5
+  00e2 [003c8] 0064fb33  L5 = 100
+  00e3 [003cc] fbfafa1b  L6 = L6 / L5
+  00e4 [003d0] 0070fb49  L5 = G112
+  00e5 [003d4] fbfafa15  L6 = L6 + L5
+  00e6 [003d8] 0069fb49  L5 = G105
+  00e7 [003dc] 01fbfb18  L5 = L5 - 1
+  00e8 [003e0] 0089fc47  L4 = &G137
+  00e9 [003e4] fbfcfa66  L4@[L5] = L6
+  00ea [003e8] 0091f947  L7 = &G145
+  00eb [003ec] 01f8fb18  L5 = L8 - 1
+  00ec [003f0] 09fbfb1a  L5 = L5 * 9
+  00ed [003f4] fbf9f915  L7 = L7 + L5
+  00ee [003f8] 0080fa47  L6 = &G128
+  00ef [003fc] 0009fb33  L5 = 9
+  00f0 [00400] fbfaf95c  memcopy(L7, L6, L5 words)
+  00f1 [00404] 00890069  push &G137
+  00f2 [00408] fff90050  push L7
+  00f3 [0040c] 00020035  push 2
+  00f4 [00410] 00c9005b  builtin 0xc9 loc_pdata_set   ; (L7, &G137)
+  00f5 [00414] fff90050  push L7
+  00f6 [00418] 00010035  push 1
+  00f7 [0041c] 00c7005b  builtin 0xc7 loc_re_check   ; (L7)
+  00f8 [00420] 01f8f816  L8 = L8 + 1
+  00f9 [00424] 00db0044  goto 0x00db
+loc_00fa:
+  00fa [00428] 00000035  push 0
+  00fb [0042c] 02638145  call 0x0263   ; ()
+  00fc [00430] 00010035  push 1
+  00fd [00434] 00010035  push 1
+  00fe [00438] 003f8356  call robotlib:0x3f online   ; (1)
+  00ff [0043c] fffb0052  pop L5
+  0100 [00440] fffb0050  push L5
+  0101 [00444] 00570069  push &G87   ; 'online'
+  0102 [00448] 00020035  push 2
+  0103 [0044c] 026a8145  call 0x026a   ; (&G87 'online', L5)
+  0104 [00450] fffb0052  pop L5
+  0105 [00454] 00fbfc0e  L4 = L5 < 0
+  0106 [00458] 010afc3f  ifnot L4 goto 0x010a
+  0107 [0045c] fffb0050  push L5
+  0108 [00460] 00010035  push 1
+  0109 [00464] 02b68145  call 0x02b6   ; (L5)
+loc_010a:
+  010a [00468] 0001fa33  L6 = 1
+  010b [0046c] 007efa4b  G126 = L6
+  010c [00470] 00010035  push 1
+  010d [00474] 00010035  push 1
+  010e [00478] 027f8145  call 0x027f   ; (1)
+  010f [0047c] fffb0052  pop L5
+  0110 [00480] 00fbfc0e  L4 = L5 < 0
+  0111 [00484] 0115fc3f  ifnot L4 goto 0x0115
+  0112 [00488] fffb0050  push L5
+  0113 [0048c] 00010035  push 1
+  0114 [00490] 02b68145  call 0x02b6   ; (L5)
+loc_0115:
+  0115 [00494] 0068fa49  L6 = G104
+  0116 [00498] 04fafb06  L5 = L6 == 4
+  0117 [0049c] 017ffb3e  if L5 goto 0x017f
+  0118 [004a0] 0001f833  L8 = 1
+loc_0119:
+  0119 [004a4] 006bfa49  L6 = G107
+  011a [004a8] faf8fb09  L5 = L8 > L6
+  011b [004ac] 01a5fb3e  if L5 goto 0x01a5
+  011c [004b0] 0068fa49  L6 = G104
+  011d [004b4] 01fafb06  L5 = L6 == 1
+  011e [004b8] 0137fb3e  if L5 goto 0x0137
+  011f [004bc] 02fafb06  L5 = L6 == 2
+  0120 [004c0] 014cfb3e  if L5 goto 0x014c
+  0121 [004c4] 0091fa47  L6 = &G145
+  0122 [004c8] 01f8fb18  L5 = L8 - 1
+  0123 [004cc] 09fbfb1a  L5 = L5 * 9
+  0124 [004d0] fbfafa15  L6 = L6 + L5
+  0125 [004d4] 00faec3c  L20..+8 = L6@[0..+8]
+  0126 [004d8] 00000035  push 0
+  0127 [004dc] 02638145  call 0x0263   ; ()
+  0128 [004e0] ffec0051  push9 L20
+  0129 [004e4] 00090035  push 9
+  012a [004e8] 002c8356  call robotlib:0x2c move   ; (L20)
+  012b [004ec] fffb0052  pop L5
+  012c [004f0] fffb0050  push L5
+  012d [004f4] 004a0069  push &G74   ; 'move'
+  012e [004f8] 00020035  push 2
+  012f [004fc] 026a8145  call 0x026a   ; (&G74 'move', L5)
+  0130 [00500] fffb0052  pop L5
+  0131 [00504] 00fbfc0e  L4 = L5 < 0
+  0132 [00508] 0136fc3f  ifnot L4 goto 0x0136
+  0133 [0050c] fffb0050  push L5
+  0134 [00510] 00010035  push 1
+  0135 [00514] 02b68145  call 0x02b6   ; (L5)
+loc_0136:
+  0136 [00518] 01600044  goto 0x0160
+loc_0137:
+  0137 [0051c] 00000035  push 0
+  0138 [00520] 02638145  call 0x0263   ; ()
+  0139 [00524] 006afa49  L6 = G106
+  013a [00528] 00fafb22  L5 = float(L6)
+  013b [0052c] fffb0050  push L5
+  013c [00530] 0069fa49  L6 = G105
+  013d [00534] fffa0050  push L6
+  013e [00538] 00020035  push 2
+  013f [0053c] 001a8356  call robotlib:0x1a joint   ; (L6, L5)
+  0140 [00540] fffb0052  pop L5
+  0141 [00544] fffb0050  push L5
+  0142 [00548] 00420069  push &G66   ; 'joint'
+  0143 [0054c] 00020035  push 2
+  0144 [00550] 026a8145  call 0x026a   ; (&G66 'joint', L5)
+  0145 [00554] fffb0052  pop L5
+  0146 [00558] 00fbfc0e  L4 = L5 < 0
+  0147 [0055c] 014bfc3f  ifnot L4 goto 0x014b
+  0148 [00560] fffb0050  push L5
+  0149 [00564] 00010035  push 1
+  014a [00568] 02b68145  call 0x02b6   ; (L5)
+loc_014b:
+  014b [0056c] 01600044  goto 0x0160
+loc_014c:
+  014c [00570] 00000035  push 0
+  014d [00574] 02638145  call 0x0263   ; ()
+  014e [00578] 00000035  push 0
+  014f [0057c] 006afa49  L6 = G106
+  0150 [00580] fffa0050  push L6
+  0151 [00584] 0069fa49  L6 = G105
+  0152 [00588] fffa0050  push L6
+  0153 [0058c] 00030035  push 3
+  0154 [00590] 001b8356  call robotlib:0x1b motor   ; (L6, L6, 0)
+  0155 [00594] fffb0052  pop L5
+  0156 [00598] fffb0050  push L5
+  0157 [0059c] 00450069  push &G69   ; 'motor'
+  0158 [005a0] 00020035  push 2
+  0159 [005a4] 026a8145  call 0x026a   ; (&G69 'motor', L5)
+  015a [005a8] fffb0052  pop L5
+  015b [005ac] 00fbfc0e  L4 = L5 < 0
+  015c [005b0] 0160fc3f  ifnot L4 goto 0x0160
+  015d [005b4] fffb0050  push L5
+  015e [005b8] 00010035  push 1
+  015f [005bc] 02b68145  call 0x02b6   ; (L5)
+loc_0160:
+  0160 [005c0] 00000035  push 0
+  0161 [005c4] 00010035  push 1
+  0162 [005c8] 027f8145  call 0x027f   ; (0)
+  0163 [005cc] fffb0052  pop L5
+  0164 [005d0] 00fbfc0e  L4 = L5 < 0
+  0165 [005d4] 0169fc3f  ifnot L4 goto 0x0169
+  0166 [005d8] fffb0050  push L5
+  0167 [005dc] 00010035  push 1
+  0168 [005e0] 02b68145  call 0x02b6   ; (L5)
+loc_0169:
+  0169 [005e4] 006efa49  L6 = G110
+  016a [005e8] faf8fb05  L5 = L8 == L6
+  016b [005ec] 017dfb3f  ifnot L5 goto 0x017d
+  016c [005f0] 00000035  push 0
+  016d [005f4] 02638145  call 0x0263   ; ()
+  016e [005f8] 006dfa49  L6 = G109
+  016f [005fc] fffa0050  push L6
+  0170 [00600] 00010035  push 1
+  0171 [00604] 00448356  call robotlib:0x44 speed_set   ; (L6)
+  0172 [00608] fffb0052  pop L5
+  0173 [0060c] fffb0050  push L5
+  0174 [00610] 005e0069  push &G94   ; 'speed_set'
+  0175 [00614] 00020035  push 2
+  0176 [00618] 026a8145  call 0x026a   ; (&G94 'speed_set', L5)
+  0177 [0061c] fffb0052  pop L5
+  0178 [00620] 00fbfc0e  L4 = L5 < 0
+  0179 [00624] 017dfc3f  ifnot L4 goto 0x017d
+  017a [00628] fffb0050  push L5
+  017b [0062c] 00010035  push 1
+  017c [00630] 02b68145  call 0x02b6   ; (L5)
+loc_017d:
+  017d [00634] 01f8f816  L8 = L8 + 1
+  017e [00638] 01190044  goto 0x0119
+loc_017f:
+  017f [0063c] 00000035  push 0
+  0180 [00640] 02638145  call 0x0263   ; ()
+  0181 [00644] 00d90069  push &G217
+  0182 [00648] 006bfa49  L6 = G107
+  0183 [0064c] 01fafa18  L6 = L6 - 1
+  0184 [00650] fffa0050  push L6
+  0185 [00654] 00000035  push 0
+  0186 [00658] 00910069  push &G145
+  0187 [0065c] 00040035  push 4
+  0188 [00660] 00398356  call robotlib:0x39 cpath   ; (&G145, 0, L6, &G217)
+  0189 [00664] fffb0052  pop L5
+  018a [00668] fffb0050  push L5
+  018b [0066c] 004c0069  push &G76   ; 'cpath'
+  018c [00670] 00020035  push 2
+  018d [00674] 026a8145  call 0x026a   ; (&G76 'cpath', L5)
+  018e [00678] fffb0052  pop L5
+  018f [0067c] 00fbfc0e  L4 = L5 < 0
+  0190 [00680] 0194fc3f  ifnot L4 goto 0x0194
+  0191 [00684] fffb0050  push L5
+  0192 [00688] 00010035  push 1
+  0193 [0068c] 02b68145  call 0x02b6   ; (L5)
+loc_0194:
+  0194 [00690] 00000035  push 0
+  0195 [00694] 02638145  call 0x0263   ; ()
+  0196 [00698] 006dfa49  L6 = G109
+  0197 [0069c] fffa0050  push L6
+  0198 [006a0] 00010035  push 1
+  0199 [006a4] 00448356  call robotlib:0x44 speed_set   ; (L6)
+  019a [006a8] fffb0052  pop L5
+  019b [006ac] fffb0050  push L5
+  019c [006b0] 005e0069  push &G94   ; 'speed_set'
+  019d [006b4] 00020035  push 2
+  019e [006b8] 026a8145  call 0x026a   ; (&G94 'speed_set', L5)
+  019f [006bc] fffb0052  pop L5
+  01a0 [006c0] 00fbfc0e  L4 = L5 < 0
+  01a1 [006c4] 01a5fc3f  ifnot L4 goto 0x01a5
+  01a2 [006c8] fffb0050  push L5
+  01a3 [006cc] 00010035  push 1
+  01a4 [006d0] 02b68145  call 0x02b6   ; (L5)
+loc_01a5:
+  01a5 [006d4] 00000035  push 0
+  01a6 [006d8] 02598145  call 0x0259   ; ()
+  01a7 [006dc] fffa0052  pop L6
+  01a8 [006e0] 007afa4b  G122 = L6
+loc_01a9:
+  01a9 [006e4] 00000035  push 0
+  01aa [006e8] 00010035  push 1
+  01ab [006ec] 027f8145  call 0x027f   ; (0)
+  01ac [006f0] fffb0052  pop L5
+  01ad [006f4] 00fbfc0e  L4 = L5 < 0
+  01ae [006f8] 01b2fc3f  ifnot L4 goto 0x01b2
+  01af [006fc] fffb0050  push L5
+  01b0 [00700] 00010035  push 1
+  01b1 [00704] 02b68145  call 0x02b6   ; (L5)
+loc_01b2:
+  01b2 [00708] 00000035  push 0
+  01b3 [0070c] 02598145  call 0x0259   ; ()
+  01b4 [00710] fffa0052  pop L6
+  01b5 [00714] 0079fb49  L5 = G121
+  01b6 [00718] fbfafc17  L4 = L6 - L5
+  01b7 [0071c] 00c8fb33  L5 = 200
+  01b8 [00720] fbfcfd0d  L3 = L4 < L5
+  01b9 [00724] 01ccfd3e  if L3 goto 0x01cc
+  01ba [00728] 0079fa4b  G121 = L6
+  01bb [0072c] 00000035  push 0
+  01bc [00730] 02638145  call 0x0263   ; ()
+  01bd [00734] 00000035  push 0
+  01be [00738] 003e8356  call robotlib:0x3e robotisfinished   ; ()
+  01bf [0073c] fffb0052  pop L5
+  01c0 [00740] fffb0050  push L5
+  01c1 [00744] 00520069  push &G82   ; 'robotisfinished'
+  01c2 [00748] 00020035  push 2
+  01c3 [0074c] 026a8145  call 0x026a   ; (&G82 'robotisfinished', L5)
+  01c4 [00750] fffb0052  pop L5
+  01c5 [00754] 00fbfc0e  L4 = L5 < 0
+  01c6 [00758] 01cafc3f  ifnot L4 goto 0x01ca
+  01c7 [0075c] fffb0050  push L5
+  01c8 [00760] 00010035  push 1
+  01c9 [00764] 02b68145  call 0x02b6   ; (L5)
+loc_01ca:
+  01ca [00768] 00fbfc0a  L4 = L5 > 0
+  01cb [0076c] 01d9fc3e  if L4 goto 0x01d9
+loc_01cc:
+  01cc [00770] 00000035  push 0
+  01cd [00774] 02598145  call 0x0259   ; ()
+  01ce [00778] fffa0052  pop L6
+  01cf [0077c] 007afb49  L5 = G122
+  01d0 [00780] fbfafc17  L4 = L6 - L5
+  01d1 [00784] 1770fb33  L5 = 6000
+  01d2 [00788] fbfcfd0b  L3 = L4 >= L5
+  01d3 [0078c] 01d9fd3e  if L3 goto 0x01d9
+  01d4 [00790] 000a0035  push 10
+  01d5 [00794] 00010035  push 1
+  01d6 [00798] 00148256  call syslib:0x14 delay   ; (10)
+  01d7 [0079c] 0000005a  check pop >= 0
+  01d8 [007a0] 01a90044  goto 0x01a9
+loc_01d9:
+  01d9 [007a4] 00000035  push 0
+  01da [007a8] 02638145  call 0x0263   ; ()
+  01db [007ac] 00000035  push 0
+  01dc [007b0] 003a8356  call robotlib:0x3a finish   ; ()
+  01dd [007b4] fffb0052  pop L5
+  01de [007b8] fffb0050  push L5
+  01df [007bc] 004f0069  push &G79   ; 'finish'
+  01e0 [007c0] 00020035  push 2
+  01e1 [007c4] 026a8145  call 0x026a   ; (&G79 'finish', L5)
+  01e2 [007c8] fffb0052  pop L5
+  01e3 [007cc] 00fbfc0e  L4 = L5 < 0
+  01e4 [007d0] 01e8fc3f  ifnot L4 goto 0x01e8
+  01e5 [007d4] fffb0050  push L5
+  01e6 [007d8] 00010035  push 1
+  01e7 [007dc] 02b68145  call 0x02b6   ; (L5)
+loc_01e8:
+  01e8 [007e0] 00010035  push 1
+  01e9 [007e4] 00010035  push 1
+  01ea [007e8] 027f8145  call 0x027f   ; (1)
+  01eb [007ec] fffb0052  pop L5
+  01ec [007f0] 00fbfc0e  L4 = L5 < 0
+  01ed [007f4] 01f1fc3f  ifnot L4 goto 0x01f1
+  01ee [007f8] fffb0050  push L5
+  01ef [007fc] 00010035  push 1
+  01f0 [00800] 02b68145  call 0x02b6   ; (L5)
+loc_01f1:
+  01f1 [00804] 00000035  push 0
+  01f2 [00808] 02638145  call 0x0263   ; ()
+  01f3 [0080c] 00000035  push 0
+  01f4 [00810] 00010035  push 1
+  01f5 [00814] 003f8356  call robotlib:0x3f online   ; (0)
+  01f6 [00818] fffb0052  pop L5
+  01f7 [0081c] fffb0050  push L5
+  01f8 [00820] 00570069  push &G87   ; 'online'
+  01f9 [00824] 00020035  push 2
+  01fa [00828] 026a8145  call 0x026a   ; (&G87 'online', L5)
+  01fb [0082c] fffb0052  pop L5
+  01fc [00830] 00fbfc0e  L4 = L5 < 0
+  01fd [00834] 0201fc3f  ifnot L4 goto 0x0201
+  01fe [00838] fffb0050  push L5
+  01ff [0083c] 00010035  push 1
+  0200 [00840] 02b68145  call 0x02b6   ; (L5)
+loc_0201:
+  0201 [00844] 0000fa33  L6 = 0
+  0202 [00848] 007efa4b  G126 = L6
+  0203 [0084c] 00000035  push 0
+  0204 [00850] 02638145  call 0x0263   ; ()
+  0205 [00854] 007cfa49  L6 = G124
+  0206 [00858] fffa0050  push L6
+  0207 [0085c] 00010035  push 1
+  0208 [00860] 00448356  call robotlib:0x44 speed_set   ; (L6)
+  0209 [00864] fffb0052  pop L5
+  020a [00868] fffb0050  push L5
+  020b [0086c] 005e0069  push &G94   ; 'speed_set'
+  020c [00870] 00020035  push 2
+  020d [00874] 026a8145  call 0x026a   ; (&G94 'speed_set', L5)
+  020e [00878] fffb0052  pop L5
+  020f [0087c] 00fbfc0e  L4 = L5 < 0
+  0210 [00880] 0214fc3f  ifnot L4 goto 0x0214
+  0211 [00884] fffb0050  push L5
+  0212 [00888] 00010035  push 1
+  0213 [0088c] 02b68145  call 0x02b6   ; (L5)
+loc_0214:
+  0214 [00890] 00000035  push 0
+  0215 [00894] 02638145  call 0x0263   ; ()
+  0216 [00898] 00000035  push 0
+  0217 [0089c] 00048356  call robotlib:0x4 ctl_rel   ; ()
+  0218 [008a0] fffb0052  pop L5
+  0219 [008a4] fffb0050  push L5
+  021a [008a8] 003c0069  push &G60   ; 'ctl_rel'
+  021b [008ac] 00020035  push 2
+  021c [008b0] 026a8145  call 0x026a   ; (&G60 'ctl_rel', L5)
+  021d [008b4] fffb0052  pop L5
+  021e [008b8] 00fbfc0e  L4 = L5 < 0
+  021f [008bc] 0223fc3f  ifnot L4 goto 0x0223
+  0220 [008c0] fffb0050  push L5
+  0221 [008c4] 00010035  push 1
+  0222 [008c8] 02b68145  call 0x02b6   ; (L5)
+loc_0223:
+  0223 [008cc] 0000fa33  L6 = 0
+  0224 [008d0] 007dfa4b  G125 = L6
+  0225 [008d4] 00000035  push 0
+  0226 [008d8] 00360069  push &G54   ; 'done\n'
+  0227 [008dc] 00020035  push 2
+  0228 [008e0] 00430067  builtin! 0x43 printf   ; (&G54 'done\n', 0)
+  0229 [008e4] 00000035  push 0
+  022a [008e8] 00010035  push 1
+  022b [008ec] 00000067  builtin! 0x0 exit   ; (0)
+  022c [008f0] 00000058  return 0
+func_022d:
+  022d [008f4] fffa0054  enter 6   ; frame of 6 words; initialiser sets 20 bytes to zero
+  022f [008fc] 00000035  push 0
+  0230 [00900] 00010035  push 1
+  0231 [00904] 000a005b  builtin 0xa argv   ; (0)
+  0232 [00908] fffa0052  pop L6
+  0233 [0090c] fffa1350  push L6 tag 19
+  0234 [00910] 00010035  push 1
+  0235 [00914] 00000069  push &G0   ; '{}: invalid command line arguments.\n'
+  0236 [00918] 00020035  push 2
+  0237 [0091c] 00050035  push 5
+  0238 [00920] 00440067  builtin! 0x44 fprintf   ; (2, &G0 '{}: invalid command line arguments.\n', 1, L6:19)
+  0239 [00924] 00000035  push 0
+  023a [00928] 00010035  push 1
+  023b [0092c] 000a005b  builtin 0xa argv   ; (0)
+  023c [00930] fffa0052  pop L6
+  023d [00934] fffa1350  push L6 tag 19
+  023e [00938] 00010035  push 1
+  023f [0093c] 000a0069  push &G10   ; 'Usage: {} j|m|l|c axis step count speed1 speed2\n'
+  0240 [00940] 00020035  push 2
+  0241 [00944] 00050035  push 5
+  0242 [00948] 00440067  builtin! 0x44 fprintf   ; (2, &G10 'Usage: {} j|m|l|c axis step count speed1 speed2\n', 1, L6:19)
+  0243 [0094c] 00010035  push 1
+  0244 [00950] 00010035  push 1
+  0245 [00954] 00000067  builtin! 0x0 exit   ; (1)
+  0246 [00958] 00000057  return
+func_0247:
+  0247 [0095c] fff80054  enter 8   ; frame of 8 words; initialiser sets 28 bytes to zero
+  0249 [00964] 00030050  push A3
+  024a [00968] 00010035  push 1
+  024b [0096c] 000a005b  builtin 0xa argv   ; (A3)
+  024c [00970] fffa0052  pop L6
+  024d [00974] fffa0050  push L6
+  024e [00978] 00720069  push &G114
+  024f [0097c] 00020035  push 2
+  0250 [00980] 0084005b  builtin 0x84 str_to_int   ; (&G114, L6)
+  0251 [00984] fffb0052  pop L5
+  0252 [00988] 00fbfc0e  L4 = L5 < 0
+  0253 [0098c] 0256fc3f  ifnot L4 goto 0x0256
+  0254 [00990] 00000035  push 0
+  0255 [00994] 022d8145  call 0x022d   ; ()
+loc_0256:
+  0256 [00998] 0072fa49  L6 = G114
+  0257 [0099c] fffa0058  return L6
+  0258 [009a0] 00000058  return 0
+func_0259:
+  0259 [009a4] fffa0054  enter 6   ; frame of 6 words; initialiser sets 20 bytes to zero
+  025b [009ac] 00750069  push &G117
+  025c [009b0] 00010035  push 1
+  025d [009b4] 00180067  builtin! 0x18 mtime   ; (&G117)
+  025e [009b8] 0075fa49  L6 = G117
+  025f [009bc] 0073fb49  L5 = G115
+  0260 [009c0] fbfafc17  L4 = L6 - L5
+  0261 [009c4] fffc0058  return L4
+  0262 [009c8] 00000058  return 0
+func_0263:
+  0263 [009cc] fffa0054  enter 6   ; frame of 6 words; initialiser sets 20 bytes to zero
+  0265 [009d4] 00000035  push 0
+  0266 [009d8] 02598145  call 0x0259   ; ()
+  0267 [009dc] fffa0052  pop L6
+  0268 [009e0] 0077fa4b  G119 = L6
+  0269 [009e4] 00000057  return
+func_026a:
+  026a [009e8] fff80054  enter 8   ; frame of 8 words; initialiser sets 28 bytes to zero
+  026c [009f0] 00000035  push 0
+  026d [009f4] 02598145  call 0x0259   ; ()
+  026e [009f8] fff90052  pop L7
+  026f [009fc] 007bfa49  L6 = G123
+  0270 [00a00] 00040150  push A4 tag 1
+  0271 [00a04] fff90150  push L7 tag 1
+  0272 [00a08] 0077fb49  L5 = G119
+  0273 [00a0c] fffb0150  push L5 tag 1
+  0274 [00a10] 00031350  push A3 tag 19
+  0275 [00a14] fffa0150  push L6 tag 1
+  0276 [00a18] 00050035  push 5
+  0277 [00a1c] 001f0069  push &G31   ; 'M {} {} {} {} {}\n'
+  0278 [00a20] 000c0035  push 12
+  0279 [00a24] 00430067  builtin! 0x43 printf   ; (&G31 'M {} {} {} {} {}\n', 5, L6:1, A3:19, L5:1, L7:1, A4:1)
+  027a [00a28] 01fafa16  L6 = L6 + 1
+  027b [00a2c] 007bfa4b  G123 = L6
+  027c [00a30] 0004fb48  L5 = A4
+  027d [00a34] fffb0058  return L5
+  027e [00a38] 00000058  return 0
+func_027f:
+  027f [00a3c] fff60054  enter 10   ; frame of 10 words; initialiser sets 36 bytes to zero
+  0281 [00a44] 00000035  push 0
+  0282 [00a48] 02598145  call 0x0259   ; ()
+  0283 [00a4c] fff90052  pop L7
+  0284 [00a50] 028a033e  if A3 goto 0x028a
+  0285 [00a54] 0078fa49  L6 = G120
+  0286 [00a58] faf9fb17  L5 = L7 - L6
+  0287 [00a5c] 0032fc33  L4 = 50
+  0288 [00a60] fcfbfd0d  L3 = L5 < L4
+  0289 [00a64] 02b3fd3e  if L3 goto 0x02b3
+loc_028a:
+  028a [00a68] 0078f94b  G120 = L7
+  028b [00a6c] 00f90069  push &G249
+  028c [00a70] 00010035  push 1
+  028d [00a74] 00020035  push 2
+  028e [00a78] 000e8356  call robotlib:0xe pos_get   ; (1, &G249)
+  028f [00a7c] fffb0052  pop L5
+  0290 [00a80] 00000035  push 0
+  0291 [00a84] 02598145  call 0x0259   ; ()
+  0292 [00a88] fffa0052  pop L6
+  0293 [00a8c] 00fbfc0e  L4 = L5 < 0
+  0294 [00a90] 029cfc3f  ifnot L4 goto 0x029c
+  0295 [00a94] 0077f94b  G119 = L7
+  0296 [00a98] fffb0050  push L5
+  0297 [00a9c] 003f0069  push &G63   ; 'pos_get'
+  0298 [00aa0] 00020035  push 2
+  0299 [00aa4] 026a8145  call 0x026a   ; (&G63 'pos_get', L5)
+  029a [00aa8] fffb0052  pop L5
+  029b [00aac] fffb0058  return L5
+loc_029c:
+  029c [00ab0] faf9fc15  L4 = L7 + L6
+  029d [00ab4] 02fcfc1c  L4 = L4 / 2
+  029e [00ab8] 01020069  push &G258
+  029f [00abc] 00f90069  push &G249
+  02a0 [00ac0] 00020035  push 2
+  02a1 [00ac4] 00c8005b  builtin 0xc8 loc_pdata_get   ; (&G249, &G258)
+  02a2 [00ac8] 0107fd49  L3 = G263
+  02a3 [00acc] fffd0150  push L3 tag 1
+  02a4 [00ad0] 0106fd49  L3 = G262
+  02a5 [00ad4] fffd0150  push L3 tag 1
+  02a6 [00ad8] 0105fd49  L3 = G261
+  02a7 [00adc] fffd0150  push L3 tag 1
+  02a8 [00ae0] 0104fd49  L3 = G260
+  02a9 [00ae4] fffd0150  push L3 tag 1
+  02aa [00ae8] 0103fd49  L3 = G259
+  02ab [00aec] fffd0150  push L3 tag 1
+  02ac [00af0] 0102fd49  L3 = G258
+  02ad [00af4] fffd0150  push L3 tag 1
+  02ae [00af8] fffc0150  push L4 tag 1
+  02af [00afc] 00070035  push 7
+  02b0 [00b00] 00250069  push &G37   ; 'P {} {} {} {} {} {} {}\n'
+  02b1 [00b04] 00100035  push 16
+  02b2 [00b08] 00430067  builtin! 0x43 printf   ; (&G37 'P {} {} {} {} {} {} {}\n', 7, L4:1, L3:1, L3:1, L3:1, L3:1, L3:1, L3:1)
+loc_02b3:
+  02b3 [00b0c] 0000fb33  L5 = 0
+  02b4 [00b10] fffb0058  return L5
+  02b5 [00b14] 00000058  return 0
+func_02b6:
+  02b6 [00b18] fff60054  enter 10   ; frame of 10 words; initialiser sets 36 bytes to zero
+  02b8 [00b20] 0003fb1f  L5 = -A3
+  02b9 [00b24] fffb0050  push L5
+  02ba [00b28] 00010035  push 1
+  02bb [00b2c] 00078256  call syslib:0x7 str_error   ; (L5)
+  02bc [00b30] fffa0052  pop L6
+  02bd [00b34] fffa1350  push L6 tag 19
+  02be [00b38] 00030150  push A3 tag 1
+  02bf [00b3c] 00020035  push 2
+  02c0 [00b40] 002c0069  push &G44   ; 'E {} {}\n'
+  02c1 [00b44] 00060035  push 6
+  02c2 [00b48] 00430067  builtin! 0x43 printf   ; (&G44 'E {} {}\n', 2, A3:1, L6:19)
+  02c3 [00b4c] 007dfa49  L6 = G125
+  02c4 [00b50] 02f6fa3f  ifnot L6 goto 0x02f6
+  02c5 [00b54] 0000fa33  L6 = 0
+  02c6 [00b58] 007dfa4b  G125 = L6
+  02c7 [00b5c] 00000035  push 0
+  02c8 [00b60] 02638145  call 0x0263   ; ()
+  02c9 [00b64] 00000035  push 0
+  02ca [00b68] 00218356  call robotlib:0x21 halt   ; ()
+  02cb [00b6c] fffb0052  pop L5
+  02cc [00b70] fffb0050  push L5
+  02cd [00b74] 00480069  push &G72   ; 'halt'
+  02ce [00b78] 00020035  push 2
+  02cf [00b7c] 026a8145  call 0x026a   ; (&G72 'halt', L5)
+  02d0 [00b80] fffb0052  pop L5
+  02d1 [00b84] 007efa49  L6 = G126
+  02d2 [00b88] 02defa3f  ifnot L6 goto 0x02de
+  02d3 [00b8c] 00000035  push 0
+  02d4 [00b90] 02638145  call 0x0263   ; ()
+  02d5 [00b94] 00000035  push 0
+  02d6 [00b98] 00010035  push 1
+  02d7 [00b9c] 003f8356  call robotlib:0x3f online   ; (0)
+  02d8 [00ba0] fffb0052  pop L5
+  02d9 [00ba4] fffb0050  push L5
+  02da [00ba8] 00570069  push &G87   ; 'online'
+  02db [00bac] 00020035  push 2
+  02dc [00bb0] 026a8145  call 0x026a   ; (&G87 'online', L5)
+  02dd [00bb4] fffb0052  pop L5
+loc_02de:
+  02de [00bb8] 007ffa49  L6 = G127
+  02df [00bbc] 02ecfa3f  ifnot L6 goto 0x02ec
+  02e0 [00bc0] 00000035  push 0
+  02e1 [00bc4] 02638145  call 0x0263   ; ()
+  02e2 [00bc8] 007cfa49  L6 = G124
+  02e3 [00bcc] fffa0050  push L6
+  02e4 [00bd0] 00010035  push 1
+  02e5 [00bd4] 00448356  call robotlib:0x44 speed_set   ; (L6)
+  02e6 [00bd8] fffb0052  pop L5
+  02e7 [00bdc] fffb0050  push L5
+  02e8 [00be0] 005e0069  push &G94   ; 'speed_set'
+  02e9 [00be4] 00020035  push 2
+  02ea [00be8] 026a8145  call 0x026a   ; (&G94 'speed_set', L5)
+  02eb [00bec] fffb0052  pop L5
+loc_02ec:
+  02ec [00bf0] 00000035  push 0
+  02ed [00bf4] 02638145  call 0x0263   ; ()
+  02ee [00bf8] 00000035  push 0
+  02ef [00bfc] 00048356  call robotlib:0x4 ctl_rel   ; ()
+  02f0 [00c00] fffb0052  pop L5
+  02f1 [00c04] fffb0050  push L5
+  02f2 [00c08] 003c0069  push &G60   ; 'ctl_rel'
+  02f3 [00c0c] 00020035  push 2
+  02f4 [00c10] 026a8145  call 0x026a   ; (&G60 'ctl_rel', L5)
+  02f5 [00c14] fffb0052  pop L5
+loc_02f6:
+  02f6 [00c18] 00010035  push 1
+  02f7 [00c1c] 00010035  push 1
+  02f8 [00c20] 00000067  builtin! 0x0 exit   ; (1)
+  02f9 [00c24] 00000057  return
+; data segment
+  G0     string[36] '{}: invalid command line arguments.\n'
+  G10    string[48] 'Usage: {} j|m|l|c axis step count speed1 speed2\n'
+  G23    string[4] 'j'
+  G25    string[4] 'm'
+  G27    string[4] 'l'
+  G29    string[4] 'c'
+  G31    string[20] 'M {} {} {} {} {}\n'
+  G37    string[24] 'P {} {} {} {} {} {} {}\n'
+  G44    string[8] 'E {} {}\n'
+  G47    string[24] 'I {} {} {} {} {} {} {}\n'
+  G54    string[8] 'done\n'
+  G57    string[8] 'ctl_get'
+  G60    string[8] 'ctl_rel'
+  G63    string[8] 'pos_get'
+  G66    string[8] 'joint'
+  G69    string[8] 'motor'
+  G72    string[4] 'halt'
+  G74    string[4] 'move'
+  G76    string[8] 'cpath'
+  G79    string[8] 'finish'
+  G82    string[16] 'robotisfinished'
+  G87    string[8] 'online'
+  G90    string[12] 'speed_get'
+  G94    string[12] 'speed_set'
+  G98    0x00006c82
+  G99    0x00006c82
+  G100   0xffff937e
+  G101   0xffffc934
+  G102   0xffffc9bf
+  G103   0xffffc934
+  G120   0xfffe7960
+  G121   0xfffe7960

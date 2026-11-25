@@ -1,0 +1,359 @@
+log: /home/buzz/dev/crs-a465/sessions/2026-11-25_182109-segtest.log
+    0.00 -> \r
+    0.04 <- \r
+    0.05 <- \n$ 
+    0.96 -> cksum /tmp/segtest\r
+    1.04 <- ck
+    1.10 <- s
+    1.11 <- u
+    1.18 <- m 
+    1.21 <- /
+    1.24 <- t
+    1.25 <- mp
+    1.27 <- /
+    1.31 <- se
+    1.34 <- g
+    1.35 <- t
+    1.38 <- e
+    1.39 <- s
+    1.43 <- t\r\n
+    5.77 <- 0x00
+    5.77 <- 0
+    5.78 <- 4d508 360
+    5.80 <- 0 /tmp/segtest\r\n
+    5.81 <- $
+    5.82 <-  
+/tmp/segtest is on the controller: 3600 bytes, sum 0x4d508, the same as /home/buzz/dev/crs-a465/controller/programs/segtest
+    5.93 -> w2\r
+    5.99 <- w
+    6.00 <- 2\r\n
+    6.49 <- A
+    6.49 <- c
+    6.50 <- tual Position :\r\n
+    6.77 <- \r
+    6.80 <- \n          Axis 1/7   Axis
+    6.80 <-  
+    6.81 <- 2/8     Axis 3    
+    6.84 <-  Axis 4     Axis 5     Axi
+    6.85 <- s 6\r\nPULSES          -2         -1  
+    6.86 <-     -3074  
+    6.87 <-     -1262         +0      -2844\r\n      
+    6.87 <-  
+    6.88 <-          +0         +0\r\n
+    6.89 <- \r\n 
+    6.90 <-          Axis 1/7   Axis 2/8     Axis 
+    6.94 <- 3     Axis 4     Axis 5 
+    6.94 <-  
+    6.95 <-    Axis 6\r\nJOINTS      -0.007     -0.0
+    6.96 <- 04     11.066
+    6.96 <-  
+    6.97 <-      8.996      0.000     20.274\r\n     
+    6.98 <-         0.000      0.000\r
+    6.99 <- \n\r\n          X
+    7.00 <- /TrackX   Y/TrackY          Z      Z-Ro
+    7.01 <- t      Y-Rot      X-
+    7.02 <- Rot\r\nWOR
+    7.03 <- LD      -77.963      0.010   1033
+    7.03 <- .
+    7.04 <- 848    179.993    -78.937   -150.730\r
+    7.04 <- \n
+    7.05 <-              0.000      0.000\r\n$ 
+before: joints -0.007 -0.004 11.066 8.996 0.000 20.274
+JOINT 6 IS ABOUT TO MOVE (6 x 2 degrees). Keep a hand on the E-stop.
+starting: /tmp/segtest c 6 2 6 15 15
+    7.16 -> /tmp/segtest c 6 2 6 15 15\r
+    7.23 <- /
+    7.24 <- t
+    7.30 <- m
+    7.30 <- p
+    7.36 <- /
+    7.37 <- se
+    7.43 <- g
+    7.44 <- t
+    7.50 <- e
+    7.50 <- s
+    7.54 <- t
+    7.54 <-  
+    7.58 <- c
+    7.58 <-  6
+    7.62 <-  
+    7.62 <- 2
+    7.66 <-  
+    7.67 <- 6
+    7.70 <-  
+    7.71 <- 1
+    7.74 <- 5
+    7.74 <-  
+    7.78 <- 1
+    7.79 <- 5\r
+    7.79 <- \n
+  segtest line (other): /tmp/segtest c 6 2 6 15 15
+    8.46 <- I
+    8.47 <-  c 6 2
+    8.47 <-  6 15 15 
+    8.47 <- -280\r\n
+  segtest line (I): I c 6 2 6 15 15 -280
+    8.60 <- M
+    8.60 <-  0 ct
+    8.61 <- l_get 35
+    8.61 <-  140 0\r\n
+    8.68 <- M
+    8.69 <-  1 
+    8.69 <- speed_ge
+    8.70 <- t 1
+    8.73 <- 60 232
+    8.73 <-  0\r\n
+    8.74 <- M 2
+    8.74 <-  speed_s
+    8.77 <- e
+    8.78 <- t 245 30
+    8.78 <- 5 0\r\n
+    8.84 <- M
+    8.85 <-  3 
+    8.85 <- pos_get 
+    8.85 <- 337 
+    8.87 <- 397 0\r
+    8.87 <- \n
+    9.00 <- M
+    9.01 <-  4
+    9.01 <-  online
+    9.01 <-  450 
+    9.03 <- 547 0\r\n
+    9.08 <- P
+    9.08 <-  5
+    9.09 <- 99 -2 -
+    9.09 <- 1 -30
+    9.10 <- 74 -
+    9.11 <- 1262 0 -2
+    9.11 <- 844\r\n
+joint 6 starts at 20.274 degrees; travel limit 25
+   10.22 <- M
+   10.23 <-  5 cpa
+   10.23 <- th 652 1
+   10.23 <- 765 0\r\n
+   10.30 <- M
+   10.30 <-  
+   10.30 <- 6 speed_s
+   10.31 <- et 1785 1
+   10.31 <- 85
+   10.33 <- 7 0\r\n
+   10.41 <- P
+   10.41 <-  
+   10.42 <- 1911 -2
+   10.42 <-  -1 -3074
+   10.42 <-  
+   10.44 <- -1262 0
+   10.44 <-  -3186\r\n
+   10.49 <- M
+   10.49 <-  
+   10.49 <- 7 roboti
+   10.49 <- sfinis
+   10.50 <- h
+   10.50 <- ed 1972 
+   10.50 <- 2045 0\r\n
+   10.61 <- P
+   10.62 <-  21
+   10.62 <- 19 -2 -1
+   10.62 <-  -307
+   10.64 <- 4 -
+   10.64 <- 1262 0 -33
+   10.64 <- 91\r\n
+   10.68 <- M
+   10.69 <-  8 rob
+   10.69 <- otisfini
+   10.70 <- s
+   10.70 <- hed 2172 
+   10.70 <- 2247 0\r\n
+   10.79 <- P
+   10.79 <-  23
+   10.79 <- 18
+   10.80 <-  -
+   10.80 <- 2 -1 -307
+   10.80 <- 4 -1262 0
+   10.81 <-  -3621\r\n
+   10.91 <- P
+   10.92 <-  24
+   10.92 <- 23 -2 -1 
+   10.92 <- -307
+   10.94 <- 4 -12
+   10.95 <- 62 0 -375
+   10.95 <- 2\r\n
+   10.98 <- M
+   10.99 <-  
+   10.99 <- 9 roboti
+   10.99 <- s
+   11.00 <- f
+   11.00 <- inished 
+   11.00 <- 2475 
+   11.00 <- 2550 0\r\n
+   11.11 <- P
+   11.12 <-  2622
+   11.12 <-  -2 -1 -3
+   11.12 <- 074 -1
+   11.14 <- 2
+   11.14 <- 62 0 -3
+   11.14 <- 994\r\n
+   11.18 <- M
+   11.19 <-  10 
+   11.19 <- ro
+   11.20 <- botisf
+   11.20 <- inished 2
+   11.20 <- 675 2750 
+   11.20 <- 0\r\n
+   11.29 <- P
+   11.30 <-  
+   11.30 <- 2819 -2 -
+   11.30 <- 1 -30
+   11.31 <- 74 -1262 
+   11.31 <- 0 -4235\r\n
+   11.40 <- P
+   11.41 <-  29
+   11.41 <- 28 -2 -1 
+   11.41 <- -3074 -1
+   11.41 <- 2
+   11.43 <- 62 
+   11.43 <- 0 -4354\r
+   11.43 <- \n
+   11.49 <- M
+   11.50 <-  1
+   11.50 <- 1 robotis
+   11.50 <- finished
+   11.50 <-  297
+   11.51 <- 7 3052 0\r
+   11.51 <- \n
+   11.61 <- P
+   11.62 <-  312
+   11.62 <- 4 -2 -1 
+   11.62 <- -307
+   11.64 <- 4 
+   11.65 <- -1262 0 -
+   11.65 <- 4515\r\n
+   11.70 <- M
+   11.71 <-  12 
+   11.71 <- robotisfi
+   11.71 <- nishe
+   11.73 <- d 317
+   11.73 <- 7 3252 1\r
+   11.74 <- \n
+   11.80 <- M
+   11.81 <-  13 fi
+   11.81 <- nish 3265
+   11.81 <-  3355 0
+   11.83 <- \r\n
+   11.90 <- P
+   11.91 <-  3
+   11.91 <- 402 -2 
+   11.91 <- -1 -
+   11.93 <- 307
+   11.94 <- 4 -1262 0
+   11.94 <-  -4535\r\n
+   12.00 <- M
+   12.01 <-  1
+   12.01 <- 4 online 
+   12.01 <- 34
+   12.03 <- 60 3
+   12.03 <- 545 0\r\n
+   12.10 <- M
+   12.10 <-  15 s
+   12.11 <- peed_set 
+   12.11 <- 3
+   12.13 <- 5
+   12.13 <- 60 36
+   12.14 <- 35 0\r\nM 
+   12.14 <- 16 ctl_re
+   12.14 <- l 3647 36
+   12.14 <- 70 0\r\n
+   12.16 <- done
+   12.17 <- \r\n
+  segtest line (done): done
+   12.18 <- $
+   12.19 <-  
+   12.29 -> w2\r
+   12.36 <- w2
+   12.41 <- \r\n
+   12.88 <- Ac
+   12.88 <- t
+   12.89 <- ual Position 
+   12.92 <- :\r\n
+   13.16 <- \r
+   13.18 <- \n
+   13.19 <-           Axis 1/7   Axis 2/8     Axis 
+   13.20 <- 3     Axis 4   
+   13.23 <-   Axis 5     Axis 6\r\nPULSES      
+   13.23 <-  
+   13.24 <-    -2         -1      
+   13.25 <- -307
+   13.26 <- 4      -1262         +0      -4523\r\n   
+   13.26 <-  
+   13.27 <-             +0         +0\r\n
+   13.28 <- \r\n          
+   13.29 <- Axis 1/7   Axis 2/8     Axis 3    
+   13.32 <-  Ax
+   13.32 <- i
+   13.33 <- s 4     Axis 5     Axis 6\r\nJOINTS      
+   13.33 <- -
+   13.34 <- 0.007    
+   13.34 <-  
+   13.35 <- -0.004     11.066      8.996      0.00
+   13.35 <- 0
+   13.36 <-      32.243\r\n      
+   13.37 <-        0.00
+   13.38 <- 0      0.000\r\n\r\n          X/TrackX   Y
+   13.38 <- /
+   13.39 <- TrackY          Z      Z-Rot 
+   13.40 <-      Y-Rot      X-
+   13.41 <- Rot\r\nWORLD      -77.963      0.0
+   13.41 <- 1
+   13.42 <- 0   1033.848    179.993    -78.937 
+   13.43 <-   -138.760\r\n             0.000      0.0
+   13.44 <- 00\r\n$ 
+after:  joints -0.007 -0.004 11.066 8.996 0.000 32.243
+joint 6 moved +11.969 degrees by `w2`
+
+SUMMARY
+largest movement of the other joints during the run (degrees from their first P line): joint 1 0.000, joint 2 0.000, joint 3 0.000, joint 4 0.000, joint 5 0.000
+library calls (controller ms since the program started):
+    index  call              at ms   returned   blocked ms   result
+        0  ctl_get               35        140          105        0
+        1  speed_get            160        232           72        0
+        2  speed_set            245        305           60        0
+        3  pos_get              337        397           60        0
+        4  online               450        547           97        0
+        5  cpath                652       1765         1113        0
+        6  speed_set           1785       1857           72        0
+        7  robotisfinished     1972       2045           73        0
+        8  robotisfinished     2172       2247           75        0
+        9  robotisfinished     2475       2550           75        0
+       10  robotisfinished     2675       2750           75        0
+       11  robotisfinished     2977       3052           75        0
+       12  robotisfinished     3177       3252           75        1
+       13  finish              3265       3355           90        0
+       14  online              3460       3545           85        0
+       15  speed_set           3560       3635           75        0
+       16  ctl_rel             3647       3670           23        0
+joint 6 from the P lines (degrees from the first sample, 20.274):
+        ms     degrees      deg/s since previous
+       599      +0.000              -
+      1911      +2.438          +1.86
+      2119      +3.899          +7.03
+      2318      +5.539          +8.24
+      2423      +6.473          +8.89
+      2622      +8.198          +8.67
+      2819      +9.916          +8.72
+      2928     +10.764          +7.78
+      3124     +11.912          +5.86
+      3402     +12.054          +0.51
+(1) the joins (start + k x +2.000 degrees); a stop is a speed through it below 20% of the speed before:
+    join 1 (+2.000 degrees): too few samples at 1675 ms
+    join 2 (+4.000 degrees) at 2131 ms: 7.03 deg/s through it, 1.86 deg/s before (378%): blended
+    join 3 (+6.000 degrees) at 2370 ms: 8.24 deg/s through it, 7.03 deg/s before (117%): blended
+    join 4 (+8.000 degrees) at 2599 ms: 8.67 deg/s through it, 8.89 deg/s before (97%): blended
+    join 5 (+10.000 degrees) at 2830 ms: 5.86 deg/s through it, 8.89 deg/s before (66%): blended
+    answer (1): 0 of 5 joins stopped, 4 blended, the rest could not be judged
+(2) mean speeds:
+    the first 3 steps of the path (at 15%): 3.41 deg/s (621 to 2370 ms)
+    the rest of the path (speed_set(15) was called after cpath returned): 7.03 deg/s (2370 to 3218 ms)
+    answer (2): the second speed is 2.06 x the first; the speed settings were 15 / 15 = 1.00
+move calls blocked: 1113 ms
+E lines: none
+`done` seen: yes; prompt back: yes; Ctrl-Z sent: no; Ctrl-E sent: no

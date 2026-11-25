@@ -1,0 +1,14 @@
+
+$ cp /dev/console /tmp/p1
+
+[226 killed by SIGINT.]
+$ hellowor
+shell: hellowor: not found
+$ ls -l /tmp/p1
+-----w-  1       0 Apr 22 18:46 p1 
+$ cksum /tmp/p1
+cksum: access denied
+$ cp /tmp/p1 /dev/console
+cp: /tmp/p1: access denied
+$ rm /tmp/p1
+$ 

@@ -23,7 +23,7 @@ def test_both_records_are_read():
 
 def test_home_points_come_out_near_the_manuals_switch_positions():
     degrees = calfile.parse(ROBOT_CAL).home_degrees()
-    assert degrees == pytest.approx((169.72, 2.43, -60.41, 173.90, 22.36, -179.16), abs=0.01)
+    assert degrees == pytest.approx((169.72, 2.43, -60.12, 173.90, 22.36, -179.16), abs=0.01)
     manual = (175, 10, -60, 180, 25, 180)                       # Table 14 of the A465 guide
     for got, want in zip(degrees, manual):
         assert abs(abs(got) - abs(want)) < 8                  # signs follow the controller, not the manual
@@ -47,5 +47,5 @@ def test_anything_else_is_refused_with_the_reason(bad, why):
 
 def test_the_description_names_every_joint():
     lines = calfile.describe(calfile.parse(ROBOT_CAL))
-    assert len(lines) == 9 and "J3 elbow" in lines[4] and "-60.41" in lines[4]
+    assert len(lines) == 9 and "J3 elbow" in lines[4] and "-60.12" in lines[4]
     assert "not calibrated" in lines[-1]

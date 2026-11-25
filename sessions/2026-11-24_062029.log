@@ -1,0 +1,11 @@
+# ask.py start=2026-11-24T06:20:29-05:00 38400 8N1
+ls -l /conf
+----rwx  1     509 Dec 13 02:20 rc 
+----rwx  1     441 Dec 13 02:20 rc.sim 
+----rwx  1     441 Dec 13 02:20 rc.simsockd 
+----rwx  1      72 Dec 13 02:20 robot.cal 
+----rwx  1      72 Apr 22 08:21 robot.cal.bak 
+----rw-  1     412 Apr 21 05:51 robot.cfg 
+----rwx  1       8 Dec 13 02:21 servogrp.cal 
+----rwx  1     127 Dec 13 02:21 simsockd.cfg 
+$ 

@@ -1,0 +1,38 @@
+# ask.py start=2026-11-24T07:26:41-05:00 38400 8N1
+ls -l /tmp
+----rwx  1       5 Apr 22 19:39 t 
+$ more /tmp/t
+hello
+$ siocfg -c 1
+/dev/sio1 is configured with the following parameters:
+Baud Rate:   38400
+Data Length: 8
+Parity:      0
+Stop Bits:   1
+OutxCtsFlow: 0
+OutxDsrFlow: 0
+DtrControl:  0
+DsrSense:    0
+OutX:        0
+InX:         0
+RtsControl:  0
+$ siocfg -c 0
+/dev/sio0 is configured with the following parameters:
+Baud Rate:   19200
+Data Length: 8
+Parity:      0
+Stop Bits:   1
+OutxCtsFlow: 0
+OutxDsrFlow: 0
+DtrControl:  0
+DsrSense:    0
+OutX:        0
+InX:         0
+RtsControl:  0
+$ mem
+102848 bytes free.
+23% fragmentation.
+$ more /log/acid.log
+Fri Apr 22 07:47:43 2022: fastacid $Revision: 3 $ is open for business (quiet)
+Fri Apr 22 07:52:43 2022: caught SIGHUP
+$ 

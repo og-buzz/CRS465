@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Put a file onto the controller through the serial console, the way Robcomm3 did: fastacid's packets.
+
+    scripts/a465-putfile --dry-run hello.txt /tmp/t       # print the packets, touch nothing
+    scripts/a465-putfile hello.txt /tmp/t
+    scripts/a465-putfile --replace robot.cal /conf/robot.cal
+
+Run it from the `$` system prompt with nothing else using the port (stop scripts/a465-padjog first).
+It prints every packet it sends and every byte the controller answers, and stops at the first answer
+that is not ACK. Before sending, it asks the controller's `mem` whether fastacid will find enough free
+memory, and its `cksum` whether the remote file exists, and refuses to replace one unless --replace is given: fastacid empties an existing file as soon as
+it accepts the name, so a transfer that then fails leaves it empty or deleted. Copy a file you care
+about off first (scripts/a465-getfile), or send to a new name and `cp` it into place once it checks.
+Afterwards it checks the copy with `cksum` (size and byte sum), as scripts/a465-getfile does.
+
+The protocol, and what is and is not known about it, is in a465/aci.py. Not yet tried on the
+controller as of 2026-11-24: try a small text file first.
+"""
+import argparse
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+from a465 import aci      # noqa: E402
+
+AFTER_SILENCE = """The controller did not answer. Send nothing more for now. Open a terminal (scripts/a465-term) and
+press Enter: if the prompt comes back, read /log/acid.log there (more /log/acid.log). If nothing comes
+back, fastacid is holding the line's output; power-cycle the controller before trying again."""
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("local", help="file on this computer")
+    ap.add_argument("remote", help="absolute path on the controller, e.g. /tmp/t")
+    ap.add_argument("--port", default=os.environ.get("A465_PORT", "/dev/ttyUSB0"))
+    ap.add_argument("--baud", type=int, default=38400)
+    ap.add_argument("--chunk", type=int, default=aci.CHUNK, help=f"data bytes per packet (default {aci.CHUNK}, at most {aci.MAX_DATA})")
+    ap.add_argument("--retries", type=int, default=0, help="send a packet again this many times after a NAK (default 0: stop)")
+    ap.add_argument("--replace", action="store_true", help="allow replacing a file that is already there")
+    ap.add_argument("--no-shell", action="store_true", help="skip the `$` prompt check and the cksum checks before and after")
+    ap.add_argument("--dry-run", action="store_true", help="only print the packets that would be sent")
+    args = ap.parse_args()
+
+    with open(args.local, "rb") as source:
+        data = source.read()
+    if any(ch.isspace() or not 33 <= ord(ch) < 127 for ch in args.remote):
+        sys.exit("the remote path must be printable ASCII without spaces")
+    try:
+        packets = aci.plan(data, args.remote, args.chunk)
+    except ValueError as err:
+        sys.exit(f"cannot send this: {err}")
+    print(f"{args.local}: {len(data)} bytes, byte sum {sum(data):#x} -> {args.remote}: {len(packets)} packets of at most {args.chunk} data bytes")
+    risky, framing = aci.risky_bytes(data), sum(aci.risky_bytes(p) for _, p in packets) - aci.risky_bytes(data)
+    if risky or framing:
+        print(f"note: the packets hold {risky + framing} XON/XOFF bytes (0x11, 0x13), {risky} of them in the file itself"
+              f"{' (another --chunk moves the rest)' if framing else ''}.\nThey arrive only if the console port has"
+              " software flow control off: `siocfg -c 1` on the controller\n(it only prints) should show OutX: 0 and InX: 0.")
+    if args.dry_run:
+        for label, packet in packets:
+            print(f"BEL SYN, wait for RS, then {label}: {aci.describe(packet)}\n    {aci.hexs(packet)}\n    expect ACK (06)")
+        return
+
+    import serial
+    with serial.Serial(args.port, args.baud, timeout=0, exclusive=True) as ser:
+        link = aci.Link(ser)
+        if not args.no_shell:
+            if not aci.at_system_prompt(link):
+                sys.exit("the controller is not at its `$` system prompt")
+            free, need = aci.free_bytes(link), aci.memory_needed(len(packets) - 2)
+            if free is None:
+                print("note: `mem` gave no free-memory figure; fastacid refuses the file if it has less than"
+                      f" {need} bytes free")
+            elif free < need:
+                sys.exit(f"the controller has {free} bytes free; fastacid refuses a file in {len(packets) - 2} packets"
+                         f" unless {need} are (a bigger --chunk needs fewer)")
+            there = aci.remote_cksum(link, args.remote)
+            if there and not args.replace:
+                sys.exit(f"{args.remote} is already there ({there[1]} bytes, sum {there[0]:#x}); use --replace to overwrite it")
+            if there:
+                print(f"replacing {args.remote}: it is now {there[1]} bytes, sum {there[0]:#x}")
+        try:
+            aci.send_file(link, args.local, args.remote, chunk=args.chunk, retries=args.retries)
+        except aci.TransferError as err:
+            print(f"STOPPED: {err}")
+            if err.silent:
+                print(AFTER_SILENCE)
+            else:
+                print("fastacid's reason is in /log/acid.log on the controller (more /log/acid.log).")
+            sys.exit(1)
+        except KeyboardInterrupt:
+            sys.exit("interrupted: the controller may be holding a partial file open; check it before sending again")
+        if args.no_shell:
+            return
+        there = aci.remote_cksum(link, args.remote)
+        want = (sum(data) & 0xFFFFFFFF, len(data))
+        if there != want:
+            sys.exit(f"CHECK FAILED: the controller's cksum gives {there}, the file here is sum {want[0]:#x}, {want[1]} bytes")
+        print(f"{args.remote}: {len(data)} bytes, sum {want[0]:#x}, verified by the controller's cksum")
+
+
+if __name__ == "__main__":
+    main()

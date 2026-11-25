@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""Home the arm joint by joint on the encoder index pulse. See `scripts/a465-home --help` and a465/home.py.
+
+    scripts/a465-home --plan        # no motion
+    scripts/a465-home [N ...]       # default order 2 4 5 3 1 6
+"""
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+from a465 import home      # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(home.main(repo=REPO))

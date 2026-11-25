@@ -1,0 +1,8 @@
+speed
+Current Speed: 10% of max.
+$ speed 10
+
+Press the PAUSE/CONTINUE button to gain robot point of control.
+
+[271 killed by SIGINT.]
+$ 

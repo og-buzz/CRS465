@@ -1,0 +1,16 @@
+/tmp/claude-1000/-home-buzz-dev/1aa7efb4-83d6-4b44-8584-24aebe5b3c9c/scratchpad/hello.txt: 5 bytes, byte sum 0x214 -> /tmp/t: 3 packets of at most 256 data bytes
+/tmp/claude-1000/-home-buzz-dev/1aa7efb4-83d6-4b44-8584-24aebe5b3c9c/scratchpad/hello.txt: 5 bytes, byte sum 0x214; 3 packets to /tmp/t
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> 01 01 00 00 04 00 01 00 00 00 00 00 07 00 00 00   start: command 4 (receive a file, 1 data packets to follow the name; logged value 0)
+<- 06   ACK
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> 01 02 00 00 00 00 00 03 06 00 fa ff 2f 74 6d 70 2f 74 00 00 28 04 00 00   name: data packet 0: 6 bytes
+<- 06   ACK
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> 01 02 00 00 01 00 00 04 05 00 fb ff 68 65 6c 6c 6f 00 00 00 1b 04 00 00   data 1: data packet 1 (last): 5 bytes
+<- 06   ACK
+done: 5 bytes in 1 data packets; fastacid has closed /tmp/t
+/tmp/t: 5 bytes, sum 0x214, verified by the controller's cksum

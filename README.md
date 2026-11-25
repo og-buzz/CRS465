@@ -10,7 +10,8 @@ carousel), worked from a Linux dev box.
   The mock uses the real arm's dimensions, joint ranges, speeds and accelerations.
 - **The real controller answers over serial (since 2026-11-23): 38400 baud, 8N1,**
   `/dev/ttyUSB0`. Reading its state works, and so does joint jogging with a proven stop.
-  It is not homed: its home search runs the waist into its end stop. See
+  The built-in home search runs the waist into its end stop; homing on the encoder index pulse
+  works (all six joints, 2026-11-24). See [Homing that works](#homing-that-works) and
   [The real controller: what has been measured](#the-real-controller-what-has-been-measured).
 - Manuals gathered and searchable (see [docs/SOURCES.md](docs/SOURCES.md)).
 
@@ -327,36 +328,144 @@ PL2303, `/dev/ttyUSB0`). Raw logs of every exchange are in `sessions/`.
 | System shell | Every command is a program loaded from flash, about 1.2 s each. `joint 1 40 &` runs a move in the background. |
 | Status words | `axst` prints one word per axis (stop it with Ctrl-E). The bits are those of RAPL-3 `axis_status`: bit 0 home switch, bit 3 limp, bit 11 homed, bit 12 calibrated, bit 15 done. Running it in the background makes every other command about 1.5 s slower. |
 | Control of the arm | Only one program has it. If the program holding it ends badly (for example the shell is left while the controller is still resetting after a stop), the next one is refused until someone presses **Pause/Continue** on the front panel. |
+| Serial ports | The console is `/dev/sio1` (38400, software flow control off: `siocfg -c 1` prints the settings and changes nothing when given no other option). `/dev/sio0` is a second serial port set to 19200; its connector on the chassis has not been identified. |
 | Shell quirks | No `type`; `more` pages with "Hit <space> or <q>" and drops unprintable bytes; `exit` in `ash` asks for `yes`; long listings take over 3 s. |
 
-**Homing does not work yet.** A home from the pendant drives the waist positive at about
+### Homing that works
+
+Measured on the real arm on 2026-11-24, with the owner at the cell. All six joints were homed with
+the index step alone (the `homezc` program, below), one at a time, and each was then returned to
+zero. The owner checked the marks and said "looks spot on". Joint 6, whose mark the owner calls
+spot on, came in at an offset of 251 against an ideal of 250.
+
+**What the built-in `home` does.** Two steps per joint. The first prints "Seeking axis N": a move
+that stops when status bit 0 changes. The library's table of seek distances for this arm is +100000,
++50000, +75000, -50000, +30000 and +2000000 counts (joints 1 to 6). The second step is the index
+step. On this arm bit 0 reads 1 on all six joints at every position tried, so the seek step runs
+its whole distance into the hard stops. Whether the seek step runs at all is decided by the product
+code the robot server reads from the hardware at start-up, not by any file. The owner's position is
+that this arm has no home switches; the code and the measurements are described here without arguing
+that point.
+
+**The index step alone** is the library call 0x4a (`homezc`), robot server message 29 with mode 1.
+It moves the joint in the + counts direction to the NEXT encoder index pulse and sets the joint's
+counter to that joint's home point from record 1 of `/conf/robot.cal`. It writes no file. On success
+the controller prints `Homing axis N...Ok.`; the offset-printing version of the program then prints
+`zero-cross offset: K`, where K is the number of encoder counts the joint travelled to reach the
+index pulse. (`a465/crosprog.py` `homezc_offset_program` makes that version from the plain
+re-stamped program; it is the 10-word, 22-byte in-place patch first made by hand that day.)
+
+Because it takes the NEXT index pulse, the joint has to be parked half a motor turn (in counts)
+before its home point first. Facts per joint:
+
+| Joint | Home point (counts) | Counts per degree (signed) | Counts per motor turn | Parking point = home - half a turn (counts) | Offset measured 2026-11-24 |
+|---|---|---|---|---|---|
+| 1 | 47145 | +277.78 | 1000 | 46645 | 381 |
+| 2 | 676 | +277.78 | 1000 | 176 | 502 |
+| 3 | 16701 | -277.78 | 1000 | 16201 | 258 |
+| 4 | -24395 | -140.28 | 500 | -24645 | 132 |
+| 5 | -3106 | -138.89 | 500 | -3356 | 437 |
+| 6 | 25133 | -140.28 | 500 | 24883 | 251 |
+
+Degrees = counts / counts per degree, so joint 6's home point is -179.16 degrees and joint 3's is
+-60.12. The ideal offset is half a turn (500 or 250); the difference from the ideal is how far the
+joint's reading was from the truth before homing (derived from what the offset is, not measured
+separately). After the index step the joint coasts 12 to 25 counts past the home point.
+
+Counts per motor turn are 1000 on joints 1 to 3 and 500 on joints 4 to 6 (measured: a second index
+step on joint 6 started 18 counts past an index and reported 482).
+
+**Procedure.** The precondition is that each joint's present reading is already within less than
+half a motor turn (1.8 degrees) of the truth: the arm was put on its zero marks and zeroed
+(`scripts/a465-xzero N` runs `/diag/xzero N`), or it is already homed. Nothing can check this; the
+offsets tell afterwards.
+
+```sh
+scripts/a465-home --plan     # no motion: checks /conf/robot.cal against the local copy, reads w2, prints the moves
+scripts/a465-home            # joints 2 4 5 3 1 6, each returned to zero before the next starts
+scripts/a465-home 6 --stay   # one joint, left where the index step put it
+```
+
+Done by hand it is, per joint: `scripts/a465-joint N <degrees>` to the parking point (the controller's
+`joint <n> <degrees>` program, relative move), then `scripts/a465-homezc N --remote /tmp/homezo
+--local sessions/controller-files/patched/homezc-offset`, then `scripts/a465-joint N <degrees>` back
+to 0.000. `scripts/a465-home` does exactly that and stops everything if the joint is not within 40
+counts of the parking point, if the homing program does not print `Ok.` and an offset, or if a
+button request shows up at a motion step. An offset within a quarter turn of the ideal is
+"centred"; otherwise it is "near the edge": the starting reading was off by (offset - ideal) counts
+and the neighbouring index is one motor turn (3.6 degrees) away, so that joint should be checked by
+eye. Exit codes: 0 all centred, 3 all ran but one or more near the edge, 1 a failure, 2 nothing started.
+
+**Joint 5.** Its offset was 437 against an ideal of 250, near the edge: its hand-set zero was either
+1.3 degrees off (the right index) or 2.3 degrees off the other way (one index out). The owner's look
+at the arm afterwards found nothing wrong.
+
+**The calibration file was not changed.** `/conf/robot.cal` is intact: `cksum` printed
+`0x00000e00 72 /conf/robot.cal` before and after. Record 1 holds the home points. `calzc N` (mode 0)
+overwrites joint N's home point in `/conf/robot.cal` immediately when it succeeds; `/tmp/calzc` is on
+the controller and must not be run unless the owner decides to recalibrate. `homezc` writes no file.
+
+**Other programs at the `$` prompt.** `/diag/xzero N` zeros one joint's counter (no motion);
+`joint <n> <deg>`, `motor`, `ready`, `speed` and `w2` exist as programs. `w2` prints a PULSES row
+(counts), a second line for axes 7 and 8, then a JOINTS row in degrees. `robotsrv` and `robotlib.r`
+are RAPL-3 bytecode; `python3 -m a465.r3dis` lists them.
+
+**Not yet known:** whether the readings survive a controller power cycle well enough to re-home
+without putting the arm on its marks first (the counters restart at zero wherever the arm is), and
+whether `/tmp` on the controller survives a power cycle.
+
+**Homing by the built-in `home` does not work.** A home from the pendant drives the waist positive at about
 11 degrees a second until it stalls on its end stop, and the controller reports "Runaway error on
 axis 1" and drops arm power.
 
-**Why it does not home: the home switch signals never reach the controller.** The owner homed
-this arm with the built-in `home` (pendant and terminal) until about 2024. That routine drives each
-joint towards a stored home point, waits for the joint's home switch, then takes the next encoder
-index pulse. Measured on 2026-11-23:
+**The owner's position, which the project now works on: this arm has no home switches. Homing is
+by encoder index pulse.** No home-switch signal has ever been seen on any joint at any position
+(bit 0 of the status word reads 1 on all six joints at every position tried, including slow sweeps
+across the stored points of the waist, shoulder and wrist pitch). The built-in `home` and
+`/diag/calseek` wait for that switch, so on this arm they run past the stored points into the hard
+stops (measured 2026-11-23: a home from the pendant, waist towards +170, "Runaway error on axis 1";
+`/diag/calseek 6`, tool roll towards -179, "Collision error on axis 6"). The calibration file is
+intact, though: copied byte for byte and decoded, it holds a home point and a second number for all
+six joints (see [docs/CONTROLLER.md](docs/CONTROLLER.md)). Nothing was erased, and it has not been
+written since a bulk load on a Dec 13 of an unrecorded year (see [docs/TIMELINE.md](docs/TIMELINE.md)).
 
-- The calibration file is intact. Copied byte for byte and decoded, it holds a home point and a
-  switch-to-index offset for all six joints, within a few degrees of the switch positions the
-  manual gives (see [docs/CONTROLLER.md](docs/CONTROLLER.md)). Nothing was erased, and it has not
-  been written since a bulk load on a Dec 13 of an unrecorded year
-  (see [docs/TIMELINE.md](docs/TIMELINE.md)).
-- Both attempts headed for those stored points and ran past them into the hard stops: a home
-  from the pendant (waist towards +170, "Runaway error on axis 1") and `/diag/calseek 6` (tool
-  roll towards -179, "Collision error on axis 6").
-- Bit 0 of the status word (home switch) reads 1 on all six joints at every position tried,
-  including slow sweeps across the stored points of the waist, shoulder and wrist pitch.
+**The old cell configuration does not matter for homing.** `/diag/setup` was run again on
+2026-11-24 with the old cell's answers (2 extra axes, track, servo gripper) but cut off by our
+script before it saved. The settings were applied live (the controller listed 8 axes), and
+`/conf/robot.cfg` was not rewritten. The six joints' status words did not change at all (8c07;
+axes 7 and 8 read 8808), so that configuration has nothing to do with homing and the idea of
+restoring it was dropped. `setup` applies settings as it goes and saves only at the end; killing
+it leaves the robot's point of control held, so the next program that takes control asks for
+PAUSE/CONTINUE. The live 8-axis state lasts until power-off.
 
-Six signals absent together points at something they share (the sensors' supply or their common
-return), not at six wires. Not yet checked. The manual puts the six home lines in the motor power
-cable (round 24-pin connector, pins 18, 19, 20, 22, 23, 24, 12 V) and says each arm cable has a
-braided ground strap that must be connected; this unit's arm cables are hand-made harnesses and
-the controller's ground posts were bare in the owner's photos. The owner's own view is that the
-arm has no home switches and that a `cal` or `zero` command erased a stored reference; the
-decoded file does not support the second part, and the first is not something that can be seen
-from the console.
+**Homing on the index pulse: `homezc`.** The vendor reference describes `homezc(int axis, var int
+offset)` as "Homes the axis specified, and returns the offset in pulses" (its example prints 519)
+and `calzc(int axis, var int offset)` as "Calibrates at the next zero pulse of the encoder". The six
+numbers in the second record of `/conf/robot.cal` (700, 422, 530, 411, 500, 455) are of that size;
+that they are these offsets is likely but not proven. The controller's own help says `/diag/cal`
+"will overwrite the existing calibration file (/conf/robot.cal)" and that `/diag/zero` and
+`/diag/xzero` are "used in preparation for calibrating the robot".
+
+The library on this controller has `homezc` (call 0x4a) and `calzc` (0x49) but no program that
+calls them. `/bin/home` and `/diag/cal` are the same 732-byte program apart from the routine they
+call. The 2001 firmware's `home`, re-stamped with this controller's library stamps and build time
+(file format: the docstring of `a465/crosprog.py`), is byte-identical to this controller's `home`.
+Its `homezc` and `calzc`, re-stamped the same way, were uploaded to `/tmp/homezc` and `/tmp/calzc`
+and read back identical. `homezc` has been run since (see Homing that works); `calzc` has not and must not be. This firmware refuses gzip-compressed programs
+("not an executable"): `/app/test/fib` and `sieve` on the controller are gzip files of 2001 builds
+and do not run.
+
+**File upload works.** `/sbin/fastacid` sits between the serial line and the shell (it opens
+`/dev/console` and the pipes `/dev/cin` and `/dev/cout`) and carries the vendor's file-transfer
+protocol; the protocol is in the docstring of `a465/aci.py`. First live transfers, 2026-11-24: a
+5-byte text file and the two 640-byte programs, each acknowledged packet by packet and verified with
+the controller's `cksum`; the programs were also read back byte for byte. Typing a file in with
+`cp /dev/console <file>` does not work: fastacid takes about three quarters of the typed bytes and
+`cp` writes nothing when it is stopped.
+
+**Answered by the runs of 2026-11-24:** the robot server does act on `homezc`, and the joint moves in
+the + counts direction to the next index pulse (see Homing that works). `scripts/a465-homezc` is the
+supervised single-joint run; `scripts/a465-home` does all six.
 
 **`/diag/zero` makes the controller treat the arm as homed.** Measured 2026-11-23: before it,
 `arm_status` said "Robot is not homed" and every status word was 8407; after `/diag/zero` at the
@@ -370,7 +479,7 @@ open. It lasts until the controller is power-cycled, and it is only as accurate 
 It also explains the owner's account of the fault. A `zero` run with the arm anywhere else makes
 the controller believe it is homed with the wrong angles: the pendant shows HOMED, limits and
 moves are wrong, and nothing is written to any file. A power cycle clears it. That is not lasting
-damage. What still does not work is the automatic search above.
+damage. What does not work is the built-in search (the seek step); the index step does.
 
 The firmware's text names two variants, A465 and A465B; this unit runs as A465B. Earlier notes
 here read that as a mismatch. With the history above it is just this arm's name in the firmware.
@@ -382,6 +491,14 @@ scripts/a465-record                  # log position and status while someone els
 scripts/a465-padjog                  # jog the REAL arm with the PlayStation controller, one joint at a time
 scripts/a465-getfile /conf/robot.cal # copy files off the controller byte for byte, checked against its checksum
 scripts/a465-calinfo                 # print what the calibration file says
+scripts/a465-putfile local /tmp/x    # put a file on the controller (fastacid's packets), checked with the controller's cksum
+scripts/a465-homezc --check          # no motion: is /tmp/homezc there, and does the controller load it?
+scripts/a465-homezc 6                # supervised run: index-home joint 6 (stand at the E-stop)
+scripts/a465-home --plan             # no motion: what a six-joint homing would do
+scripts/a465-home                    # home joints 2 4 5 3 1 6 and return each to zero (see Homing that works)
+scripts/a465-joint 6 -10             # move one joint by degrees with the controller's `joint` program
+scripts/a465-xzero 6                 # zero one joint's counter (/diag/xzero), no motion
+python3 -m a465.r3dis --data --syslib <library> <program>   # disassemble one of the controller's compiled programs
 ```
 
 `a465-padjog` uses `a465/crs.py`. A jog is a relative move of about a second and a half of travel,
@@ -469,6 +586,10 @@ controller does have an on-board editor (UMI-R3-166).
 | `scripts/a465-padjog` | Jog the real arm with the PS4 controller |
 | `scripts/a465-getfile` | Copy files off the controller, verified |
 | `scripts/a465-calinfo`, `a465/calfile.py` | Read the calibration file |
+| `scripts/a465-putfile`, `a465/aci.py` | Put a file on the controller (fastacid's file-transfer protocol) |
+| `scripts/a465-homezc`, `a465/homezc.py`, `a465/console.py` | Supervised run of the index-pulse homing program; reading status words and joint angles from the `$` shell |
+| `scripts/a465-home`, `scripts/a465-joint`, `scripts/a465-xzero`, `a465/home.py` | Six-joint index homing; single-joint move; zero one counter |
+| `a465/crosprog.py`, `a465/r3dis.py` | The controller's compiled-program file format; a disassembler for them |
 | `controller/` | Verified copies of the controller's own files (calibration, configuration, taught locations) |
 | `docs/CONTROLLER.md`, `docs/TIMELINE.md` | File copy, the calibration file's format, and a dated record of what changed on the controller |
 | `scripts/serial-probe` | Identify adapter wires; find the baud rate |

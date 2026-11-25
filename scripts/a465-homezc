@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""A supervised first run of `homezc`, the index-pulse ("zero-cross") homing program, on the real controller.
+
+    scripts/a465-homezc --check                          # no motion: is the program there, and does the controller load it?
+    scripts/a465-homezc 6                                # index-home joint 6 (speed 5, time limit 8 s)
+    scripts/a465-homezc 6 --speed 5 --time-limit 8
+
+Stand at the E-stop for a run on an axis. Joints 1 to 6 only; 7 and 8 are refused before the port is opened.
+
+What it does, in order: stops scripts/a465-padjog if it is running; opens the port exclusively and checks for
+the `$` prompt; logs everything in both directions to sessions/<time>-homezc.log; makes sure /tmp/homezc on the
+controller equals sessions/controller-files/patched/homezc by `cksum` (size and byte sum), uploading it with
+a465/aci.py if not. Then:
+
+  --check   runs the program with no argument. It must print "invalid command line arguments." and a usage
+            line and exit; that shows the controller loads and runs it. No axis is ever sent.
+  <axis>    reads the joint angles (`w2`) and the status words (`axst`), sets `speed`, announces the move and
+            runs `/tmp/homezc <axis>` in the foreground. If the program asks for the PAUSE/CONTINUE button it
+            says so in capitals and waits up to 180 s; the time limit starts once that is over (or from the
+            command, if the request never appears). If the prompt is not back within the limit it sends Ctrl-Z
+            once, says HALTED, waits out the reset and, if there is still no prompt, sends Ctrl-E. Ctrl-C from
+            you sends Ctrl-Z. However it ends, it reads the angles and status words again and prints a summary:
+            degrees moved, status bits 5, 6, 11 and 8/9/10 before and after, the program's own output, how
+            long it ran, whether it was halted.
+
+Exit code 0 only if the program returned by itself without printing anything but the button request
+(the plain `homezc` prints only "Homing axis N...Ok."; the offset-printing copy adds "zero-cross offset: K").
+Measured 2026-11-24: it moves in the + counts direction to the next index pulse, less than one motor turn.
+"""
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+from a465 import homezc      # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(homezc.main(repo=REPO))

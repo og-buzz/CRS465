@@ -23,7 +23,7 @@ from dataclasses import dataclass
 
 RECORD_BYTES = 36
 HOME_POINTS, SWITCH_OFFSETS = 2, 4
-COUNTS_PER_DEGREE = (277.78, 277.78, -276.48, -140.28, -138.89, -140.28)
+COUNTS_PER_DEGREE = (277.78, 277.78, -277.78, -140.28, -138.89, -140.28)   # elbow from two `w2` readings on 2026-11-24 (24461 counts = -88.053 deg)
 
 
 class CalFileError(ValueError):

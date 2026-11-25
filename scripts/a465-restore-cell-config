@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Run the controller's own `/diag/setup` and answer it the way the old lab cell was set up.
+"""THIS PLAN WAS DROPPED on 2026-11-24: the configuration was shown to have nothing to do with homing.
+
+Run the controller's own `/diag/setup` and answer it the way the old lab cell was set up.
 
 The owner ran `setup` to take the track and the servo gripper out of the configuration, and the
 arm has not homed since. This puts those answers back: two extra axes, on a track, servo gripper.
@@ -27,8 +29,12 @@ CELL = [("English (0) or Metric (1)", "1"), ("additional axes", "2"), ("mounted 
 BARE = [("English (0) or Metric (1)", "1"), ("additional axes", "0"), ("mounted on a track", "0"), ("servo gripper", "0")]
 
 
-def grab(ser, log, quiet=1.5, limit=30.0):
-    """What the controller prints until it has been quiet for `quiet` seconds."""
+def grab(ser, log, quiet=1.5, limit=30.0, until=None):
+    """What the controller prints until it has been quiet for `quiet` seconds.
+
+    With `until` (a list of texts), quiet alone does not end the wait: one of the texts, or the `$`
+    prompt, has to have arrived. `setup` goes silent for a while when it applies and saves its answers.
+    """
     got, last, start = b"", time.monotonic(), time.monotonic()
     while time.monotonic() - start < limit:
         chunk = ser.read(4096)
@@ -38,7 +44,10 @@ def grab(ser, log, quiet=1.5, limit=30.0):
             log.flush()
             last = time.monotonic()
         elif time.monotonic() - last > quiet:
-            break
+            text = got.decode("latin-1")
+            if until is None or text.rstrip(" ").endswith("$") or any(key in text for key in until):
+                break
+            time.sleep(0.01)
         else:
             time.sleep(0.01)
     return got.decode("latin-1").replace("\r", "")
@@ -59,7 +68,7 @@ def main():
             sys.exit("the controller is not at its `$` prompt")
         ser.write(b"/diag/setup\r")
         for _ in range(12):
-            text = grab(ser, log)
+            text = grab(ser, log, limit=120.0, until=[key for key, _ in answers] + ["restart controller"])
             print(text.strip())
             if "restart controller" in text or text.rstrip(" ").endswith("$"):
                 break
@@ -71,8 +80,8 @@ def main():
                     del answers[i]
                     break
             else:
-                print("   !!! a prompt this script does not know: stopping without answering")
-                ser.write(b"\x05")          # Ctrl-E ends the program; it saves nothing until its last step
+                print("   !!! nothing this script knows arrived in two minutes: stopping without answering")
+                ser.write(b"\x05")          # Ctrl-E ends the program; settings it already applied stay live until power-off
                 grab(ser, log, 1.0, 5.0)
                 sys.exit(1)
         print(grab(ser, log, 1.0, 5.0).strip())

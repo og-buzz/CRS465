@@ -1,0 +1,14 @@
+# ask.py start=2026-11-24T06:38:12-05:00 38400 8N1
+ls -l /tmp
+-----w-  1       0 Apr 22 18:50 p1 
+$ chmod 666 /tmp/p1
+Illegal character '6' in mode.
+$ ls -l /tmp
+-----w-  1       0 Apr 22 18:50 p1 
+$ cksum /tmp/p1
+cksum: access denied
+$ rm /tmp/p1
+$ ls -l /tmp
+$ df
+.            (mfs)    :     93K/    213K bytes ( 44%) free
+$ 

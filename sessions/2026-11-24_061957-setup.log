@@ -1,0 +1,27 @@
+
+$ /diag/setup
+
+Robot Setup
+
+Are your coordinates in English (0) or Metric (1) units?
+1
+
+Your robot has 6 axes. How many additional axes
+are connected to your controller?
+2
+
+Is the robot mounted on a track?(1=yes, 0=no)
+1
+
+Enter the positive travel limit of the track in millimeters.
+2134
+
+Enter the negative travel limit of the track in
+millimeters.
+0
+
+Do you have a servo gripper installed? (1=yes, 0=no)
+1
+
+[202 killed by SIGINT.]
+$ 

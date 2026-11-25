@@ -1,0 +1,4 @@
+# ask.py start=2026-11-24T06:20:33-05:00 38400 8N1
+cksum /conf/robot.cfg
+0x00006259 412 /conf/robot.cfg
+$ 

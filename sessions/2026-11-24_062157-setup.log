@@ -1,0 +1,12 @@
+
+$ /diag/setup
+
+Robot Setup
+
+Are your coordinates in English (0) or Metric (1) units?
+1
+
+Press the PAUSE/CONTINUE button to gain robot point of control.
+
+[208 killed by SIGINT.]
+$ 

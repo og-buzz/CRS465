@@ -1,0 +1,50 @@
+sessions/controller-files/patched/calzc: 640 bytes, byte sum 0xa4d2 -> /tmp/calzc: 5 packets of at most 256 data bytes
+note: the packets hold 7 XON/XOFF bytes (0x11, 0x13), 7 of them in the file itself.
+They arrive only if the console port has software flow control off: `siocfg -c 1` on the controller
+(it only prints) should show OutX: 0 and InX: 0.
+sessions/controller-files/patched/calzc: 640 bytes, byte sum 0xa4d2; 5 packets to /tmp/calzc
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> 01 01 00 00 04 00 03 00 00 00 00 00 09 00 00 00   start: command 4 (receive a file, 3 data packets to follow the name; logged value 0)
+<- 06   ACK
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> 01 02 00 00 00 00 00 03 0a 00 f6 ff 2f 74 6d 70 2f 63 61 6c 7a 63 00 00 c1 05 00 00   name: data packet 0: 10 bytes
+<- 06   ACK
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> (272 bytes)   data 1: data packet 1: 256 bytes
+   0000: 01 02 00 00 01 00 00 03 00 01 00 ff 1f ab ad 10 00 00 00 00 aa 89 7a 37 01 00 81 00 67 00 1b 00
+   0020: 00 00 00 00 dc 01 00 00 00 00 00 00 48 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 6c 02 00 00
+   0040: 01 00 00 00 3e c4 3b b7 00 00 00 00 44 00 00 00 54 00 f6 ff fd 24 ff 00 35 00 00 00 5b 00 09 00
+   0060: 52 00 fa ff 06 fb fa 02 3f fb 26 00 35 00 01 00 35 00 01 00 5b 00 0a 00 52 00 fa ff 4a fa f8 ff
+   0080: 50 00 f8 ff 68 00 f7 ff 35 00 02 00 5b 00 84 00 52 00 fa ff 4a fa f6 ff 0e fa f6 00 0e fb f7 01
+   00a0: 00 fc fa fb 0a fa f7 08 00 fb fc fa 3f fb 25 00 50 13 f8 ff 35 00 00 00 35 00 01 00 5b 00 0a 00
+   00c0: 52 00 fa ff 50 13 fa ff 35 00 02 00 69 00 00 00 35 00 02 00 35 00 07 00 67 00 44 00 44 00 30 00
+   00e0: 44 00 3d 00 35 00 00 00 35 00 01 00 5b 00 0a 00 52 00 fa ff 50 13 fa ff 35 00 01 00 69 00 07 00
+   0100: 35 00 02 00 35 00 05 00 67 00 44 00 84 44 00 00
+<- 06   ACK
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> (272 bytes)   data 2: data packet 2: 256 bytes
+   0000: 01 02 00 00 02 00 00 03 00 01 00 ff 35 00 00 00 35 00 01 00 5b 00 0a 00 52 00 fa ff 50 13 fa ff
+   0020: 35 00 01 00 69 00 11 00 35 00 02 00 35 00 05 00 67 00 44 00 35 00 01 00 35 00 01 00 67 00 00 00
+   0040: 6d 00 44 00 68 00 f6 ff 50 00 f7 ff 35 00 02 00 56 83 49 00 5a 00 00 00 44 00 5e 00 35 00 00 00
+   0060: 5b 00 0a 01 52 00 fa ff 1f fb fa 00 50 00 fb ff 35 00 01 00 56 82 07 00 52 00 fa ff 50 13 fa ff
+   0080: 35 00 00 00 35 00 01 00 5b 00 0a 00 52 00 fa ff 50 13 fa ff 35 00 02 00 69 00 18 00 35 00 02 00
+   00a0: 35 00 07 00 67 00 44 00 35 00 00 00 56 83 04 00 52 00 fa ff 4a fa f6 ff 35 00 01 00 35 00 01 00
+   00c0: 67 00 00 00 6e 00 00 00 35 00 00 00 56 83 04 00 52 00 fa ff 4a fa f6 ff 35 00 00 00 35 00 01 00
+   00e0: 67 00 00 00 58 00 00 00 16 00 18 00 7b 7d 3a 20 69 6e 76 61 6c 69 64 20 61 78 69 73 20 27 7b 7d
+   0100: 27 0a 00 00 24 00 24 00 7b 7d 3a 20 f1 3d 00 00
+<- 06   ACK
+-> 07 16   BEL SYN: ask fastacid for packet mode
+<- 1e   RS: ready for the header
+-> (144 bytes)   data 3: data packet 3 (last): 128 bytes
+   0000: 01 02 00 00 03 00 00 04 80 00 80 ff 69 6e 76 61 6c 69 64 20 63 6f 6d 6d 61 6e 64 20 6c 69 6e 65
+   0020: 20 61 72 67 75 6d 65 6e 74 73 2e 0a 15 00 18 00 55 73 61 67 65 3a 20 7b 7d 20 5b 6e 65 77 73 70
+   0040: 65 65 64 5d 0a fd 03 07 00 08 00 7b 7d 3a 20 7b 7d 0a 00 ff 02 00 00 00 00 00 02 00 93 89 7a 37
+   0060: 00 00 05 00 75 48 0d 0a 07 00 03 00 9b 89 7a 37 00 00 02 00 86 26 95 ae 10 00 00 00 73 79 73 6c
+   0080: 69 62 00 72 6f 62 6f 74 6c 69 62 00 75 26 00 00
+<- 06   ACK
+done: 640 bytes in 3 data packets; fastacid has closed /tmp/calzc
+/tmp/calzc: 640 bytes, sum 0xa4d2, verified by the controller's cksum

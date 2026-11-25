@@ -1,0 +1,202 @@
+log: /home/buzz/dev/crs-a465/sessions/2026-11-24_201155-homezc.log
+    0.00 -> \r
+    0.03 <- \r
+    0.04 <- \n$ 
+    0.95 -> cksum /tmp/homezc\r
+    1.03 <- ck
+    1.09 <- s
+    1.10 <- u
+    1.17 <- m
+    1.18 <-  /
+    1.20 <- t
+    1.24 <- mp
+    1.28 <- /h
+    1.30 <- o
+    1.33 <- m
+    1.34 <- e
+    1.37 <- z
+    1.38 <- c\r\n
+    2.53 <- 0
+    2.54 <- x0000a4d
+    2.54 <- 3
+    2.55 <-  640 /tmp/homezc\r\n
+    2.58 <- $
+    2.59 <-  
+/tmp/homezc is on the controller: 640 bytes, sum 0xa4d3, the same as /home/buzz/dev/crs-a465/sessions/controller-files/patched/homezc
+    2.69 -> w2\r
+    2.75 <- w
+    2.76 <- 2
+    2.79 <- \r\n
+    3.26 <- A
+    3.28 <- ctual Position :\r\n
+    3.55 <- \r
+    3.57 <- \n 
+    3.57 <-  
+    3.58 <-         Axis 1/7   Axis 2/8     Axis 3
+    3.58 <-  
+    3.59 <-     Axis 4     A
+    3.61 <- x
+    3.62 <- is 5     Axis 6\r\nPULSES          +0  
+    3.62 <-  
+    3.63 <-       +0     +244
+    3.64 <- 60     -24830      
+    3.64 <-  
+    3.65 <-   +0         +0\r\n                +0  
+    3.66 <-        +0\r\n
+    3.67 <- \r\n       
+    3.67 <-  
+    3.68 <-   Axis 1/7   Axis 2/8     Axis
+    3.71 <-  3    
+    3.72 <-  Axis 4     Axis 5     Axis 6\r\nJOINTS  
+    3.72 <-  
+    3.73 <-     0.000      0.000 
+    3.74 <-    -88.056    177.006      0.000 
+    3.75 <-      0.000\r\n             0.000      
+    3.77 <- 0.000\r\n\r\n          X/TrackX   Y/Trac
+    3.78 <- kY          Z      Z-Rot  
+    3.78 <-  
+    3.79 <-    Y-Rot      X-
+    3.80 <- Rot\r\nWORLD   
+    3.81 <-    406.166      0.000    648.786      0
+    3.82 <- .000     -1.944    177.006\r\n           
+    3.83 <-   0.000      0.000\r\n$ 
+    3.94 -> axst\r
+    4.01 <- a
+    4.02 <- x
+    4.05 <- s
+    4.06 <- t\r\n
+    4.76 <- 0
+    4.77 <- 0008c07 00008
+    4.80 <- c07 00008c07 00008c07 000
+    4.80 <- 0
+    4.81 <- 8c07 00008c07 00008808 00008808\r\n
+    4.81 -> <05>
+    4.89 <- \r
+    4.90 <- \n[276 killed by SIGINT
+    4.91 <- .]\r
+    4.91 <- \n
+    4.95 <- $
+    4.96 <-  
+before: joints 0.000 0.000 -88.056 177.006 0.000 0.000
+before: status 00008c07 00008c07 00008c07 00008c07 00008c07 00008c07 00008808 00008808
+    5.06 -> speed 5\r
+    5.15 <- sp
+    5.19 <- e
+    5.20 <- e
+    5.23 <- d
+    5.24 <-  
+    5.27 <- 5
+    5.28 <- \r\n
+    5.92 <- \r
+    5.93 <- \nPres
+    5.95 <- s the PAUSE/
+    5.95 <- C
+    5.96 <- ONTINUE button to gain robot point of c
+WAITING: PRESS THE PAUSE/CONTINUE BUTTON ON THE CONTROLLER'S FRONT PANEL NOW (up to 180 s). Nothing moves at this step.
+    5.96 <- o
+    5.97 <- ntrol.\r\n
+   14.04 <- $
+   14.05 <-  
+   14.15 -> speed\r
+   14.23 <- s
+   14.24 <- p
+   14.27 <- e
+   14.28 <- e
+   14.30 <- d
+   14.31 <- \r\n
+   14.96 <- C
+   14.97 <- urrent Speed: 5% of max
+   14.99 <- .\r\n$ 
+speed set to 5% (read back)
+JOINT 6 IS ABOUT TO MOVE. Time limit 8 s, then Ctrl-Z. Keep a hand on the E-stop.
+   15.09 -> /tmp/homezc 6\r
+   15.17 <- /t
+   15.23 <- m
+   15.24 <- p
+   15.27 <- /
+   15.30 <- h
+   15.31 <- om
+   15.35 <- e
+   15.36 <- zc
+   15.39 <-  
+   15.40 <- 6
+   15.43 <- \r
+   15.44 <- \n
+   16.09 <- H
+   16.10 <- oming axis 6.
+   16.12 <- ..
+   17.58 <- Ok.\r\n
+   17.71 <- $
+   17.72 <-  
+   17.82 -> w2\r
+   17.89 <- w2
+   17.91 <- \r
+   17.92 <- \n
+   18.40 <- Actual Posit
+   18.40 <- i
+   18.41 <- on :\r\n
+   18.68 <- \r
+   18.73 <- \n      
+   18.74 <-     Axis 1/7   Axis 2/8     Axis 3  
+   18.75 <-    Axis 4     Axis 
+   18.76 <- 5     Axis 6\r\nPULSES          +0       
+   18.77 <-   +0     +24460     -24830         +0  
+   18.77 <-  
+   18.78 <-   +25145\r\n                +0         +0
+   18.79 <- \r\n
+   18.80 <- \r\n          Axis 1
+   18.80 <- /
+   18.80 <- 7
+   18.81 <-    Axis 2/8     Axis 3     Axis 4     
+   18.84 <- Axis 5     Axis 
+   18.84 <- 6
+   18.85 <- \r\nJOINTS       0.000      0.000    -8
+   18.85 <- 8
+   18.86 <- .056    177.0
+   18.87 <- 06      0.000   -179.251\r\n   
+   18.88 <-           0.000      0.000\r\n\r\n     
+   18.89 <-      X/TrackX  
+   18.90 <-  Y/TrackY          Z      Z-Rot      Y-
+   18.91 <- Rot      X-
+   18.92 <- Rot\r\nWORLD
+   18.92 <-  
+   18.93 <-      406.166      0.000    648.786     
+   18.93 <-  
+   18.94 <- 0.000     -1.944     -2.246\r\n          
+   18.95 <-    0.000      0.000\r\n$ 
+   19.05 -> axst\r
+   19.13 <- a
+   19.14 <- x
+   19.17 <- s
+   19.18 <- t
+   19.20 <- \r
+   19.21 <- \n
+   19.90 <- 000
+   19.90 <- 0
+   19.91 <- 8c07 00008
+   19.95 <- c07 00008c07 00008c07 000
+   19.95 <- 0
+   19.96 <- 8c07 00008c47 00008808 00008808\r\n
+   19.96 -> <05>
+   20.04 <- 0
+   20.05 <- 0008c07 
+   20.06 <- 00008c07 
+   20.07 <- 00008c07 00008c07 00008c07 00008c47 0
+   20.08 <- 0008808 00008808\r\n
+   20.09 <- \r\n[281 killed by SIGINT.]\r\n
+   20.15 <- $
+   20.16 <-  
+after: joints 0.000 0.000 -88.056 177.006 0.000 -179.251
+after: status 00008c07 00008c07 00008c07 00008c07 00008c07 00008c47 00008808 00008808
+
+SUMMARY: joint 6
+  moved -179.251 degrees (0.000 -> -179.251)
+  armed for zero-cross (bit 5): no -> no
+  zero-cross seen (bit 6): no -> yes
+  homed (bit 11): yes -> yes
+  status word: 8c07 -> 8c47
+  error / servo fault (bits 8, 9): none -> none
+  the program's own output:
+    Homing axis 6...Ok.
+  ran 2.6 s (time limit 8 s, speed 5%)
+  halted by this tool: no (the program returned by itself)

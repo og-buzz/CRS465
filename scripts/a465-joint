@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Move one joint by a number of degrees with the controller's own `joint` program, supervised.
+
+    scripts/a465-joint <1..6> <degrees> [--speed 1..25, default 5] [--max 30]
+
+What it does, in order: reads the joints; sets the speed (if the controller wants PAUSE/CONTINUE
+pressed, it is waited for here, where nothing can move); types `joint <n> <degrees>` at the `$`
+prompt; then reads the joints until they stop changing. The move is relative. It is stopped with
+Ctrl-Z if it has not finished inside the time limit, and killed before it starts if the controller
+asks for the button at the motion step. A move larger than --max degrees is refused.
+
+Every byte goes to sessions/<time>-joint.log. Exit code 0 only if the joint ended within 0.1 degree
+of where it was sent.
+"""
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+from a465 import home      # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(home.joint_main(repo=REPO))

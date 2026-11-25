@@ -1,0 +1,30 @@
+# talk.py start=2026-11-24T06:20:54-05:00
+ash test
+Loading  v3 file 'test.v3'...done.
+test> arm_status
+
+Robot arm is of type 465
+Arm power is ON     Robot is calibrated and homed
+Units are Metric     Online is ON
+Physical stance: forward up flip
+
+
+Current Tool Transform is: 
+tx=0.00000, ty=0.00000, tz=0.00000, yaw=0.00000, pitch=0.00000, roll=0.00000
+
+Current Base Transform is: 
+wx=0.00000, wy=0.00000, wz=0.00000, xrot=0.00000, yrot=0.00000, zrot=0.00000
+
+Axis    locked   done   limped   homed
+ 1        N       Y       N       Y
+ 2        N       Y       N       Y
+ 3        N       Y       N       Y
+ 4        N       Y       N       Y
+ 5        N       Y       N       Y
+ 6        N       Y       N       Y
+ 7        N       Y       Y       Y
+ 8        N       Y       Y       Y
+
+test> exit
+Are you sure you want to exit? yes
+$ 

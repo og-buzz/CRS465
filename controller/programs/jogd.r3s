@@ -4,8 +4,10 @@
 .lib syslib 2 0x377a8993 0x0a0d4875 5
 .lib robotlib 3 0x377a899b 0xae952686 2
 .equ DEADMAN_MS 300
+.equ DEADMAN_LONG_MS 1000
 .equ POLL_MS 10
 .equ OPEN_FLAGS 5
+.equ POS_TYPE 1
 .equ NO_DATA -35                    ; -EAGAIN: reads() on a non-blocking fd with nothing to read
 
 .data
@@ -15,8 +17,9 @@ s_line:     string 8 "+A00\n"     ; word 1 (the 4 bytes after the header word) s
 s_stop:     string "-\n"
 s_dead:     string "T\n"
 s_err:      string "E {} {}\n"
+s_pos:      string "P {} {} {} {} {} {}\n"
 s_badargs:  string "{}: invalid command line arguments.\n"
-s_usage:    string "Usage: {} [mode [maxspeed [r|s]]]\n"
+s_usage:    string "Usage: {} [mode [maxspeed [s|r]]]\n  r: speed change without a stop (does not change the speed here)\n"
 s_r:        string "r"
 s_s:        string "s"
 inbuf:      string 4 ""            ; reads() puts the byte here
@@ -24,7 +27,10 @@ fd:         word 0
 mode:       word 1
 maxspeed:   word 25
 restart:    word 0            ; 1: variant r, 0: variant s
-moving:     word 0                  ; a move is in force
+moving:     word 0                  ; a move is in force (the pendant's G88)
+inmanual:   word 0                  ; manual mode is on (G144) ...
+curmode:    word 0                  ; ... in this mode (G145)
+rmode:      word 0                  ; robot_mode_get()'s answer
 axis:       word 0                  ; the command in force: signed joint (0: none) ...
 speed:      word 0                  ; ... and its speed
 pstate:     word 0                  ; parser: 0 no letter, 1 letter, 2 letter and one digit
@@ -34,6 +40,14 @@ speedset:   word -1                 ; the last speed given to speed_set, -1 none
 saved:      word 0                  ; speed_get() at start
 last:       word 0, 0               ; mtime() of the last command or keep-alive
 now:        word 0, 0
+loc:        zeros 9                 ; pos_get's location
+pul1:       word 0                  ; loc_pdata_get's 8 counts, joint 1 first
+pul2:       word 0
+pul3:       word 0
+pul4:       word 0
+pul5:       word 0
+pul6:       word 0
+            zeros 2                 ; axes 7 and 8
 
 .code
 main:
@@ -153,17 +167,13 @@ opened:
 have_control:
     pushleag saved
     pushi 1
-    libcall robotlib:speed_get      ; the pendant reads the speed when it takes control
+    libcall robotlib:speed_get      ; the pendant reads the speed when it takes control (0x04ff)
     pop L5
     ltc L4, L5, 0
     if L4, setup_failed
-    getg L6, mode
-    push L6
-    pushi 1
-    libcall robotlib:man_mode_set
-    pop L5
-    ltc L4, L5, 0
-    ifnot L4, ready
+    getg L6, saved
+    putg L6, speedset               ; its G84: speed_set is called only for another speed
+    goto ready
 setup_failed:
     push L5
     pushi 1
@@ -199,6 +209,7 @@ loop:                               ; ---- one byte, or a short wait
     call byte
     pop L4
     if L4, quit
+    ldi L4, DEADMAN_LONG_MS         ; after a byte: read on (bytes may be waiting); only the long limit
     goto deadman
 no_byte:
     eqc L4, L5, NO_DATA
@@ -219,18 +230,18 @@ idle:
     pushi 1
     libcall syslib:delay
     chkpop
-deadman:
-    getg L4, moving
-    ifnot L4, loop
+    ldi L4, DEADMAN_MS              ; nothing to read: the dead-man proper
+deadman:                            ; L4: the limit in ms
+    getg L5, moving
+    ifnot L5, loop
     pushleag now
     pushi 1
     builtinx mtime
     getg L5, now
     getg L6, last
-    sub L4, L5, L6
-    ldi L5, DEADMAN_MS
-    ge L3, L4, L5
-    ifnot L3, loop
+    sub L3, L5, L6
+    ge L2, L3, L4
+    ifnot L2, loop
     pushi 1
     pushi 1
     call stop
@@ -306,9 +317,14 @@ b_dot:
     goto b_none
 b_quit:
     eqc L5, A3, 'q'
-    ifnot L5, b_none
+    ifnot L5, b_pos
     ldi L5, 1
     retv L5
+b_pos:
+    eqc L5, A3, 'p'
+    ifnot L5, b_none
+    pushi 0
+    call position                   ; no pstate change, no dead-man feed
 b_none:
     ldi L5, 0
     retv L5
@@ -349,7 +365,7 @@ c_start:
 c_done:
     ret
 
-start:                              ; start(axis, speed): start a move; prints +Xnn or E
+start:                              ; start(axis, speed): one jog as the pendant starts it (0x0d40, 0x06d7)
     enter 10
     putg A3, axis
     putg A4, speed
@@ -364,6 +380,16 @@ start:                              ; start(axis, speed): start a move; prints +
     if L4, s_failed
     putg A4, speedset
 s_go:
+    getg L6, moving
+    if L6, s_move                   ; variant r: manual mode is on already
+    pushi 1
+    pushi 1
+    call setman                     ; man_mode_set(mode) before each jog (pendant 0x06f2)
+    pop L5
+    if L5, s_done                   ; refused (reported): no move
+s_move:
+    ldi L6, 1
+    putg L6, moving                 ; set before the start, as the pendant sets G88 (0x06f9)
     push A4
     push A3
     pushi 2
@@ -377,11 +403,13 @@ s_failed:
     call report
     pushi 0
     pushi 1
-    call stop                       ; acts only if a move was in force (a failed restart)
+    call stop                       ; the whole stop sequence (it acts only if a move was in force)
+s_done:
     ret
 s_moving:
-    ldi L6, 1
-    putg L6, moving
+    pushleag last
+    pushi 1
+    builtinx mtime                  ; the time spent in the controller's calls is not the PC's
     ltc L5, A3, 0                   ; the line +Xnn: '+', the letter, two digits
     if L5, s_neg
     addc L6, A3, 64
@@ -409,7 +437,7 @@ s_letter:
     builtinx printf
     ret
 
-stop:                               ; stop(deadman): stop the move in force; prints E..., then - or T
+stop:                               ; stop(deadman): as the pendant's 0x07d9; prints E..., then - or T
     enter 10
     getg L6, moving
     ifnot L6, t_done
@@ -438,6 +466,10 @@ t_abs:
     pushi 1
     call report
 t_said:
+    pushi 0
+    pushi 1
+    call setman                     ; man_mode_set(0) after each jog (pendant 0x07f3)
+    pop L5
     ifnot A3, t_dash
     pushi 0
     pushleag s_dead
@@ -450,6 +482,85 @@ t_dash:
     pushi 2
     builtinx printf
 t_done:
+    ret
+
+setman:                             ; setman(on): the pendant's 0x05b2. man_mode_set(mode) or (0)
+    enter 10                        ; unless that is in force already; 0, or the result r < 0
+    getg L6, inmanual
+    eq L5, L6, A3
+    ifnot L5, m_set
+    ifnot A3, m_same                ; off already
+    getg L6, curmode
+    getg L5, mode
+    eq L4, L6, L5
+    if L4, m_same                   ; on already, in this mode
+m_set:
+    ldi L6, 0
+    ifnot A3, m_call
+    getg L6, mode
+m_call:
+    push L6
+    pushi 1
+    libcall robotlib:man_mode_set
+    pop L5
+    ltc L4, L5, 0
+    if L4, m_failed
+    putg A3, inmanual
+    putg L6, curmode
+m_same:
+    ldi L5, 0
+    retv L5
+m_failed:
+    push L5
+    pushi 1
+    call report
+    pushleag rmode
+    pushi 1
+    libcall robotlib:robot_mode_get ; as the pendant asks after a refusal (0x0625)
+    pop L4
+    ltc L3, L4, 0
+    if L3, m_ret
+    getg L4, rmode
+    eqc L3, L4, 2                   ; MODE_MANUAL
+    putg L3, inmanual
+m_ret:
+    retv L5
+    retv 0
+
+position:                           ; position(): print P and joints 1..6's encoder counts
+    enter 10
+    pushleag loc
+    pushi POS_TYPE
+    pushi 2
+    libcall robotlib:pos_get        ; as ash's Actual Position display and diag/xzero read it
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, p_got
+    push L5
+    pushi 1
+    call report
+    ret
+p_got:
+    pushleag pul1
+    pushleag loc
+    pushi 2
+    builtin loc_pdata_get           ; no result: nothing to pop (as in ash and xzero)
+    getg L6, pul6
+    push L6 tag 1
+    getg L6, pul5
+    push L6 tag 1
+    getg L6, pul4
+    push L6 tag 1
+    getg L6, pul3
+    push L6 tag 1
+    getg L6, pul2
+    push L6 tag 1
+    getg L6, pul1
+    push L6 tag 1
+    pushi 6
+    pushleag s_pos
+    pushi 14
+    builtinx printf
     ret
 
 report:                             ; report(r): print "E <r> <text>" for a result r < 0
@@ -467,27 +578,21 @@ report:                             ; report(r): print "E <r> <text>" for a resu
     builtinx printf
     ret
 
-finish:                             ; finish(code): leave manual mode, put the speed back, release, exit
+finish:                             ; finish(code): manual mode off if still on, the speed back, release, exit
     enter 10
-    pushi 0                         ; MMODE_OFF, as the pendant does when a jog ends
+    pushi 0
     pushi 1
-    libcall robotlib:man_mode_set
+    call setman
     pop L5
-    ltc L4, L5, 0
-    ifnot L4, f_speed
+    getg L6, speedset
+    getg L5, saved
+    eq L4, L6, L5
+    if L4, f_release                ; the speed is still the one found at start
+    ltc L4, L5, 1
+    if L4, f_release
     push L5
     pushi 1
-    call report
-f_speed:
-    getg L6, speedset
-    ltc L4, L6, 0
-    if L4, f_release                ; speed_set never called
-    getg L6, saved
-    ltc L4, L6, 1
-    if L4, f_release
-    push L6
-    pushi 1
-    libcall robotlib:speed_set
+    libcall robotlib:speed_set      ; the speed found at start, as the pendant puts it back
     pop L5
     ltc L4, L5, 0
     ifnot L4, f_release

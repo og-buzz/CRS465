@@ -240,3 +240,7 @@ def test_xzero_script(rig, capsys):
     assert code == 0 and "/diag/xzero 3" in shell.sent
     assert "SUMMARY: joint 3 read -18.000 and now reads 0.000; other joints changed by at most 0.000" in out
     assert shell.counts == [0] * 6
+
+
+def test_time_limit_default_is_30_seconds(tmp_path):
+    assert home.parse_args(["--plan"], str(Path(home.__file__).parent.parent)).time_limit == 30.0

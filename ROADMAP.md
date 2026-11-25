@@ -2,6 +2,30 @@
 
 Things asked for or found, not built yet. Newest first.
 
+## Digital twin
+
+Asked for 2026-11-24. The web page's 3D arm should mirror the real arm live, and the page should be
+where the joint positions are seen while jogging. Today the page shows only the simulated arm, and the
+real arm is driven by `scripts/a465-padjog` with nothing on screen.
+
+What there is to build it from:
+
+- The arm homes properly (`scripts/a465-home`), so the controller's joint readings are true angles.
+- `jogd`, our program on the controller, answers `p` with all six joints' encoder counts in about
+  0.1 s. `a465/jogd.py` (`JogdArm`) already polls it and has the same methods and `state()` keys as
+  the simulated arm the server uses.
+
+Steps:
+
+1. A switch for `a465.server` that uses `JogdArm` as its robot, so the 3D view, the joint readouts and
+   the gamepad all work on the real arm. One program owns the serial port, so in this mode the pad has
+   to go through the server.
+2. Show what the simulation cannot know: homed or not, the controller's last error line, the speed
+   setting, whether `jogd` is running.
+3. Position while `jogd` is not running (during homing, or while a program runs): read `w2`.
+4. Later: the page's moves (go to a pose, pick and place) sent to the real arm, tried on the simulated
+   arm first.
+
 ## Coordinated motion on the real arm
 
 Asked for 2026-11-23. Today the real arm moves one joint at a time: a jog is a single-axis
@@ -31,6 +55,12 @@ The response-time limits in the next item apply here too.
 
 ## Jog speed from how far the stick is pushed
 
+Status 2026-11-24: way 3 below is built. `jogd` (made with our own assembler, `a465/r3asm.py`; no
+vendor compiler was needed) runs on the controller, and `scripts/a465-padjog --jogd` sends it the
+stick's deflection as a speed. First run on the arm: smooth, about 0.25 s from stick to motion.
+Still open: the driver's handling of a stop (being fixed), shortening the delay, travel limits in
+this mode, and straight-line jogging in X, Y, Z (jogd's modes 3 and 4).
+
 Asked for 2026-11-23. On the real arm a stick is on/off today: a jog runs at the set speed
 (L1 + R1 + triggers) however far the stick is pushed, and one joint moves at a time.
 
@@ -57,11 +87,11 @@ Ways to do it, cheapest first:
 
 ## Other open items
 
-- Homing does not complete: the calibration is intact but the home switch signals never reach the
-  controller. First check is the sensors' shared supply and return (ground straps). See README and
-  `docs/CONTROLLER.md`.
-- The real arm is driven by `scripts/a465-padjog` on its own; the web page still shows only the mock.
-  Next step is to put `a465/crs.py` behind the server so the page shows and jogs the real arm.
+- Homing works since 2026-11-24 (`scripts/a465-home`; see `docs/CONTROLLER.md`, "Homing that works").
+  Open around it: the controller's proper shutdown command (it complains at boot that it "was not
+  properly shut down"), and a straightedge check of joint 5's zero.
+- The web page still shows only the simulated arm: see "Digital twin" above.
+- Gripper air fittings: see `docs/PNEUMATICS.md`.
 - Watching the home switches during a jog: the always-on status display (`axst &`) slowed every
   command by about 1.5 s and hung the controller's robot server after a stop. Needs another way.
 - Planner: a cell right beside a keep-out zone shows as usable but can fail planning.

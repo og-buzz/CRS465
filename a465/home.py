@@ -346,7 +346,8 @@ def parse_args(argv, repo):
     ap.add_argument("--move-speed", type=int, default=10, choices=range(1, homezc.MAX_SPEED + 1), metavar="1-25", help="percent, for parking and returning (default %(default)s)")
     ap.add_argument("--index-speed", type=int, default=5, choices=range(1, homezc.MAX_SPEED + 1), metavar="1-25", help="percent, for the index step (default %(default)s)")
     ap.add_argument("--max-move", type=float, default=185.0, help="refuse any single move above this many degrees (default %(default)s)")
-    ap.add_argument("--time-limit", type=float, default=homezc.DEFAULT_TIME_LIMIT_S, help="seconds for the index step before Ctrl-Z (default %(default)s)")
+    # measured on 2026-11-24: after a power cycle (the "not homed" state) the index step took 7 to 10 s per joint, against about 1.5 s when the controller already counted the arm as homed
+    ap.add_argument("--time-limit", type=float, default=30.0, help="seconds for the index step before Ctrl-Z (default %(default)s)")
     ap.add_argument("--cal", default=os.path.join(repo, DEFAULT_CAL), help="local copy of /conf/robot.cal (default %(default)s)")
     ap.add_argument("--remote", default=DEFAULT_REMOTE, help="the homing program on the controller (default %(default)s)")
     ap.add_argument("--local", default=os.path.join(repo, DEFAULT_LOCAL), help="the local copy it must equal (default %(default)s)")

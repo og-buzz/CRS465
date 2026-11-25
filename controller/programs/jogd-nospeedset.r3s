@@ -1,0 +1,581 @@
+; jogd: continuous jog from 3-byte console commands. Built by a465/jogprog.py; see its docstring.
+.build 0x6b057c40
+.entry main
+.lib syslib 2 0x377a8993 0x0a0d4875 5
+.lib robotlib 3 0x377a899b 0xae952686 2
+.equ DEADMAN_MS 300
+.equ DEADMAN_LONG_MS 1000
+.equ POLL_MS 10
+.equ OPEN_FLAGS 5
+.equ POS_TYPE 1
+.equ NO_DATA -35                    ; -EAGAIN: reads() on a non-blocking fd with nothing to read
+
+.data
+s_cin:      string "/dev/cin"
+s_ready:    string "jogd ready\n"
+s_line:     string 8 "+A00\n"     ; word 1 (the 4 bytes after the header word) set per start
+s_stop:     string "-\n"
+s_dead:     string "T\n"
+s_err:      string "E {} {}\n"
+s_pos:      string "P {} {} {} {} {} {}\n"
+s_badargs:  string "{}: invalid command line arguments.\n"
+s_usage:    string "Usage: {} [mode [maxspeed [s|r]]]\n  r: speed change without a stop (does not change the speed here)\n"
+s_r:        string "r"
+s_s:        string "s"
+inbuf:      string 4 ""            ; reads() puts the byte here
+fd:         word 0
+mode:       word 1
+maxspeed:   word 25
+restart:    word 0            ; 1: variant r, 0: variant s
+moving:     word 0                  ; a move is in force (the pendant's G88)
+inmanual:   word 0                  ; manual mode is on (G144) ...
+curmode:    word 0                  ; ... in this mode (G145)
+rmode:      word 0                  ; robot_mode_get()'s answer
+axis:       word 0                  ; the command in force: signed joint (0: none) ...
+speed:      word 0                  ; ... and its speed
+pstate:     word 0                  ; parser: 0 no letter, 1 letter, 2 letter and one digit
+paxis:      word 0
+pdigit:     word 0
+speedset:   word -1                 ; the last speed given to speed_set, -1 none
+saved:      word 0                  ; speed_get() at start
+last:       word 0, 0               ; mtime() of the last command or keep-alive
+now:        word 0, 0
+loc:        zeros 9                 ; pos_get's location
+pul1:       word 0                  ; loc_pdata_get's 8 counts, joint 1 first
+pul2:       word 0
+pul3:       word 0
+pul4:       word 0
+pul5:       word 0
+pul6:       word 0
+            zeros 2                 ; axes 7 and 8
+
+.code
+main:
+    enter 10
+    pushi 0                         ; ---- jogd [mode [maxspeed [r|s]]]
+    builtin argc
+    pop L6
+    gtc L5, L6, 4
+    if L5, usage
+    ltc L5, L6, 2
+    if L5, args_done
+    pushi 1
+    pushi 1
+    builtin argv
+    pop L7
+    push L7
+    pushlea L8
+    pushi 2
+    builtin str_to_int              ; as homezc reads its argument
+    pop L5
+    ltc L4, L5, 0
+    ltc L3, L8, 1
+    lor L4, L4, L3
+    gtc L3, L8, 4
+    lor L4, L4, L3
+    if L4, usage
+    putg L8, mode
+    ltc L5, L6, 3
+    if L5, args_done
+    pushi 2
+    pushi 1
+    builtin argv
+    pop L7
+    push L7
+    pushlea L8
+    pushi 2
+    builtin str_to_int
+    pop L5
+    ltc L4, L5, 0
+    ltc L3, L8, 1
+    lor L4, L4, L3
+    gtc L3, L8, 99
+    lor L4, L4, L3
+    if L4, usage
+    putg L8, maxspeed
+    ltc L5, L6, 4
+    if L5, args_done
+    pushi 3
+    pushi 1
+    builtin argv
+    pop L7
+    leag L5, s_r
+    streq L4, L7, L5                ; as xzero compares its -v
+    ifnot L4, arg_s
+    ldi L5, 1
+    putg L5, restart
+    goto args_done
+arg_s:
+    leag L5, s_s
+    streq L4, L7, L5
+    ifnot L4, usage
+    ldi L5, 0
+    putg L5, restart
+    goto args_done
+usage:
+    pushi 0
+    pushi 1
+    builtin argv
+    pop L6
+    push L6 tag 19
+    pushi 1
+    pushleag s_badargs
+    pushi 2
+    pushi 5
+    builtinx fprintf
+    pushi 0
+    pushi 1
+    builtin argv
+    pop L6
+    push L6 tag 19
+    pushi 1
+    pushleag s_usage
+    pushi 2
+    pushi 5
+    builtinx fprintf
+    pushi 1
+    pushi 1
+    builtinx exit
+args_done:
+    pushi 0                         ; ---- open the input without blocking, as fastacid does
+    pushi OPEN_FLAGS
+    pushleag s_cin
+    pushleag fd
+    pushi 4
+    builtin open
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, opened
+    push L5
+    pushi 1
+    call report
+    pushi 1
+    pushi 1
+    builtinx exit
+opened:
+    pushi 0                         ; ---- take control
+    libcall robotlib:ctl_get
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, have_control
+    push L5
+    pushi 1
+    call report
+    pushi 1
+    pushi 1
+    builtinx exit
+have_control:
+    goto ready
+setup_failed:
+    push L5
+    pushi 1
+    call report
+    pushi 0
+    libcall robotlib:ctl_rel
+    pop L5
+    pushi 1
+    pushi 1
+    builtinx exit
+ready:
+    pushi 0
+    pushleag s_ready
+    pushi 2
+    builtinx printf
+loop:                               ; ---- one byte, or a short wait
+    pushi 1
+    pushleag inbuf
+    getg L6, fd
+    push L6
+    pushi 3
+    builtin reads
+    pop L5
+    gtc L4, L5, 0
+    ifnot L4, no_byte
+    pushi 0
+    pushleag inbuf
+    pushi 2
+    builtin str_chr_get
+    pop L6
+    push L6
+    pushi 1
+    call byte
+    pop L4
+    if L4, quit
+    ldi L4, DEADMAN_LONG_MS         ; after a byte: read on (bytes may be waiting); only the long limit
+    goto deadman
+no_byte:
+    eqc L4, L5, NO_DATA
+    if L4, idle
+    eqc L4, L5, 0
+    if L4, idle
+    push L5                         ; the input failed: stop, release, exit 1
+    pushi 1
+    call report
+    pushi 0
+    pushi 1
+    call stop
+    pushi 1
+    pushi 1
+    call finish
+idle:
+    pushi POLL_MS
+    pushi 1
+    libcall syslib:delay
+    chkpop
+    ldi L4, DEADMAN_MS              ; nothing to read: the dead-man proper
+deadman:                            ; L4: the limit in ms
+    getg L5, moving
+    ifnot L5, loop
+    pushleag now
+    pushi 1
+    builtinx mtime
+    getg L5, now
+    getg L6, last
+    sub L3, L5, L6
+    ge L2, L3, L4
+    ifnot L2, loop
+    pushi 1
+    pushi 1
+    call stop
+    ldi L4, 0
+    putg L4, axis                   ; no command in force after the dead-man
+    goto loop
+quit:
+    pushi 0
+    pushi 1
+    call stop
+    pushi 0
+    pushi 1
+    call finish
+    retv 0
+
+byte:                               ; byte(c): one input byte; returns 1 for q
+    enter 10
+    gec L5, A3, 'A'
+    lec L4, A3, 'F'
+    land L5, L5, L4
+    ifnot L5, b_lower
+    subc L6, A3, 64                 ; 'A' is joint 1
+    goto b_letter
+b_lower:
+    gec L5, A3, 'a'
+    lec L4, A3, 'f'
+    land L5, L5, L4
+    ifnot L5, b_digit
+    subc L6, A3, 96
+    neg L6, L6                      ; 'a' is joint 1, negative
+b_letter:
+    putg L6, paxis
+    ldi L5, 1
+    putg L5, pstate
+    goto b_none
+b_digit:
+    gec L5, A3, '0'
+    lec L4, A3, '9'
+    land L5, L5, L4
+    ifnot L5, b_dot
+    subc L6, A3, '0'
+    getg L5, pstate
+    eqc L4, L5, 1
+    ifnot L4, b_second
+    putg L6, pdigit
+    ldi L5, 2
+    putg L5, pstate
+    goto b_none
+b_second:
+    eqc L4, L5, 2
+    ifnot L4, b_none                ; a digit with no letter before it
+    ldi L5, 0
+    putg L5, pstate
+    getg L5, pdigit
+    mulc L5, L5, 10
+    add L6, L5, L6
+    push L6
+    getg L5, paxis
+    push L5
+    pushi 2
+    call command
+    goto b_none
+b_dot:
+    eqc L5, A3, '.'
+    ifnot L5, b_quit
+    ldi L5, 0
+    putg L5, pstate
+    pushi 0
+    pushi 1
+    call stop
+    ldi L5, 0
+    putg L5, axis
+    goto b_none
+b_quit:
+    eqc L5, A3, 'q'
+    ifnot L5, b_pos
+    ldi L5, 1
+    retv L5
+b_pos:
+    eqc L5, A3, 'p'
+    ifnot L5, b_none
+    pushi 0
+    call position                   ; no pstate change, no dead-man feed
+b_none:
+    ldi L5, 0
+    retv L5
+    retv 0
+
+command:                            ; command(axis, speed): a whole command
+    enter 10
+    ltc L5, A4, 1
+    if L5, c_done                   ; 00 is not a speed: ignored
+    getg L6, maxspeed
+    gt L5, A4, L6
+    ifnot L5, c_clamped
+    put L6, A4
+c_clamped:
+    pushleag last
+    pushi 1
+    builtinx mtime                  ; a command or keep-alive feeds the dead-man
+    getg L6, axis
+    eq L4, L6, A3                   ; same joint and direction as the command in force
+    getg L6, speed
+    eq L3, L6, A4
+    land L2, L4, L3
+    if L2, c_done                   ; the command in force: keep-alive
+    getg L6, moving
+    ifnot L6, c_start
+    ifnot L4, c_stop                ; another joint or direction: stop first
+    getg L6, restart
+    if L6, c_start                  ; variant r: start again without stopping
+c_stop:
+    pushi 0
+    pushi 1
+    call stop
+c_start:
+    push A4
+    push A3
+    pushi 2
+    call start
+c_done:
+    ret
+
+start:                              ; start(axis, speed): one jog as the pendant starts it (0x0d40, 0x06d7)
+    enter 10
+    putg A3, axis
+    putg A4, speed
+    getg L6, moving
+    if L6, s_move                   ; variant r: manual mode is on already
+    pushi 1
+    pushi 1
+    call setman                     ; man_mode_set(mode) before each jog (pendant 0x06f2)
+    pop L5
+    if L5, s_done                   ; refused (reported): no move
+s_move:
+    ldi L6, 1
+    putg L6, moving                 ; set before the start, as the pendant sets G88 (0x06f9)
+    push A4
+    push A3
+    pushi 2
+    libcall robotlib:man_move_start
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, s_moving
+s_failed:
+    push L5
+    pushi 1
+    call report
+    pushi 0
+    pushi 1
+    call stop                       ; the whole stop sequence (it acts only if a move was in force)
+s_done:
+    ret
+s_moving:
+    pushleag last
+    pushi 1
+    builtinx mtime                  ; the time spent in the controller's calls is not the PC's
+    ltc L5, A3, 0                   ; the line +Xnn: '+', the letter, two digits
+    if L5, s_neg
+    addc L6, A3, 64
+    goto s_letter
+s_neg:
+    neg L6, A3
+    addc L6, L6, 96
+s_letter:
+    shlc L6, L6, 8
+    ldi L5, '+'
+    or L6, L6, L5
+    divc L5, A4, 10
+    addc L5, L5, '0'
+    shlc L5, L5, 16
+    or L6, L6, L5
+    modc L5, A4, 10
+    addc L5, L5, '0'
+    shlc L5, L5, 24
+    or L6, L6, L5
+    leag L5, s_line
+    stp L6, L5, 1                   ; the string's first four bytes
+    pushi 0
+    pushleag s_line
+    pushi 2
+    builtinx printf
+    ret
+
+stop:                               ; stop(deadman): as the pendant's 0x07d9; prints E..., then - or T
+    enter 10
+    getg L6, moving
+    ifnot L6, t_done
+    ldi L6, 0
+    putg L6, moving
+    getg L6, axis
+    ltc L5, L6, 0
+    ifnot L5, t_abs
+    neg L6, L6
+t_abs:
+    push L6
+    pushi 1
+    libcall robotlib:man_move_stop
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, t_said
+    push L5
+    pushi 1
+    call report
+    pushi 0
+    libcall robotlib:halt           ; as the pendant does when man_move_stop fails
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, t_said
+    push L5
+    pushi 1
+    call report
+t_said:
+    pushi 0
+    pushi 1
+    call setman                     ; man_mode_set(0) after each jog (pendant 0x07f3)
+    pop L5
+    ifnot A3, t_dash
+    pushi 0
+    pushleag s_dead
+    pushi 2
+    builtinx printf
+    ret
+t_dash:
+    pushi 0
+    pushleag s_stop
+    pushi 2
+    builtinx printf
+t_done:
+    ret
+
+setman:                             ; setman(on): the pendant's 0x05b2. man_mode_set(mode) or (0)
+    enter 10                        ; unless that is in force already; 0, or the result r < 0
+    getg L6, inmanual
+    eq L5, L6, A3
+    ifnot L5, m_set
+    ifnot A3, m_same                ; off already
+    getg L6, curmode
+    getg L5, mode
+    eq L4, L6, L5
+    if L4, m_same                   ; on already, in this mode
+m_set:
+    ldi L6, 0
+    ifnot A3, m_call
+    getg L6, mode
+m_call:
+    push L6
+    pushi 1
+    libcall robotlib:man_mode_set
+    pop L5
+    ltc L4, L5, 0
+    if L4, m_failed
+    putg A3, inmanual
+    putg L6, curmode
+m_same:
+    ldi L5, 0
+    retv L5
+m_failed:
+    push L5
+    pushi 1
+    call report
+    pushleag rmode
+    pushi 1
+    libcall robotlib:robot_mode_get ; as the pendant asks after a refusal (0x0625)
+    pop L4
+    ltc L3, L4, 0
+    if L3, m_ret
+    getg L4, rmode
+    eqc L3, L4, 2                   ; MODE_MANUAL
+    putg L3, inmanual
+m_ret:
+    retv L5
+    retv 0
+
+position:                           ; position(): print P and joints 1..6's encoder counts
+    enter 10
+    pushleag loc
+    pushi POS_TYPE
+    pushi 2
+    libcall robotlib:pos_get        ; as ash's Actual Position display and diag/xzero read it
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, p_got
+    push L5
+    pushi 1
+    call report
+    ret
+p_got:
+    pushleag pul1
+    pushleag loc
+    pushi 2
+    builtin loc_pdata_get           ; no result: nothing to pop (as in ash and xzero)
+    getg L6, pul6
+    push L6 tag 1
+    getg L6, pul5
+    push L6 tag 1
+    getg L6, pul4
+    push L6 tag 1
+    getg L6, pul3
+    push L6 tag 1
+    getg L6, pul2
+    push L6 tag 1
+    getg L6, pul1
+    push L6 tag 1
+    pushi 6
+    pushleag s_pos
+    pushi 14
+    builtinx printf
+    ret
+
+report:                             ; report(r): print "E <r> <text>" for a result r < 0
+    enter 10
+    neg L5, A3
+    push L5
+    pushi 1
+    libcall syslib:str_error
+    pop L6
+    push L6 tag 19
+    push A3 tag 1
+    pushi 2
+    pushleag s_err
+    pushi 6
+    builtinx printf
+    ret
+
+finish:                             ; finish(code): manual mode off if still on, the speed back, release, exit
+    enter 10
+    pushi 0
+    pushi 1
+    call setman
+    pop L5
+f_release:
+    pushi 0
+    libcall robotlib:ctl_rel
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, f_exit
+    push L5
+    pushi 1
+    call report
+f_exit:
+    push A3
+    pushi 1
+    builtinx exit
+    retv 0

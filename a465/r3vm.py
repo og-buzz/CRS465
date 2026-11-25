@@ -35,7 +35,8 @@ offset 0x544c):
   fp. builtin error_code() (0x10a, dispatched by the table at 0x78d4 to 0x875c) returns that code.
 
 Builtins provided (by number, see r3dis.BUILTINS): exit, msleep, argc, argv, time, mtime, open,
-close, reads, print, fprint, printf, fprintf, str_len, str_chr_get, str_to_int, error_code. A
+close, reads, print, fprint, printf, fprintf, str_len, str_chr_get, str_to_int, error_code and
+loc_pdata_get (as the interpreter's 0x7020: location words 1..8 to the array, no result). A
 format "{}" prints one argument (tag 1 an int, tag 19 a string); other format specs raise, so a
 test never passes on a guess about the controller's formatter.
 """
@@ -48,6 +49,7 @@ TAG_INT, TAG_STRING = 1, 19
 EAGAIN = 35            # syslib's EAGAIN (its constant record); fastacid treats -35 as "no data yet"
 O_NONBLOCK = 4         # syslib's O_NONBLOCK
 MASK = 0xFFFFFFFF
+LOC_WORDS, LOC_PDATA_WORDS = 9, 8   # a location is 9 words (push9/pop9); its precision data 8
 
 
 def s32(v):
@@ -139,8 +141,18 @@ class FakeRobot:
         return r
 
 
+def store_location(vm, ptr, pulses, header=0):
+    """Write a location at ptr as a fake pos_get would: word 0 a header (what the server puts there
+    is not known; robotsrv 0x0264 builds it with loc_pdata_set, loc_flags_set, loc_machtype_set and
+    loc_class_set), words 1..8 the precision data, which is where loc_pdata_get reads them."""
+    data = list(pulses) + [0] * (LOC_PDATA_WORDS - len(pulses))
+    vm.store(ptr, 0, header)
+    for k, v in enumerate(data[:LOC_PDATA_WORDS]):
+        vm.store(ptr, 1 + k, v)
+
+
 class VM:
-    def __init__(self, image, argv=("program",), libs=None, files=None, stack_words=8192, clock_ms=0):
+    def __init__(self, image, argv=("program",), libs=None, files=None, stack_words=8192, clock_ms=0, step_us=0):
         self.mod = r3dis.Module(image, argv[0])
         w = struct.unpack_from("<16I", image, 0)
         self.entry = w[3] & 0xFFFF
@@ -157,6 +169,7 @@ class VM:
         self.sp, self.fp = stack_words, 0
         self.handler = self.try_sp = self.try_fp = self.mark = self.exc_from = self.exc_code = 0
         self.steps = 0
+        self.step_us, self._us = step_us, 0   # fake time per instruction (0: instructions take none)
         self.pc = None
         self._inits = {}
 
@@ -390,6 +403,11 @@ class VM:
     def b_error_code(self, args):
         return self.exc_code
 
+    def b_loc_pdata_get(self, args):      # loc_pdata_get(&loc, &ints): 3.1 interpreter 0x7020
+        for k in range(LOC_PDATA_WORDS):  # copies location words 1..8 to ints[0..7]; no result
+            self.store(args[1], k, self.load(args[0], 1 + k))
+        return None
+
     # -- exceptions ---------------------------------------------------------------------------
     def raise_(self, code, at):
         while True:
@@ -440,6 +458,10 @@ class VM:
 
     def step(self):
         self.steps += 1
+        if self.step_us:
+            self._us += self.step_us
+            self.clock += self._us // 1000
+            self._us %= 1000
         at = self.pc
         code = self.segments[TEXT]
         word = code[at]
@@ -553,7 +575,10 @@ class VM:
                 self.raise_(v, at)
         elif op in (0x5b, 0x67):
             result = self.builtin(u16, self.pop_args())
-            if op == 0x67:
+            if result is None:                # a builtin with no result pushes nothing (0x4960)
+                if op == 0x67:
+                    raise R3VMError(f"builtin {u16:#x} has no result for 0x67 to check")
+            elif op == 0x67:
                 if s32(result) < 0:
                     self.raise_(result, at)
             else:

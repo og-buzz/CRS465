@@ -2,13 +2,15 @@
 (a465/r3vm.py), with the console bytes and the output lines moving on the tests' FakeClock."""
 import pytest
 
-from a465 import jogprog, jogtest, r3vm
+from a465 import home, jogprog, jogtest, r3vm
 from fake_acid import FakeClock
 
 IMAGE = jogprog.build()
 NO_DEADMAN_IMAGE = jogprog.build(jogprog.Options(deadman_ms=30_000))
 BUTTON = "Press the PAUSE/CONTINUE button to gain robot point of control.\r\n"
 CPD = 100.0
+SAMPLE_CPD = home.COUNTS_PER_DEGREE
+FAST = 100.0                           # degrees/s of the reversal fault's lunge
 
 
 class FakeController:
@@ -17,12 +19,15 @@ class FakeController:
     image (the jogd binary), ctrlz_ends (Ctrl-Z makes jogd exit)."""
 
     def __init__(self, clock, image=IMAGE, has_file=True, button_after=None, echo=False, drop=b"", start_error=0,
-                 ctrlz_ends=False, crlf=True, speed_degrees_per_percent=1.0):
+                 ctrlz_ends=False, crlf=True, speed_degrees_per_percent=1.0, fault=False, p_delay=0.095):
         self.clock, self.image = clock, image
         self.files = {"/tmp/jogd": IMAGE} if has_file else {}
         self.button_after, self.echo, self.drop, self.start_error = button_after, echo, drop, start_error
         self.ctrlz_ends, self.nl = ctrlz_ends, b"\r\n" if crlf else b"\n"
         self.rate = speed_degrees_per_percent
+        self.fault, self.p_delay = fault, p_delay      # fault: a reversal jumps to the mirror of its start, then creeps
+        self.last_sign = {}
+        self.p_count = 0
         self.out = []                  # [time, bytes]
         self.line = b""
         self.vm = None
@@ -86,6 +91,12 @@ class FakeController:
             self._put(b)
         if b in self.drop:
             return
+        if b == b"p":                       # the fake answers `p` itself (the interpreter has no location data)
+            self.p_count += 1
+            pos = [self._pos(j, self._target()) for j in range(1, 7)]
+            counts = [round(x * SAMPLE_CPD[j]) for j, x in zip(range(1, 7), pos)]
+            self._put(("P " + " ".join(str(c) for c in counts)).encode() + self.nl, self.p_delay)
+            return
         self.to_jogd += b
         self.cin.pending.append(((self.clock() - self.vm_t0) * 1000, b))
 
@@ -102,7 +113,7 @@ class FakeController:
             self._put(("\r\nActual Position :\r\n          Axis 1/7   Axis 2/8     Axis 3     Axis 4     Axis 5     Axis 6\r\n"
                        f"PULSES  {' '.join(f'{round(x * CPD):+10d}' for x in j)}\r\n          +0 +0\r\n"
                        f"JOINTS  {' '.join(f'{x:10.3f}' for x in j)}\r\n             0.000      0.000\r\n\r\nWORLD ...\r\n$ ").encode(), 0.2)
-        elif w[0] == "/tmp/jogd":
+        elif w[0].startswith("/tmp/jogd"):
             self._launch(w)
         else:
             self._put(f"{w[0]}: not found\r\n$ ".encode())
@@ -130,8 +141,12 @@ class FakeController:
             if self.start_error:
                 return self.start_error
             joint, speed = jogprog_s32(args[0]), jogprog_s32(args[1])
+            sign = 1 if joint > 0 else -1
             self._close_move(abs(joint), vm.clock)
-            self.moving[abs(joint)] = (1 if joint > 0 else -1, speed, vm.clock)
+            p0 = self.joints[abs(joint) - 1]
+            fast = -p0 if self.fault and self.last_sign.get(abs(joint), sign) != sign else None
+            self.last_sign[abs(joint)] = sign
+            self.moving[abs(joint)] = (sign, speed, vm.clock, p0, fast)
             return 0
 
         def stop(vm, args):
@@ -141,8 +156,21 @@ class FakeController:
 
     def _close_move(self, joint, now):
         if joint in self.moving:
-            sign, speed, t = self.moving.pop(joint)
-            self.joints[joint - 1] += sign * speed * self.rate * (now - t) / 1000
+            self.joints[joint - 1] = self._pos(joint, now)
+            self.moving.pop(joint)
+
+    def _pos(self, joint, now):
+        """Degrees of a joint at VM time `now` (ms)."""
+        if joint not in self.moving:
+            return self.joints[joint - 1]
+        sign, speed, t, p0, fast = self.moving[joint]
+        dt = max(now - t, 0) / 1000
+        if fast is None:
+            return p0 + sign * speed * self.rate * dt
+        t_fast = abs(fast - p0) / FAST
+        if dt <= t_fast:
+            return p0 + (1 if fast > p0 else -1) * FAST * dt
+        return fast + sign * speed * self.rate * (dt - t_fast)
 
     # -- the interpreter follows the tests' clock
     def _target(self):
@@ -415,3 +443,104 @@ def test_a_failed_upload_stops_before_jogd_is_started(rig):
                         sleep=rig.clock.sleep, upload=lambda link, args, say: None, log_dir=str(rig.tmp))
     assert code == 2
     assert b"/tmp/jogd 1" not in b"".join(ctl.sent)
+
+
+# --------------------------------------------------------------------------- sampling, reversal, travel limit
+
+def test_sampled_start_stop_prints_a_table_and_speeds(rig):
+    code, ctl = rig("F", "--sample", "--no-deadman-test", "--speed", "5", "--hold", "1.0")
+    assert code == 0, rig.text
+    assert ctl.p_count >= 8
+    assert "samples of joint 6" in rig.text and "deg/s since previous" in rig.text
+    assert "phase F05: travel +" in rig.text
+    assert "largest speed in this test: +" in rig.text
+    import re
+    mean = float(re.search(r"phase F05: travel [+-][\d.]+ degrees in \d+ ms, mean ([+-][\d.]+) deg/s", rig.text).group(1))
+    assert mean == pytest.approx(-5.0 * 1.0 * 1.0, abs=1.5) or abs(mean) > 3        # joint 6 counts per degree are negative
+    assert commands_sent(ctl).count(b"p") >= 8
+
+
+def test_samples_never_delay_keepalives(rig):
+    code, ctl = rig("F", "--sample", "--no-deadman-test", "--hold", "2.0")
+    assert code == 0, rig.text
+    assert "none late" in rig.text
+
+
+def test_samples_are_not_written_without_the_option(rig):
+    code, ctl = rig("F", "--no-deadman-test")
+    assert code == 0 and ctl.p_count == 0
+
+
+def test_p_never_answered_is_reported_and_the_test_goes_on(rig):
+    code, ctl = rig("F", "--sample", "--no-deadman-test", drop=b"p")
+    assert code == 0, rig.text
+    assert "`p` WAS NOT ANSWERED" in rig.text
+    assert b"p" not in commands_sent(ctl).split(b"F02", 1)[1]
+
+
+def test_dry_run_with_sampling_still_sends_no_motion(rig):
+    code, ctl = rig("--dry", "--sample")
+    assert code == 0, rig.text
+    assert motion_bytes(ctl) == [] and ctl.p_count >= 1
+
+
+def test_reversal_test_reports_four_moves(rig):
+    code, ctl = rig("F", "--reverse", "--sample", "--speed", "5", "--hold", "1.0")
+    assert code == 0, rig.text
+    sent = commands_sent(ctl)
+    order = [sent.index(b"F05"), sent.index(b"f05"), sent.rindex(b"F05")]
+    assert order == sorted(order)
+    assert sent.count(b".") == 4 and sent.endswith(b"q")
+    assert rig.text.count("MOVE REPORT") == 4
+    for tag in "abcd":
+        assert f"reverse ({tag})" in rig.text
+    assert rig.text.count("crossed the starting position: no") == 4         # an ideal reversal returns to the start, not past it
+    assert "test 1:" not in rig.text
+
+
+def test_reversal_fault_is_visible_in_the_report(rig):
+    code, ctl = rig("F", "--reverse", "--sample", "--speed", "5", "--hold", "1.0", "--max-travel", "30", fault=True, p_delay=0.0)
+    assert code == 0, rig.text
+    import re
+    peaks = [float(x) for x in re.findall(r"peak ([+-][\d.]+) deg/s", rig.text)]
+    assert len(peaks) == 4 and max(abs(x) for x in peaks) > 20           # the lunge is reported, not judged
+    assert "crossed the starting position: YES" in rig.text
+
+
+def test_travel_limit_writes_dot_at_once_and_ends_the_sequence(rig):
+    code, ctl = rig("F", "--sample", "--speed", "5", "--hold", "3.0", "--max-travel", "3")
+    assert code == 1
+    assert "TRAVEL LIMIT" in rig.text and "TravelLimit" in rig.text
+    sent = commands_sent(ctl)
+    assert sent.endswith(b".q") or sent.endswith(b"..q") or b".q" in sent[-4:]
+    assert b"f05" not in sent                                            # test 2 never started
+    assert abs(ctl.joints[5]) < 3 + 5 * 1.0                              # stopped soon after the limit
+    assert not ctl.ctrlz
+
+
+def test_travel_limit_catches_the_reversal_lunge(rig):
+    code, ctl = rig("F", "--reverse", "--sample", "--speed", "5", "--hold", "1.0", "--max-travel", "6", fault=True, p_delay=0.0)
+    assert code == 1
+    assert "TRAVEL LIMIT" in rig.text
+    assert commands_sent(ctl).count(b"F05") < 30
+
+
+@pytest.mark.parametrize("argv", [["F", "--reverse", "--speed2", "3"], ["--dry", "--reverse"], ["F", "--max-travel", "0"],
+                                  ["F", "--max-travel", "91"]])
+def test_new_option_limits(rig, argv):
+    opened = []
+    with pytest.raises(SystemExit):
+        jogtest.main(["--local", str(rig.local), *argv], repo=str(rig.tmp), open_port=lambda a: opened.append(a),
+                     clock=rig.clock, sleep=rig.clock.sleep, log_dir=str(rig.tmp))
+    assert opened == []
+
+
+def test_program_and_remote_name_options(rig):
+    other = rig.tmp / "jogd-b"
+    other.write_bytes(IMAGE)
+    ctl = FakeController(rig.clock)
+    ctl.files["/tmp/jogd-b"] = IMAGE
+    code = jogtest.main(["--program", str(other), "--remote-name", "/tmp/jogd-b", "--dry"], repo=str(rig.tmp),
+                        open_port=lambda a: ctl, clock=rig.clock, sleep=rig.clock.sleep, log_dir=str(rig.tmp))
+    assert code == 0
+    assert "/tmp/jogd-b 1 5 s" in b"".join(ctl.sent).decode()

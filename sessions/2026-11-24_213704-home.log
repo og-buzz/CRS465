@@ -1,0 +1,1 @@
+PRECONDITION: each joint's present reading must already be within less than half a motor turn (1.8 degrees) of the truth, e.g. the arm was put on its zero marks and zeroed, or it is already homed. This tool cannot check that; the offsets printed afterwards tell.

@@ -1,0 +1,222 @@
+PRECONDITION: each joint's present reading must already be within less than half a motor turn (1.8 degrees) of the truth, e.g. the arm was put on its zero marks and zeroed, or it is already homed. This tool cannot check that; the offsets printed afterwards tell.
+log: /home/buzz/dev/crs-a465/sessions/2026-11-24_213904-home.log
+    0.00 -> \r
+    0.04 <- \r
+    0.05 <- \n$ 
+    0.96 -> cksum /conf/robot.cal\r
+    1.05 <- c
+    1.06 <- k
+    1.10 <- s
+    1.17 <- u
+    1.18 <- m
+    1.25 <-  
+    1.26 <- /c
+    1.30 <- o
+    1.34 <- nf
+    1.39 <- /r
+    1.44 <- ob
+    1.49 <- ot
+    1.52 <- .
+    1.56 <- ca
+    1.60 <- l
+    1.61 <- \r\n
+    2.32 <- 0
+    2.33 <- x
+    2.35 <- 00000e00 72 /conf/robot.cal\r\n
+    2.37 <- $ 
+/conf/robot.cal on the controller equals /home/buzz/dev/crs-a465/controller/backup-2026-11-23/conf/robot.cal: 72 bytes, sum 0xe00
+    2.47 -> w2\r
+    2.55 <- w
+    2.56 <- 2
+    2.60 <- \r\n
+    3.20 <- A
+    3.21 <- ctual Position :\r\n
+    3.57 <- \r
+    3.62 <- \n          Axis 1/7   
+    3.63 <- Axis 2/8     Axis 3     
+    3.65 <- Axis 4     Axis 5     Axis 6\r\nPU
+    3.66 <- LSES          -1         +0      
+    3.67 <-    +0         +0       -525    
+    3.68 <-     -28\r\n          
+    3.69 <-       +0         +0\r\n
+    3.71 <- \r\n          
+    3.72 <- Axis 1/7   Axis 2/8     Axis 3   
+    3.76 <-   Axis 4     A
+    3.76 <- x
+    3.77 <- is 5     Axis 6\r\nJOINTS      -0.004    
+    3.78 <-   0.00
+    3.79 <- 0      0.000   
+    3.79 <-  
+    3.80 <-   0.000      3.780      0.200\r\n      
+    3.82 <-  
+    3.83 <-       0.000      0.000\r\n\r\n          X/
+    3.83 <- T
+    3.84 <- rackX   Y/TrackY          Z      Z-R
+    3.84 <- o
+    3.85 <- t      Y-Rot      X-
+    3.87 <- Rot\r\nWORLD       -5.024      0.
+    3.88 <- 000   1041.234    179.996    -
+    3.88 <- 8
+    3.89 <- 6.220   -179.800\r\n             0.000   
+    3.90 <-  
+    3.91 <-   0.000\r\n$ 
+    4.01 -> w2\r
+    4.09 <- w2
+    4.13 <- \r
+    4.14 <- \n
+    4.76 <- Actual Position
+    4.76 <-  
+    4.77 <- :\r\n
+    5.10 <- \r
+    5.13 <- \n    
+    5.14 <-       Axis 1/7   Axis 2/8     Axis 
+    5.17 <- 3 
+    5.18 <-     Axis 4     Axis 5     Axis 6\r\nPULSE
+    5.19 <- S          -1     
+    5.21 <-     +0     
+    5.21 <-  
+    5.22 <-    +0         +0       -525        -2
+    5.23 <- 8\r\n                +0         +0\r\n
+    5.25 <- \r\n    
+    5.26 <-       Axis 1/7   Axis 2/8     Axis 3   
+    5.27 <-   Axis 4 
+    5.30 <-     Axis 5     Axis 6\r\nJOIN
+    5.32 <- TS      -0.004      0.000      0.000   
+    5.33 <-    0
+    5.34 <- .000
+    5.34 <-  
+    5.35 <-      3.780      0.200\r\n             0.0
+    5.36 <- 00   
+    5.37 <-    0
+    5.38 <- .000\r\n\r\n          X/TrackX   Y/TrackY 
+    5.39 <-          Z 
+    5.40 <-      Z-Rot      Y-Rot      X-
+    5.42 <- Rot\r\nWORLD       -5.024      0.000
+    5.43 <-    1041.234    179.996    -86.220   -17
+    5.43 <- 9
+    5.43 <- .
+    5.44 <- 800\r\n             0.000      0.000\r\n$ 
+joint now (counts)  now (deg)  home point  parking point  park move (deg)  return (deg)
+    2            0      0.000         676            176           +0.634        +2.434
+    4            0      0.000      -24395         -24645         +175.684      +173.902
+    5         -525      3.780       -3106          -3356          +20.383       +22.363
+    3            0      0.000       16701          16201          -58.323       -60.123
+    1           -1     -0.004       47145          46645         +167.924      +169.721
+    6          -28      0.200       25133          24883         -177.581      -179.163
+    5.54 -> cksum /tmp/homezo\r
+    5.63 <- ck
+    5.70 <- s
+    5.71 <- u
+    5.78 <- m /
+    5.84 <- tm
+    5.89 <- p/
+    5.95 <- ho
+    6.00 <- me
+    6.05 <- zo\r\n
+    7.57 <- 0x0000a234 6
+    7.58 <- 40 /
+    7.60 <- tmp/homezo\r\n
+    7.60 <- $
+    7.61 <-  
+/tmp/homezo is on the controller: 640 bytes, sum 0xa234, the same as /home/buzz/dev/crs-a465/sessions/controller-files/patched/homezc-offset
+    7.71 -> w2\r
+    7.77 <- w
+    7.78 <- 2
+    7.82 <- \r
+    7.83 <- \n
+    8.44 <- A
+    8.45 <- ctual Posit
+    8.47 <- ion
+    8.48 <-  :\r\n
+    8.79 <- \r
+    8.85 <- \n          Axis 1/7   Axis 2/8 
+    8.87 <-     Axis 3     Axis 4     Axis 5 
+    8.88 <-     Axis 6\r\n
+    8.88 <- P
+    8.89 <- ULSES          -1         +0         +0
+    8.89 <-  
+    8.90 <-    
+    8.91 <-      +0       -525        -
+    8.91 <- 2
+    8.92 <- 8\r\n                +0         +0\r\n
+    8.94 <- \r\n          Axis 1/7   Axis
+    8.95 <-  2/8     Axis 3     Axis 
+    8.99 <- 4     Axis 5     Axis 6\r\n
+    8.99 <- J
+    9.00 <- OINTS      -0.004      0.000      0.0
+    9.00 <- 0
+    9.01 <- 0   
+    9.02 <-    0.000      3.780      0
+    9.03 <- .200\r\n             0.000      0.000\r\n\r
+    9.03 <- \n
+    9.06 <-           X/TrackX   Y/TrackY  
+    9.06 <-  
+    9.07 <-        Z      Z-Rot      Y-Rot     
+    9.07 <-  
+    9.08 <- X-R
+    9.09 <- o
+    9.10 <- t\r\nWORLD       -5.024      0.000   104
+    9.10 <- 1
+    9.11 <- .234    179.996    -86.220   -17
+    9.11 <- 9
+    9.12 <- .800\r\n             0.000      0.000\r\n
+    9.13 <- $ 
+JOINT 2: reads 0 counts, home point 676, parking point 176: move +0.634 degrees
+    9.23 -> w2\r
+    9.29 <- w
+    9.30 <- 2
+    9.34 <- \r
+    9.35 <- \n
+    9.97 <- Act
+    9.98 <- ual Position :\r\n
+   10.30 <- \r
+   10.36 <- \n        
+   10.36 <-  
+   10.37 <-  Axis 1/7   Axis 2/8     Axis 3     Ax
+   10.37 <- i
+   10.38 <- s 
+   10.39 <- 4     Axis 5     Axis 6\r\nP
+   10.39 <- U
+   10.40 <- LSES          -1         +0         
+   10.41 <- +0         +0     
+   10.42 <-   -525        -28\r\n                +0  
+   10.42 <-  
+   10.43 <-       +0\r\n
+   10.45 <- \r\n
+   10.46 <-           Axis 1/7   Axis 2/8     Axis
+   10.47 <-  3     Axis 4    
+   10.50 <-  Axis 5     Axis 6\r\nJOIN
+   10.51 <- TS      -0.004      0.0
+   10.53 <- 00   
+   10.53 <-  
+   10.54 <-   0.000      0.000      3.780      0.20
+   10.54 <- 0
+   10.55 <- \r\n      
+   10.56 <-        0.000      0.000\r
+   10.56 <- \n
+   10.57 <- \r\n          X/TrackX   Y/TrackY     
+   10.57 <-  
+   10.58 <-     Z  
+   10.59 <-     Z-Rot      Y-Rot      X-
+   10.60 <- Rot\r\nW
+   10.61 <- ORLD       -5.024      0
+   10.62 <- .000   1041.234 
+   10.63 <-    179.996    -86.220   -179.800\r\n     
+   10.64 <-         0.000      0.000\r\n$ 
+before: joints -0.004 0.000 0.000 0.000 3.780 0.200
+   10.75 -> speed 10\r
+   10.84 <- s
+   10.85 <- p
+   10.90 <- ee
+   10.95 <- d
+   10.96 <-  1
+   10.98 <- 0
+   11.03 <- \r\n
+   12.11 <- s
+   12.12 <- peed: resource b
+   12.14 <- u
+   12.15 <- s
+   12.16 <- y\r\n
+   12.18 <- $
+the controller did not accept `speed 10`: 'speed: resource busy'. Nothing was started.
+STOPPED: joint 2: the parking move did not end cleanly (exit 1). Stopping everything.

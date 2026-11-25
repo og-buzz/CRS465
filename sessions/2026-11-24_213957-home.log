@@ -1,0 +1,512 @@
+PRECONDITION: each joint's present reading must already be within less than half a motor turn (1.8 degrees) of the truth, e.g. the arm was put on its zero marks and zeroed, or it is already homed. This tool cannot check that; the offsets printed afterwards tell.
+log: /home/buzz/dev/crs-a465/sessions/2026-11-24_213957-home.log
+    0.00 -> \r
+    0.05 <- \r\n$ 
+    0.96 -> cksum /conf/robot.cal\r
+    1.04 <- ck
+    1.10 <- s
+    1.11 <- u
+    1.17 <- m /
+    1.24 <- c
+    1.25 <- o
+    1.29 <- nf
+    1.33 <- /r
+    1.37 <- obo
+    1.39 <- t
+    1.43 <- .c
+    1.47 <- al\r\n
+    2.04 <- 0
+    2.05 <- x00000e00 72
+    2.06 <-  /conf/rob
+    2.07 <- ot.cal\r\n
+    2.08 <- $
+    2.09 <-  
+/conf/robot.cal on the controller equals /home/buzz/dev/crs-a465/controller/backup-2026-11-23/conf/robot.cal: 72 bytes, sum 0xe00
+    2.19 -> w2\r
+    2.25 <- w2
+    2.29 <- \r\n
+    2.77 <- A
+    2.78 <- ctual Position
+    2.80 <-  
+    2.80 <- :
+    2.81 <- \r\n
+    3.04 <- \r
+    3.09 <- \n          Axis 1/7   A
+    3.09 <- x
+    3.10 <- is 2/8     Axis 3     Axis 4     Axis
+    3.11 <-  5     A
+    3.12 <- xis 6\r\nPULSES          -1         +0   
+    3.12 <-  
+    3.13 <-      +0         +0       -525        -
+    3.14 <- 28\r\n                +0         +
+    3.15 <- 0\r\n
+    3.16 <- \r\n          
+    3.16 <- Axis
+    3.17 <-  1/7   Axis 2/8     Axis 3     Axis 4
+    3.21 <-      Axis 5     A
+    3.21 <- x
+    3.22 <- is 6\r\nJOINTS      -0.004      0.000    
+    3.23 <-  
+    3.24 <-  0.000      0.000      3.780      0
+    3.25 <- .200\r\n        
+    3.26 <-      0.000      0.000\r
+    3.26 <- \n
+    3.26 <- \r
+    3.27 <- \n          X/TrackX   Y/TrackY        
+    3.28 <-   Z      Z-Rot      Y
+    3.29 <- -Rot      X-
+    3.30 <- Rot\r\nWORLD       -5.024      0.000  
+    3.30 <-  
+    3.31 <- 1041.234    179.996    -86.220   -179.8
+    3.32 <- 00\r\n             0.000      0.000\r\n$ 
+    3.42 -> w2\r
+    3.48 <- w2
+    3.52 <- \r
+    3.53 <- \n
+    4.00 <- A
+    4.01 <- ctual Position
+    4.03 <-  :\r\n
+    4.28 <- \r
+    4.30 <- \n   
+    4.31 <-        Axis 1/7   Axis 2/8     Axis 3  
+    4.31 <-  
+    4.32 <-   Axis 4
+    4.34 <-      Axis 5     Axis 
+    4.35 <- 6\r\nPULSES          -1         
+    4.36 <- +0      
+    4.37 <-    +0         +0       -525        -2
+    4.38 <- 8\r\n                +0         +0\r
+    4.38 <- \n
+    4.40 <- \r\n          Axis 1/7   Axi
+    4.40 <- s
+    4.41 <-  2/8     Axis 3     Axis 4     Axis 
+    4.44 <- 5    
+    4.45 <-  Axis 6\r\nJOINTS      -0.004      0.000
+    4.46 <-  
+    4.47 <-    
+    4.48 <-   0.000      0.000      3.780      0.2
+    4.48 <- 0
+    4.49 <- 0\r\n             0.000
+    4.50 <-       0.
+    4.51 <- 000\r\n\r\n          X/TrackX   Y/TrackY  
+    4.51 <-  
+    4.52 <-        Z      Z-Rot      
+    4.52 <- Y
+    4.53 <- -Rot      X-
+    4.54 <- Rot\r\nWORLD       -5.0
+    4.54 <- 2
+    4.55 <- 4      0.000   1041.234    179.996    -
+    4.56 <- 86.220   -179.800\r\n             0.000 
+    4.56 <-  
+    4.57 <-     0.000\r\n$ 
+joint now (counts)  now (deg)  home point  parking point  park move (deg)  return (deg)
+    2            0      0.000         676            176           +0.634        +2.434
+    4            0      0.000      -24395         -24645         +175.684      +173.902
+    5         -525      3.780       -3106          -3356          +20.383       +22.363
+    3            0      0.000       16701          16201          -58.323       -60.123
+    1           -1     -0.004       47145          46645         +167.924      +169.721
+    6          -28      0.200       25133          24883         -177.581      -179.163
+    4.67 -> cksum /tmp/homezo\r
+    4.74 <- c
+    4.75 <- k
+    4.81 <- su
+    4.85 <- m
+    4.90 <-  /
+    4.94 <- tm
+    4.95 <- p
+    4.97 <- /
+    5.00 <- ho
+    5.04 <- m
+    5.07 <- ez
+    5.07 <- o
+    5.11 <- \r\n
+    6.25 <- 0x0
+    6.25 <- 0
+    6.26 <- 00a234 64
+    6.27 <- 0 /tmp/homezo\r\n
+    6.29 <- $
+    6.30 <-  
+/tmp/homezo is on the controller: 640 bytes, sum 0xa234, the same as /home/buzz/dev/crs-a465/sessions/controller-files/patched/homezc-offset
+    6.40 -> w2\r
+    6.46 <- w
+    6.47 <- 2\r\n
+    6.96 <- Actual Posit
+    6.97 <- ion :\r\n
+    7.24 <- \r
+    7.31 <- \n          Axis 1/7   Axis 2/8     Axi
+    7.31 <- s
+    7.32 <-  3     Axis 4   
+    7.32 <-  
+    7.33 <-  Axis 5     Axis 6\r\nPULSES          -
+    7.33 <- 1
+    7.34 <-          +0         +0         +0     
+    7.34 <-  
+    7.35 <-  -525        -28\r\n                +0 
+    7.36 <-         +0\r\n
+    7.37 <- \r\n        
+    7.38 <-   Axis 1/7   Axis 2/8     Axis 3    
+    7.41 <-  Axis 4     Axis 5
+    7.41 <-  
+    7.42 <-     Axis 6\r\nJOINTS      -0.004      0.0
+    7.42 <- 0
+    7.43 <- 0      0.0
+    7.44 <- 00      0.000      3.780    
+    7.44 <-  
+    7.45 <-  0.200\r\n             0.000      0.000
+    7.46 <- \r\n\r\n          X/TrackX   Y/TrackY   
+    7.47 <-        Z      Z-Rot      Y-Rot
+    7.48 <-       X-
+    7.49 <- Rot\r\nWOR
+    7.50 <- LD       -5.024     
+    7.51 <-  0.000   1041.234    179.996    -86.2
+    7.52 <- 20   -179.800\r\n             0.000     
+    7.53 <-  0.000\r\n$ 
+JOINT 2: reads 0 counts, home point 676, parking point 176: move +0.634 degrees
+    7.63 -> w2\r
+    7.70 <- w2
+    7.73 <- \r
+    7.74 <- \n
+    8.21 <- Actual Positio
+    8.22 <- n :\r
+    8.23 <- \n
+    8.49 <- \r
+    8.51 <- \n          Axi
+    8.52 <- s 1/7   Axis 2/8     Axis 3     Axis 4 
+    8.52 <-  
+    8.53 <-    
+    8.55 <- Axis 
+    8.56 <- 5     Axis 6\r\nPULSES          -1       
+    8.58 <-   +0         +0         +0  
+    8.59 <-      -525        -28\r\n
+    8.59 <-  
+    8.60 <-                +0         +0\r\n
+    8.62 <- \r\n          Axis 1/7   Axis
+    8.62 <-  
+    8.63 <- 2/8     Axis 3     Ax
+    8.66 <- is 4     A
+    8.67 <- xis 5     Axis 6\r\nJOINTS      -0.004  
+    8.67 <-  
+    8.68 <-    0.000  
+    8.69 <-     0.000      0.000      3.780      0.
+    8.70 <- 200\r\n       
+    8.71 <-       0.000      
+    8.71 <- 0
+    8.72 <- .000\r\n\r\n          X/TrackX   Y/TrackY 
+    8.73 <-          Z      Z-Rot   
+    8.74 <-    Y-Rot      X-
+    8.75 <- Rot\r\nWORLD       -5.0
+    8.75 <- 2
+    8.75 <- 4
+    8.76 <-       0.000   1041.234    179.996    -
+    8.76 <- 8
+    8.77 <- 6.220   -179.800\r\n             0.000  
+    8.77 <-  
+    8.78 <-    0.000\r\n$ 
+before: joints -0.004 0.000 0.000 0.000 3.780 0.200
+    8.88 -> speed 10\r
+    8.96 <- sp
+    9.01 <- ee
+    9.05 <- d 
+    9.08 <- 1
+    9.09 <- 0\r\n
+    9.83 <- $ 
+    9.94 -> speed\r
+   10.01 <- s
+   10.02 <- p
+   10.06 <- ee
+   10.08 <- d
+   10.09 <- \r\n
+   10.75 <- Current Speed
+   10.77 <- : 10% of max.\r\n
+   10.78 <- $ 
+JOINT 2 IS ABOUT TO MOVE +0.634 degrees to 0.634. Speed 10%, time limit 6 s, then Ctrl-Z.
+   10.88 -> joint 2 0.634\r
+   10.97 <- jo
+   11.03 <- i
+   11.04 <- n
+   11.08 <- t
+   11.09 <-  2
+   11.12 <-  
+   11.13 <- 0
+   11.15 <- .
+   11.18 <- 6
+   11.19 <- 3
+   11.22 <- 4\r
+   11.23 <- \n
+   12.01 <- $ 
+   12.12 -> w2\r
+   12.18 <- w2
+   12.20 <- \r
+   12.21 <- \n
+   12.69 <- Actual Position
+   12.70 <-  :\r\n
+   12.97 <- \r
+   13.01 <- \n   
+   13.02 <-        Axis 1/7   Axis 2/8    
+   13.03 <-  Axis
+   13.04 <-  3     Axis 4     Axis 5     Axis 6\r
+   13.04 <- \n
+   13.05 <- PULSES          -1       +176         
+   13.05 <- +
+   13.06 <- 0         +0       -525        -28\r\n  
+   13.07 <-               +0         +0\r\n
+   13.09 <- \r\n          Axis 1/7   Axis 2/8     A
+   13.09 <- x
+   13.10 <- is 3     Axis 4     
+   13.13 <- Axis 5     Axis 6\r\nJOINTS     
+   13.13 <-  
+   13.14 <- -0.004      0.634      0.
+   13.15 <- 00
+   13.15 <- 6
+   13.16 <-       0.000      3.780      0.200\r\n    
+   13.16 <-  
+   13.17 <-         0.000      0.000\r\n\r\n  
+   13.18 <-         X/TrackX   Y/Tr
+   13.18 <- a
+   13.19 <- ckY          Z      Z-Rot      Y-Rot   
+   13.20 <-    X-
+   13.21 <- Rot\r\nWORLD      
+   13.22 <- -12.931      0.001   1041.134    179.99
+   13.22 <- 6
+   13.23 <-     -85.580   -179.800\r\n             
+   13.24 <- 0.000      0.000\r\n$ 
+   13.65 -> w2\r
+   13.70 <- w2
+   13.74 <- \r\n
+   14.21 <- Actual Posi
+   14.21 <- t
+   14.22 <- ion :\r\n
+   14.50 <- \r
+   14.52 <- \n   
+   14.53 <-        Axis 1/7   Axis 2/8     Axis 3  
+   14.54 <-    Axis 
+   14.56 <- 4    
+   14.56 <-  
+   14.57 <- Axis 5     Axis 6\r\nPULSES          -
+   14.57 <- 1
+   14.58 <-        +176       
+   14.59 <-   +0         +0       -525      
+   14.60 <-   -28\r\n                +0         +0\r
+   14.61 <- \n
+   14.62 <- \r\n          Axis 1/7  
+   14.62 <-  
+   14.63 <- Axis 2/8     Axis
+   14.66 <-  3     
+   14.67 <- Axis 4     Axis 5     Axis 6\r\nJOINTS   
+   14.67 <-  
+   14.68 <-   -0.004      
+   14.69 <- 0.634      0.006      0.000      3
+   14.70 <- .780      0.200\r\n            
+   14.71 <-  0.0
+   14.72 <- 00      0.000\r\n\r\n          X/TrackX   Y
+   14.73 <- /TrackY          Z      Z-Rot   
+   14.73 <-  
+   14.74 <-   Y-Rot      X-
+   14.75 <- Rot\r\nWORLD   
+   14.75 <-  
+   14.76 <-   -12.931      0.001   1041.134    179.
+   14.77 <- 996    -85.580   -179.800\r\n            
+   14.78 <-  0.000      0.000\r\n$ 
+after:  joints -0.004 0.634 0.006 0.000 3.780 0.200
+SUMMARY: joint 2 moved +0.634 of +0.634 degrees and reads 0.634 (other joints changed by at most 0.006); halted by this tool: no
+   14.89 -> w2\r
+   14.94 <- w2
+   14.98 <- \r
+   14.99 <- \n
+   15.45 <- Actual Positi
+   15.46 <- on :\r\n
+   15.74 <- \r
+   15.77 <- \n          Ax
+   15.77 <- i
+   15.78 <- s 1/7   Axis 2/8     Axis 3     
+   15.81 <- Axis 4     Axis 5     Axis 6
+   15.81 <- \r
+   15.82 <- \nPULSES        
+   15.83 <-   -1       +17
+   15.84 <- 5         +0         +0       -525    
+   15.85 <-     -28\r\n                +0         +0\r
+   15.86 <- \n
+   15.86 <- \r
+   15.87 <- \n          Axis 1/7   Axis 2/8     Ax
+   15.87 <- i
+   15.88 <- s 3  
+   15.91 <-    Axis 4     Axis 5   
+   15.92 <-   Axis 6\r\nJOINTS      -0.
+   15.93 <- 004      0.630   
+   15.94 <-    0.006      0.000      3.780      0
+   15.96 <- .200\r\n             0.000
+   15.97 <-       0.000\r\n\r\n          X/TrackX   Y
+   15.98 <- /TrackY          Z      Z-Rot      Y-R
+   15.99 <- ot      X-
+   16.00 <- Rot\r\nWORLD      -12.886     
+   16.00 <-  
+   16.01 <- 0.001   1041.135    179.996    -85.584 
+   16.02 <-   -179.800\r\n             0.000      0.0
+   16.02 <- 0
+   16.03 <- 0\r\n$ 
+joint 2 is at 175 counts, parking point 176: within 40
+   16.14 -> w2\r
+   16.20 <- w
+   16.21 <- 2
+   16.24 <- \r
+   16.25 <- \n
+   16.72 <- Actual Posi
+   16.72 <- t
+   16.73 <- ion :\r\n
+   17.00 <- \r
+   17.02 <- \n          Ax
+   17.02 <- i
+   17.03 <- s 1/7   Axis 2/8     Axis 3     Axi
+   17.06 <- s 4     Axis 5     Ax
+   17.06 <- i
+   17.07 <- s 6\r\nPULSES          -1       +175 
+   17.08 <-    
+   17.09 <-      +0         +0       -525        -2
+   17.10 <- 8\r\n                +0         +0\r\n
+   17.12 <- \r\n          Axis 1/7   Axis 2/8  
+   17.12 <-  
+   17.13 <-   Axis 3 
+   17.16 <-     Axis 4     Axis 5 
+   17.17 <-     Axis 6\r\nJOINTS      -0.004      0
+   17.17 <- .
+   17.18 <- 630      0.006  
+   17.19 <-     0.000      3.780      0.200\r\n      
+   17.20 <-        0.000      0.0
+   17.21 <- 00\r\n\r\n          X/Tra
+   17.22 <- ckX   Y/TrackY          Z      Z-Rot   
+   17.23 <-    Y-Rot      X-
+   17.25 <- Rot\r\nWORLD      -12.886      0.001  
+   17.25 <-  
+   17.26 <- 1041.135    179.996    -85.584   -179.
+   17.26 <- 8
+   17.27 <- 00\r\n             0.000      0.000\r\n$ 
+   17.37 -> axst\r
+   17.45 <- ax
+   17.49 <- st\r\n
+   18.20 <- 0
+   18.21 <- 0008407
+   18.25 <-  00008407 00008407 0000840
+   18.26 <- 7 00008407 00008407 00008008 
+   18.27 <- 0000
+   18.28 <- 8008\r\n
+   18.28 -> <05>
+   18.35 <- 00008407 0
+   18.36 <- 0
+   18.37 <- 008407 00008407 
+   18.38 <- 00008407 00008407 00008407 00008008 000
+   18.39 <- 08008\r\n\r\n[41 killed
+   18.39 <-  
+   18.40 <- by SIGINT.]\r\n
+   18.45 <- $ 
+before: joints -0.004 0.630 0.006 0.000 3.780 0.200
+before: status 00008407 00008407 00008407 00008407 00008407 00008407 00008008 00008008
+   18.55 -> speed 5\r
+   18.63 <- sp
+   18.67 <- e
+   18.68 <- e
+   18.71 <- d
+   18.72 <-  
+   18.75 <- 5
+   18.77 <- \r\n
+   19.48 <- $ 
+   19.59 -> speed\r
+   19.66 <- s
+   19.67 <- p
+   19.71 <- ee
+   19.75 <- d\r\n
+   20.39 <- C
+   20.40 <- urrent Speed: 
+   20.41 <- 5
+   20.41 <- %
+   20.42 <-  of max.\r\n$ 
+speed set to 5% (read back)
+JOINT 2 IS ABOUT TO MOVE. Time limit 8 s, then Ctrl-Z. Keep a hand on the E-stop.
+   20.52 -> /tmp/homezo 2\r
+   20.60 <- /t
+   20.67 <- mp
+   20.70 <- /
+   20.74 <- ho
+   20.78 <- me
+   20.82 <- zo 
+   20.86 <- 2\r\n
+   21.54 <- Hom
+   21.54 <- i
+   21.55 <- ng axis 2.
+   21.56 <- ..
+   28.52 -> <1a>
+HALTED: Ctrl-Z sent (no return to the prompt within 8 s). Waiting for the controller to finish resetting.
+   28.58 <- ^C equivale
+   28.58 <- n
+   28.59 <- t - halting robot...
+   28.64 <- \r\n[44 kil
+   28.66 <- led by SIGABRT.]\r\n$ 
+the controller is back at its `$` prompt
+   31.26 -> w2\r
+   31.32 <- w
+   31.33 <- 2\r\n
+   31.82 <- Ac
+   31.82 <- t
+   31.83 <- ual Position :\r\n
+   32.11 <- \r
+   32.16 <- \n          Axis 1/7   Axis 2/8   
+   32.16 <-  
+   32.17 <-  Axis 3     Axis 4     Axis 5
+   32.18 <-      Axis 6\r\nPULSES    
+   32.19 <-       -1       +534         +0      
+   32.20 <-    +0       -525        -2
+   32.20 <- 8
+   32.21 <- \r\n                +0         +0\r\n
+   32.22 <- \r
+   32.23 <- \n          Axis 1/7   Axis 2/8     Axi
+   32.24 <- s 3   
+   32.27 <-   Axis 4     Axis 5     Axis 6
+   32.27 <- \r
+   32.28 <- \nJOINTS      -0.00
+   32.29 <- 4      1.922      0.0
+   32.29 <- 1
+   32.30 <- 9      0.000      3.780      0.200\r\n  
+   32.30 <-  
+   32.30 <-  
+   32.31 <-    
+   32.32 <-       0.000      0.000\r\n
+   32.34 <- \r\n          X/TrackX   Y/TrackY  
+   32.35 <-         Z      Z-Rot      Y-Rot      X
+   32.35 <- -
+   32.37 <- Rot\r\nWORLD      -29.009      0.002   
+   32.38 <- 1040.659    179.996    -84.278   -179.8
+   32.38 <- 0
+   32.39 <- 0\r\n             0.000      0.000\r\n$ 
+   32.49 -> axst\r
+   32.56 <- a
+   32.57 <- x
+   32.59 <- s
+   32.63 <- t\r\n
+   33.32 <- 00008
+   33.32 <- 4
+   33.33 <- 07 0000
+   33.35 <- 8427 00008407
+   33.35 <-  
+   33.36 <- 00008407 00008407 00008407 00008008 00
+   33.36 <- 0
+   33.37 <- 08008\r\n
+   33.37 -> <05>
+   33.45 <- \r\n
+   33.46 <- [46 killed by SIGI
+   33.47 <- NT.]\r\n
+   33.52 <- $
+   33.53 <-  
+after: joints -0.004 1.922 0.019 0.000 3.780 0.200
+after: status 00008407 00008427 00008407 00008407 00008407 00008407 00008008 00008008
+
+SUMMARY: joint 2
+  moved +1.292 degrees (0.630 -> 1.922)
+  armed for zero-cross (bit 5): no -> yes
+  zero-cross seen (bit 6): no -> no
+  homed (bit 11): no -> no
+  status word: 8407 -> 8427
+  error / servo fault (bits 8, 9): none -> none
+  the program's own output:
+    (nothing)
+  ran 8.0 s (time limit 8 s, speed 5%)
+  HALTED by this tool: YES (no return to the prompt within 8 s)
+STOPPED: joint 2: the homing program did not end cleanly. Stopping everything.

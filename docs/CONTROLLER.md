@@ -158,6 +158,36 @@ separately). After the index step the joint coasts 12 to 25 counts past the home
 Counts per motor turn are 1000 on joints 1 to 3 and 500 on joints 4 to 6 (measured: a second index
 step on joint 6 started 18 counts past an index and reported 482).
 
+**After a power cycle (measured 2026-11-24, evening).** The arm was left at zero, the controller was
+switched off and on, and `scripts/a465-home --time-limit 30` homed all six joints in one run:
+
+| Joint | Offset after the power cycle | Ideal | Reading was off by |
+|---|---|---|---|
+| 1 | 511 | 500 | 0.04 degrees |
+| 2 | 499 | 500 | 0.00 |
+| 3 | 505 | 500 | 0.02 |
+| 4 | 253 | 250 | 0.02 |
+| 5 | 230 | 250 | 0.14 |
+| 6 | 222 | 250 | 0.20 |
+
+What the power cycle showed:
+
+- The counters restart at zero where the arm is when the controller boots, and the arm held its
+  position with the power off to within 0.2 degrees. Joint 5 read +3.78 degrees and joint 6 +0.20 by
+  the time arm power was on; that movement happened after the controller had started counting and
+  was counted correctly (joint 5's offset came back at 230).
+- The boot messages report 6 axes, "Robot calibration data read" and "Robot is not homed"; the
+  status words read 8407 (bit 11 clear). `/tmp` keeps its files through a power cycle. The boot also
+  prints "WARNING: system was not properly shut down -- repairing." and checks its file system.
+- The teach pendant's program starts at boot and holds control of the arm: `speed 10` answered
+  "speed: resource busy" until the owner released control on the pendant.
+- In the "not homed" state the index step is about six times slower: 7 to 10 s per joint, against
+  about 1.5 s when the controller already counted the arm as homed (after `/diag/zero`). The first
+  attempt was cut off by the 8 s time limit with joint 2 at 534 of the 676 counts; hence 30 s.
+
+So the routine after switching on is: release the pendant, then `scripts/a465-home`. Leave the arm
+at zero before switching off.
+
 **Procedure.** The precondition is that each joint's present reading is already within less than
 half a motor turn (1.8 degrees) of the truth: the arm was put on its zero marks and zeroed
 (`scripts/a465-xzero N` runs `/diag/xzero N`), or it is already homed. Nothing can check this; the

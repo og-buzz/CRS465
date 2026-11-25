@@ -1,0 +1,191 @@
+log: /home/buzz/dev/crs-a465/sessions/2026-11-24_214839-jogtest.log
+    0.00 -> \r
+    0.04 <- \r\n$ 
+    0.95 -> cksum /tmp/jogd\r
+    1.03 <- c
+    1.04 <- k
+    1.10 <- su
+    1.17 <- m /
+    1.20 <- t
+    1.21 <- m
+    1.25 <- p/
+    1.28 <- j
+    1.29 <- o
+    1.33 <- gd\r\n
+    3.98 <- 0
+    3.99 <- x00026ed2 
+    4.00 <- 20
+    4.01 <- 32 /tmp/jogd\r\n$ 
+/tmp/jogd is on the controller: 2032 bytes, sum 0x26ed2, the same as /home/buzz/dev/crs-a465/controller/programs/jogd
+    4.11 -> w2\r
+    4.18 <- w
+    4.19 <- 2
+    4.22 <- \r\n
+    4.69 <- A
+    4.70 <- ctual Position :\r\n
+    4.98 <- \r
+    5.00 <- \n          Axis 1/7   Ax
+    5.00 <- i
+    5.01 <- s 2/8     Axis 3     Axis 
+    5.04 <- 4     Axis 5     Axis
+    5.05 <-  6\r\nPULSES          -1         -1     
+    5.07 <-     +0         -1         +0      
+    5.08 <-    -1\r\n                +0         +0\r\n
+    5.10 <- \r\n          Axis 1/7   Axis 2/8  
+    5.10 <-  
+    5.11 <-   Axis 3     Axis 4    
+    5.14 <-  Axis 5     Axis 6\r\nJOI
+    5.14 <- N
+    5.15 <- TS      -0.004     -0.004 
+    5.16 <-     -0.000      
+    5.17 <- 0.007      0.000      0.007\r\n          
+    5.17 <-  
+    5.18 <-   0.
+    5.19 <- 000      0.000\r\n\r\n     
+    5.19 <-  
+    5.20 <-     X/TrackX   Y/TrackY      
+    5.21 <-     Z      Z-Rot      Y-Rot      X-
+    5.22 <- Rot\r\nWORLD    
+    5.23 <-     0.045     -0.000   1041.400 
+    5.23 <-  
+    5.24 <-     0.000    -89.996      0.011\r\n     
+    5.24 <-  
+    5.25 <-        0.000      0.000\r\n$ 
+before: joints -0.004 -0.004 -0.000 0.007 0.000 0.007 counts -1 -1 +0 -1 +0 -1
+starting: /tmp/jogd 1 5 s
+    5.35 -> /tmp/jogd 1 5 s\r
+    5.42 <- /
+    5.43 <- t
+    5.49 <- m
+    5.50 <- p
+    5.55 <- /
+    5.56 <- jo
+    5.59 <- g
+    5.62 <- d
+    5.62 <-  
+    5.66 <- 1
+    5.66 <-  
+    5.69 <- 5
+    5.69 <-  
+    5.71 <- s
+    5.75 <- \r
+    5.75 <- \n
+  [    401.7 ms] jogd line (other): /tmp/jogd 1 5 s
+    6.48 <- j
+    6.48 <- og
+    6.49 <- d ready
+    6.49 <- \r\n
+  [   1134.7 ms] jogd line (ready): jogd ready
+jogd ready after 1133.5 ms
+JOINT F (+) IS ABOUT TO MOVE. Keep a hand on the E-stop.
+    6.49 -> F02
+    6.59 -> F02
+    6.69 <- +
+    6.69 -> F02
+    6.70 <- F02\r
+    6.70 <- \n
+  [   1346.1 ms] jogd line (+): +F02
+    6.79 -> F02
+    6.89 -> F02
+    6.99 -> F02
+    7.09 -> F02
+    7.19 -> F02
+    7.29 -> F02
+    7.39 -> F02
+    7.49 -> .
+    7.59 <- -
+    7.59 <- \r
+    7.59 <- \n
+  [   2238.5 ms] jogd line (-): -
+    8.59 -> f02
+    8.70 -> f02
+    8.71 <- +
+    8.71 <- f
+    8.71 <- 02\r\n
+  [   3358.4 ms] jogd line (+): +f02
+    8.79 -> f02
+    8.89 -> f02
+    8.99 -> f02
+    9.10 -> f02
+    9.20 -> f02
+    9.30 -> f02
+    9.40 -> f02
+    9.49 -> f02
+    9.91 <- T
+    9.92 <- \r
+    9.92 <- \n
+  [   4566.8 ms] jogd line (T): T
+   10.92 -> q
+sent `q`
+   11.13 <- $
+   11.14 <-  
+   11.24 -> w2\r
+   11.30 <- w
+   11.31 <- 2
+   11.34 <- \r
+   11.35 <- \n
+   11.82 <- A
+   11.83 <- ctual Position :\r
+   11.86 <- \n
+   12.10 <- \r
+   12.13 <- \n          Axis 1/7   Axis 2/8     
+   12.13 <- A
+   12.14 <- xis 3     Axis 4     
+   12.17 <- Axis 5     Axis 6\r\nPULSES      
+   12.17 <-  
+   12.17 <-  
+   12.18 <-   -1         -1         +0       
+   12.20 <-   -1         +0       +378\r\n      
+   12.20 <-  
+   12.21 <-          +0         +0\r\n
+   12.22 <- \r\n          
+   12.23 <- Axis 1/7   Axis 2/8     Axis 3     Axis
+   12.24 <-  4
+   12.26 <-    
+   12.26 <-  
+   12.27 <-  Axis 5     Axis 6\r\nJOINTS      -0.00
+   12.28 <- 4     -0.004
+   12.29 <-      -0.000      0.007   
+   12.30 <-    0.000     -2.695\r\n       
+   12.31 <-  
+   12.33 <-      0.000      0.000\r\n\r\n          X
+   12.33 <- /
+   12.34 <- TrackX   Y/TrackY     
+   12.35 <-      Z      Z-Rot      Y-Rot      X-
+   12.36 <- R
+   12.36 <- o
+   12.36 <- t
+   12.37 <- \r\nWORLD        0.045     -0.000   1041
+   12.37 <- .
+   12.38 <- 400      0.000    -89.996     -2.691\r\n 
+   12.39 <-             0.000      0.000\r\n$ 
+after: joints -0.004 -0.004 -0.000 0.007 0.000 -2.695 counts -1 -1 +0 -1 +0 +378
+
+SUMMARY
+test 1: start and stop: as expected
+          0.2 ms  sent F02 (first)
+        211.3 ms  jogd: +F02
+        900.9 ms  sent the last keep-alive (9 keep-alives after the first command)
+       1001.3 ms  sent .
+       1103.7 ms  jogd: -
+    expected lines ['+F02', '-'], got ['+F02', '-']
+    keep-alive gaps: max 102.2 ms; none late
+test 2: dead-man: as expected
+          0.5 ms  sent f02 (first)
+        118.0 ms  jogd: +f02
+        901.0 ms  sent the last keep-alive (9 keep-alives after the first command)
+       1326.5 ms  jogd: T
+    expected lines ['+f02', 'T'], got ['+f02', 'T']
+    keep-alive gaps: max 102.4 ms; none late
+    `T` arrived 425.5 ms after the last keep-alive was written
+change from before to after:
+    joint 1: +0.000 degrees, +0 counts   (-0.004 -> -0.004)
+    joint 2: +0.000 degrees, +0 counts   (-0.004 -> -0.004)
+    joint 3: +0.000 degrees, +0 counts   (-0.000 -> -0.000)
+    joint 4: +0.000 degrees, +0 counts   (0.007 -> 0.007)
+    joint 5: +0.000 degrees, +0 counts   (0.000 -> 0.000)
+    joint 6: -2.702 degrees, +379 counts   (0.007 -> -2.695)
+E lines: none
+jogd ready seen: yes
+prompt after `q`: back
+Ctrl-Z sent: no; Ctrl-E sent: no

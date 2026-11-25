@@ -10,7 +10,11 @@ Status 2026-11-24: nothing ordered. This is a shopping list with the open questi
   pneumatic gripper "is supplied with two 1/16 in. [1.6 mm] barbed fittings".
 - **The two ports sit very close together.** Owner: "I don't think the spacing is correct for a hex
   fitting, they're really tight together." A fitting with a hex body may not fit next to its neighbour.
-- The thread the barbs screw into is **not in the manual and has not been measured.**
+- The thread the barbs screw into is not in the manual. Owner's caliper reading of the holes,
+  2026-11-24: **about 3.92 mm** ("could be some error"). That fits **10-32 UNF**, whose internal thread
+  has a bore of 3.96 to 4.17 mm (and is often drilled 5/32 in. = 3.97 mm). An M5 x 0.8 hole would read
+  4.13 to 4.33 mm. Calipers tend to read a little small in a small threaded hole. Not yet confirmed
+  with a screw.
 - OPEN sends air out of the port nearest the wrist; CLOSE uses the one further back. If the gripper
   works backwards, swap the two hoses.
 - Supply: 1/8 NPT port at the rear of the base. Dry, clean, filtered, non-lubricated air, 100 psi
@@ -28,10 +32,9 @@ Status 2026-11-24: nothing ordered. This is a shopping list with the open questi
 
 1. Centre-to-centre distance of the two arm ports, and the widest part of the barbs that are there now.
    That decides whether a hex-bodied fitting can go in at all.
-2. The thread in the arm ports. Try a 10-32 machine screw by hand: it runs in freely in a 10-32 port
-   and feels loose in an M5 x 0.8 port. Both have a bore of about 4.0 to 4.2 mm. The manual's other
-   sizes on this arm are inch sizes (1/8 NPT, 10-24 screws), which points to 10-32, but that is an
-   inference.
+2. Confirm the thread in the arm ports with a 10-32 machine screw by hand: it should run in freely.
+   An M5 screw (5.0 mm across) should not start in a 10-32 hole (4.83 mm). The caliper reading above
+   and the arm's other inch sizes (1/8 NPT, 10-24 screws) both point to 10-32.
 3. Whether the barbs on the arm are usable as they are. If so, only the gripper end and hose are needed.
 
 ## Candidates

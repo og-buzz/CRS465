@@ -8,9 +8,10 @@ Status 2026-11-24: nothing ordered. This is a shopping list with the open questi
   (A465 user guide, "Connecting the Cable or Hose").
 - They take barbs for **1/16 in. ID hose** (owner's check, 2026-11-24). The guide agrees: the CRS
   pneumatic gripper "is supplied with two 1/16 in. [1.6 mm] barbed fittings".
-- **The two ports sit very close together.** Owner: "I don't think the spacing is correct for a hex
-  fitting, they're really tight together." A fitting with a hex body may not fit next to its neighbour.
-- The thread the barbs screw into is not in the manual. Owner's caliper reading of the holes,
+- **The two ports sit very close together: about 8 mm centre to centre** (owner's estimate, 2026-11-24,
+  taking the holes as 4 mm). Owner: "I don't think the spacing is correct for a hex fitting, they're
+  really tight together." See "What fits at 8 mm centres" below.
+- The holes are threaded. The thread is not in the manual. Owner's caliper reading of the holes,
   2026-11-24: **about 3.92 mm** ("could be some error"). That fits **10-32 UNF**, whose internal thread
   has a bore of 3.96 to 4.17 mm (and is often drilled 5/32 in. = 3.97 mm). An M5 x 0.8 hole would read
   4.13 to 4.33 mm. Calipers tend to read a little small in a small threaded hole. Not yet confirmed
@@ -53,10 +54,41 @@ The simplest plan is 1/16 in. ID hose end to end, with a barb in each of the gri
 
 Not found: a brass M5-to-1/16 in. barb as a standard Clippard part.
 
-## If hex bodies do not fit side by side
+## What fits at 8 mm centres
 
-Ideas to check against the measured spacing, none tried:
+Two fittings side by side each have to be less than 8 mm across at their widest point, and there is
+no room for a socket around either.
 
-- one straight barb and one elbow, so the bodies are at different heights;
-- a barb with a round or slotted body instead of a hex;
-- an M5 or 10-32 extension under one of the two fittings, to stagger them.
+| Body | Across flats | Across corners | Side by side at 8 mm? |
+|---|---|---|---|
+| 1/4 in. hex | 6.35 mm | 7.3 mm | Yes, with 0.7 mm to spare in any position |
+| 7 mm hex | 7.0 mm | 8.1 mm | Only with the two hexes turned flat to flat |
+| 8 mm hex | 8.0 mm | 9.2 mm | No |
+
+So the small barbs with a 1/4 in. hex are what this spacing was made for. Check the hex size of any
+candidate above against this table.
+
+**Push-to-connect.** The owner would prefer these ("barbs or better, push-to-connects"; no threaded
+John Guest was found in this size). What was checked:
+
+- SMC KQ2H03-32A, 5/32 in. tube to 10-32 UNF male: an **8 mm hex** per its listing, so two will not go
+  side by side ([Zoro](https://www.zoro.com/smc-push-fit-adapter-fitting-push-to-connect-x-munf-532-in-tube-od-10-32-pipe-size-brass-kq2h03-32a/i/G5000931)).
+- SMC KQ2S04-M5A, 4 mm tube to M5, hexagon socket head (tightened with a 2 mm key from inside, so no
+  wrench room is needed): body diameter not found; it is the "øD" column on the
+  [MISUMI page](https://my.misumi-ec.com/vona2/detail/221006292240/). It has an M5 thread, so it is
+  only an option if the ports are M5.
+- McMaster-Carr lists push-to-connect fittings for 5/32 in. tube with a 10-32 male thread in elbow and
+  banjo styles ([banjo-style elbows](https://www.mcmaster.com/banjo-style-elbows),
+  [tube fittings](https://www.mcmaster.com/products/tube-fittings/thread-size~10-32/)); hex sizes not
+  checked.
+
+Ways to get push-to-connect at this spacing, none tried:
+
+- **Stagger the heights.** Put one fitting on a short 10-32 extension so its body sits above the
+  other's. An 8 mm hex body (4.6 mm from centre to corner) then only has to clear the neighbour's
+  4 mm tube, whose edge is 6 mm away.
+- **Keep small barbs at the arm** and change to push-to-connect a short way down the hose with an
+  inline union.
+- **One straight and one elbow or banjo**, so the bodies are at different heights.
+- **A smaller tube size** (2 mm or 1/8 in.), where push-to-connect bodies are smaller; check that the
+  gripper still moves fast enough.

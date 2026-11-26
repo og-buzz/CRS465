@@ -82,6 +82,16 @@ gripper, arm taken to 12 or more stopped poses), then using both to locate parts
 
 ## Digital twin
 
+**Path planner (asked 2026-11-26).** The owner, after the first go-to moves on the arm: "What we need
+is a path planner, this can go into digital twin efforts." A go-to today is one joint move or one
+straight line between two saved poses, and either can pass through the table. Wanted: plan a path
+between saved poses that keeps clear of the table and the rest of the cell, show it on the 3D page
+before anything moves, then run it. What exists to build on: `a465/planner.py` plans pick-and-place
+moves around keep-out zones for the simulated arm; `a465/model.py` matches the controller's tool pose
+to within a few millimetres (3 mm at one pose, to be tightened); the controller runs a list of points
+as one continuous path at a fixed speed (measured 2026-11-25), and `jogd-c` runs single joint or
+straight go-to moves with a hold-to-run stop. Not started.
+
 Asked for 2026-11-24. The web page's 3D arm should mirror the real arm live, and the page should be
 where the joint positions are seen while jogging. Today the page shows only the simulated arm, and the
 real arm is driven by `scripts/a465-padjog` with nothing on screen.
@@ -170,6 +180,12 @@ Ways to do it, cheapest first:
    a shell. Not investigated.
 
 ## Other open items
+
+- For later, once the gripper works (the owner, 2026-11-26: "its not important until we get the gripper
+  working"): jogs need the speed to ramp in and out ("we need speed ramp in and out"); and tool-frame
+  motion does something odd ("there's something weird with tool frame motion", not yet described or
+  measured: on the bench sweep of 2026-11-25 the tool-frame translations were straight, and one
+  rotation came out about 30 degrees off its axis).
 
 - Homing works since 2026-11-24 (`scripts/a465-home`; see `docs/CONTROLLER.md`, "Homing that works").
   Open around it: the controller's proper shutdown command (it complains at boot that it "was not

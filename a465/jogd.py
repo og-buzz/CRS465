@@ -104,6 +104,8 @@ SELF_END_MIN_S = 0.25             # a move that ends by itself sooner than this 
 VEC = 6                           # the "axis" of a command tuple that is an `@` vector; its "sign" is then the (x, y, z) digits
 POLL_S = 0.002
 GOTO_HOLD_S = 0.3                 # a go-to is wanted this long after the last goto_hold() call (the pad calls every 20 ms)
+GOTO_HOLD_WEB_S = 0.8             # the same for the status page, whose calls come over HTTP about every 100 ms and can be late:
+                                  # with 0.3 s one late request ended every page go-to within a second (seen on the arm 2026-11-26)
 DEFAULT_GOTO_SPEED = 10           # percent
 STALE_POSE_S = 1.5                # save_pose needs a `P` line newer than this
 
@@ -809,11 +811,12 @@ class JogdArm:
         (or halt() is called) the thread writes `.`. Refused (RobotError) when there is no such pose, a jog is in force or wanted,
         jogd-c is not running, a joint of the pose is outside the guard's limits, or the frame is being changed."""
         now = self._clock()
+        ttl = GOTO_HOLD_WEB_S if source == "web" else GOTO_HOLD_S
         with self._lock:
             if now >= self._gt_until:
                 self._gt_blocked, self._gt_req = False, None
             if self._gt_blocked or self._gt_req is not None:
-                self._gt_until = now + GOTO_HOLD_S      # the same hold goes on (or must be let go first): nothing new starts
+                self._gt_until = now + ttl              # the same hold goes on (or must be let go first): nothing new starts
                 return
         store = self._store()
         try:
@@ -828,7 +831,7 @@ class JogdArm:
             jog = self._want is not None and now < self._want_until
         if jog or self._cmd is not None or self._gt is not None or self._stopping_since is not None:
             with self._lock:
-                self._gt_blocked, self._gt_until = True, now + GOTO_HOLD_S
+                self._gt_blocked, self._gt_until = True, now + ttl
             raise RobotError("a jog is in force: sticks win over a go-to (let go of the button, then press it again)")
         for i, (a, (lo, hi)) in enumerate(zip(pose["joints"], self.guard_limits)):
             if not lo <= a <= hi:
@@ -836,7 +839,7 @@ class JogdArm:
         speed = max(MIN_SPEED_PCT, min(self.goto_speed, self.max_speed))
         with self._lock:
             self._gt_req = (pose, bool(straight), goto_bytes(pose, straight, speed), speed, source)
-            self._gt_until = now + GOTO_HOLD_S
+            self._gt_until = now + ttl
 
     def home(self, source="rest"):
         raise RobotError("homing is not started from the controller pad yet")
@@ -1153,7 +1156,7 @@ class JogdArm:
             self._gt = {"phase": "await", "name": pose["name"], "bytes": data, "source": source}
             self._gt_view = {"name": pose["name"], "straight": straight, "speed": speed, "running": False, "arrived": False,
                              "source": source, "target": list(pose["joints"])}
-            self.say(f"  go-to {pose['name']} ({'straight line' if straight else 'joint move'}, {speed}%): {data.decode().strip()}")
+            self.say(f"  go-to {pose['name']} ({'straight line' if straight else 'joint move'}, {speed}%, from {source}): {data.decode().strip()}")
             return False
         return halt
 

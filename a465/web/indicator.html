@@ -144,9 +144,11 @@ function stale(s,now){
  return (s.now-s.position_time>1.5)?"no fresh position":"";
 }
 let cur=null,lastAnswer=0,errMsg="";
+const PAGE_VERSION="__PAGE_VERSION__";   /* filled in by the server; a newer page on the server makes this one reload */
 async function poll(){
  try{const r=await fetch("/state",{cache:"no-store"});const s=await r.json();
   lastAnswer=performance.now();
+  if(s.page_version&&PAGE_VERSION.indexOf("__")!==0&&s.page_version!==PAGE_VERSION&&!hold){location.reload();return;}
   if(s.error){errMsg="server: "+s.error;}else{errMsg="";cur=s;render(s);updatePoses(s);}
  }catch(e){}
  setTimeout(poll,200);
@@ -208,7 +210,12 @@ function renderMenu(w){
 function syncRows(){
  const L=$("plist"),seen=new Set();
  for(const p of P.poses){seen.add(p.name);let w=P.rows.get(p.name);if(!w){w=makeRow(p.name);P.rows.set(p.name,w);}
-  w.p=p;L.appendChild(w.el);}   /* appendChild in list order re-orders without recreating */
+  w.p=p;}
+ /* Put the rows in list order ONLY when the order on the page is wrong, and never during a hold: moving a row in
+    the document, even to the place it already has, makes the browser drop the pointer capture of a held button
+    ("lostpointercapture"), which ended every page go-to within a second (seen on the arm 2026-11-26). */
+ const want=P.poses.map(p=>P.rows.get(p.name).el),have=[...L.children].filter(e=>e.classList.contains("pose"));
+ if(!hold&&!(want.length===have.length&&want.every((el,k)=>el===have[k]))){for(const el of want)L.appendChild(el);}
  for(const [n,w] of [...P.rows]){if(!seen.has(n)){if(hold&&hold.w===w)endHold("pose removed");w.el.remove();P.rows.delete(n);}}
  if(!P.poses.length&&!L.querySelector(".nopose")){const d=document.createElement("div");d.className="nopose";d.textContent="No saved poses yet. Move the arm, then Save current pose.";L.appendChild(d);}
  else if(P.poses.length){const e=L.querySelector(".nopose");if(e)e.remove();}
@@ -248,10 +255,11 @@ function sendGoto(){
 }
 function endHold(why){
  const h=hold;if(!h)return;hold=null;
+ if(why!=="pointerup")showErr("go-to stopped: "+why);      /* say why, unless the button was simply let go */
  clearInterval(h.timer);h.btn.classList.remove("on");
  try{h.btn.releasePointerCapture(h.id);}catch(e){}
  const done=inflight?Promise.race([inflight,new Promise(r=>setTimeout(r,500))]):Promise.resolve();
- done.then(()=>api("POST","/stop",{})).catch(e=>showErr("stop: "+e.message));
+ done.then(()=>api("POST","/stop",{why:String(why)})).catch(e=>showErr("stop: "+e.message));
 }
 function wireHold(btn,w){
  const straight=btn.dataset.st==="1";
@@ -259,18 +267,21 @@ function wireHold(btn,w){
   if(e.button!==0&&e.pointerType==="mouse")return;
   e.preventDefault();if(hold||btn.disabled||P.staleNow)return;
   try{btn.setPointerCapture(e.pointerId);}catch(_){}
-  hold={btn,w,straight,id:e.pointerId,timer:0};btn.classList.add("on");
+  hold={btn,w,straight,id:e.pointerId,timer:0,x0:e.clientX,y0:e.clientY};btn.classList.add("on");
   sendGoto();
   hold.timer=setInterval(()=>{
    if(!hold||hold.btn!==btn){clearInterval(hold&&hold.timer);return;}
-   if(document.hidden||!document.hasFocus()||P.staleNow||btn.disabled){endHold("lost");return;}
-   sendGoto();},150);
+   if(document.hidden){endHold("page hidden");return;}
+   if(P.staleNow||btn.disabled){endHold("no fresh position");return;}
+   sendGoto();},100);
  });
  const up=e=>{if(hold&&hold.btn===btn&&(e.pointerId===undefined||e.pointerId===hold.id))endHold(e.type);};
  btn.addEventListener("pointerup",up);btn.addEventListener("pointercancel",up);
- btn.addEventListener("pointerleave",up);btn.addEventListener("lostpointercapture",up);
- btn.addEventListener("pointermove",e=>{if(hold&&hold.btn===btn){const r=btn.getBoundingClientRect();
-  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)endHold("moved off");}});
+ btn.addEventListener("lostpointercapture",up);   /* not pointerleave: the page can shift under a finger that has not moved */
+ /* The hold follows the finger, not the button: the layout may shift when a move starts. It ends when the
+    pointer itself has travelled more than 60 px from where it went down. */
+ btn.addEventListener("pointermove",e=>{if(hold&&hold.btn===btn&&e.pointerId===hold.id){
+  if(Math.hypot(e.clientX-hold.x0,e.clientY-hold.y0)>60)endHold("finger moved away");}});
  for(const t of ["contextmenu","selectstart","dragstart"])btn.addEventListener(t,e=>e.preventDefault());
 }
 addEventListener("blur",()=>endHold("blur"));addEventListener("pagehide",()=>endHold("pagehide"));

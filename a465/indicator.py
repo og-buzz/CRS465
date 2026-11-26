@@ -64,16 +64,25 @@ def _json(data, status=200):
     return web.json_response(data, status=status, headers={"Cache-Control": "no-store"})
 
 
+def page_version(text=None):
+    """A short hash of the page file: the page reloads itself when the server's copy is newer than the one it runs."""
+    import hashlib
+    return hashlib.sha1((PAGE.read_text() if text is None else text).encode()).hexdigest()[:10]
+
+
 async def serve(get_state, host="0.0.0.0", port=8466, actions=None):
     """actions None = read-only page. Otherwise see the pose routes below (all POSTs need Content-Type: application/json)."""
     holder = {"prev": None}
 
     async def page(request):
-        return web.Response(text=PAGE.read_text(), content_type="text/html", headers={"Cache-Control": "no-store"})
+        text = PAGE.read_text()
+        return web.Response(text=text.replace("__PAGE_VERSION__", page_version(text)), content_type="text/html",
+                            headers={"Cache-Control": "no-store"})
 
     async def state(request):
         try:
             out, holder["prev"] = augment(get_state() or {}, holder["prev"])
+            out["page_version"] = page_version()
             return web.json_response(out, headers={"Cache-Control": "no-store"})
         except Exception as e:  # keep serving
             return web.json_response({"error": f"{type(e).__name__}: {e}"})
@@ -147,6 +156,9 @@ async def serve(get_state, host="0.0.0.0", port=8466, actions=None):
         d, err = await body(request)
         if err:
             return err
+        why = d.get("why") if isinstance(d, dict) else None
+        why = why[:60] if isinstance(why, str) and why else "no reason sent: the browser is running an older copy of the page, reload it"
+        print(f"{'':10}page: hold ended ({why})", flush=True)      # into the pad program's log
         return await run(lambda: (actions.stop(), {"ok": True})[1])
 
     app = web.Application()

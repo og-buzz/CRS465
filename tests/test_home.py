@@ -244,3 +244,74 @@ def test_xzero_script(rig, capsys):
 
 def test_time_limit_default_is_30_seconds(tmp_path):
     assert home.parse_args(["--plan"], str(Path(home.__file__).parent.parent)).time_limit == 30.0
+
+
+# ---- the watch of a move: arrival and the time limit, with a scripted `w2` (each reading takes 1.5 s)
+
+def watch(monkeypatch, readings, start=4.584, degrees=-4.584, speed=10):
+    """Run move_joint on joint 4 with `readings` (joint 4 degrees, one per w2 after the move command returned)."""
+    from types import SimpleNamespace
+    clock = FakeClock()
+    link = SimpleNamespace(clock=clock, sleep=clock.sleep)
+    seq = iter([start] + list(readings))
+    taken = []
+
+    def read(_link):
+        clock.sleep(1.5)
+        try:
+            value = next(seq)
+        except StopIteration:
+            raise AssertionError("watched past the scripted readings")
+        taken.append(value)
+        return [0.0, 0.0, 0.0, value, 0.0, 0.0]
+
+    def run(_link, command, limit, say, out, on_button):
+        clock.sleep(1.0)
+        out.returned = True
+        return out
+
+    def stop(_link, out, say, halt=True):
+        out.halted = True
+
+    monkeypatch.setattr(home.console, "read_joints", read)
+    monkeypatch.setattr(home.homezc, "run_program", run)
+    monkeypatch.setattr(home.homezc, "set_speed", lambda link, speed, say: (True, ""))
+    monkeypatch.setattr(home.homezc, "stop", stop)
+    lines = []
+    res = home.move_joint(link, 4, degrees, speed, lines.append)
+    return res, lines, taken
+
+
+def test_time_limit_allows_for_slow_polling():
+    assert home.move_time_limit(-4.584, 10) == 6.0 + 0.9168 + 5.0
+    for degrees, speed in ((1, 100), (10, 10), (30, 5)):
+        assert home.move_time_limit(degrees, speed) >= 2 * degrees / speed + 5.0 + 3 * 1.5
+
+
+def test_creeping_onto_the_target_at_the_limit_is_not_stopped(monkeypatch):
+    # the real case of 2026-11-25: 0.007 then 0.000 at the limit, the last two readings differ
+    res, lines, _ = watch(monkeypatch, [3.0, 1.2, 0.3, 0.05, 0.02, 0.007, 0.0, 0.0])
+    assert not res.out.halted and res.code == 0
+    assert not any("STILL MOVING" in ln for ln in lines) and "halted by this tool: no" in lines[-1]
+
+
+def test_at_the_limit_within_0_05_of_target_counts_as_arrived(monkeypatch):
+    # the limit (11.9 s) passes (7th reading) while the joint reads 0.04 and is still changing
+    res, lines, _ = watch(monkeypatch, [4.0, 3.0, 2.0, 1.0, 0.5, 0.2, 0.04, 0.03, 0.02])
+    assert not res.out.halted and not any("STILL MOVING" in ln for ln in lines)
+
+
+def test_joint_still_short_and_moving_at_the_limit_gets_ctrl_z(monkeypatch):
+    res, lines, _ = watch(monkeypatch, [4.0, 3.9, 3.7, 3.4, 3.0, 2.6, 2.3, 2.1, 2.0, 2.0, 2.0])
+    assert res.out.halted and any("STILL MOVING" in ln for ln in lines)
+    assert "halted by this tool: yes" in lines[-1] and res.code == 1
+
+
+def test_one_reading_within_0_01_of_target_ends_the_watch(monkeypatch):
+    res, lines, taken = watch(monkeypatch, [2.0, 0.008, 99.0])
+    assert taken == [4.584, 2.0, 0.008] and not res.out.halted and res.code == 0
+
+
+def test_two_equal_readings_short_of_the_target_still_end_the_watch(monkeypatch):
+    res, lines, taken = watch(monkeypatch, [2.0, 1.0, 1.0, 99.0])
+    assert taken == [4.584, 2.0, 1.0, 1.0] and not res.out.halted and res.code == 1

@@ -2,6 +2,83 @@
 
 Things asked for or found, not built yet. Newest first.
 
+## Goal: the functions of Robcomm3
+
+Set 2026-11-25. The owner: "Robcomm3 equivalent functions is what we really need to set as a /goal".
+Robcomm3 is the vendor's Windows program for this controller and we have no copy, so the goal is
+to have, on Linux, each function the vendor's manuals attribute to it. What the manuals say it
+does, with citations, and how each function compares with this repo is in
+[docs/ROBCOMM3.md](docs/ROBCOMM3.md). Status below is from its table, 2026-11-25.
+
+- [x] Terminal window to the controller (`scripts/a465-term`)
+- [x] Serial port and baud settings
+- [~] Send and receive files (`a465-getfile` is verified up to 43 KB; `a465-putfile` is verified by the controller's `cksum` up to 3600 bytes, 2026-11-25)
+- [~] Back up and restore controller files (a verified backup exists; no one-step command)
+- [ ] Make a directory on the controller as part of sending
+- [ ] Editor for RAPL-3 source
+- [ ] Compile RAPL-3 source to an object file, with errors, warnings and options (we have only an assembler, disassembler and test interpreter for the bytecode)
+- [ ] Multi-file programs and libraries (`.include`, `-L`)
+- [ ] Application setups: saved source, controller directory, object name and options; compile and send in one step
+- [~] Version check (`crosver` by hand; no check of a program's library stamps before sending)
+- [~] Application variable (`.v3`) files: copied, not read or edited
+- [ ] Teach, list and edit locations from the PC
+- [~] Run and stop programs (specific supervised programs only; no general run)
+- [~] Configuration and calibration files (`robot.cal` is read; the rest only copied)
+- [ ] Firmware install (a separate vendor utility; not attempted)
+
+The largest gap is the compiler. The rest is mostly wrapping what already works.
+
+## ROS: export the arm model; what exists already
+
+Asked 2026-11-25. Not built.
+
+**Export.** Write the arm model we already have (`a465/model.py`: the joint chain, link offsets,
+joint limits and speeds) out as a URDF file, so that the ROS 3D viewer and the MoveIt planner can
+be tried later without redoing the kinematics. The model's tool position matched the controller's
+own `w2` reading at one pose on 2026-11-25 (X and Y exact, Z 0.4 mm low, angles within 0.01
+degrees). ROS itself is not planned for jogging: its joystick control streams targets many times
+a second and this controller takes one move at a time (see docs/CONTROLLER.md, "Motion: what was
+measured"). It would earn its place for planned moves around obstacles, sent as a continuous
+path, and if the drives are ever replaced.
+
+**Does anyone have this arm in ROS already?** Searched 2026-11-25: no ROS package, URDF or MoveIt
+configuration for the A465 was found. The nearest thing is
+[PetteriAimonen/crs-c500c-utils](https://github.com/PetteriAimonen/crs-c500c-utils) (BSD licence,
+last commit 2025-05-16): tools for the C500C controller, written for a CRS F3 arm; its readme
+names the A465 and A255 as arms the same controller runs. The author is also the source of the
+manual set we use (jpa.kapsi.fi). What is in it, read 2026-11-25, none of it tried here:
+
+- ROS 1 packages for the F3: a MoveIt configuration (F3 link lengths, so not usable for the A465
+  as it stands) and a bridge from ROS-Industrial's simple_message protocol to the controller's
+  serial port.
+- The controller side of that bridge as RAPL-3 **source** (`simple_message/*.r3`): a status
+  server and a control server that takes joint trajectory points and runs each with `online(ON)`
+  and `move()`. On our controller that kind of queued move stops at every point (measured
+  2026-11-25); whether it runs through on a C500C is not stated.
+- Their controller (CROS 3.1.1249 on a C500C, 486 processor) has the RAPL-3 compiler on board:
+  sources are sent over and compiled there with `r3c`. Our `/bin` (CROS 1.16.471 on a C500) has
+  no `r3c`; other directories have not been checked for it.
+- Copies of that controller's system programs, among them `rc1`, the compiler itself (157 KB,
+  x86, FreeBSD a.out format) and `r3interp`, the bytecode interpreter. A lead for the missing
+  compiler in the Robcomm3 goal: whether `rc1` can be run on a PC, and whether what it produces
+  suits our older firmware, is not known.
+- Things worth trying on our unit: their control server installs a handler for SIGABRT so an
+  emergency stop does not kill it (our jog program is killed by SIGABRT on a controller fault);
+  it talks over a second serial port, `/dev/sio1`, at 115200 baud, leaving the console free;
+  `/bin/rdb`, a debugger that lists a program's symbols (their notes give the variable names in
+  `robotsrv`, such as `robot_homed`, `robot_calibrated`, `poc_check_disable`); a file transfer
+  that needs only a small `uudecode` program on the controller.
+
+## Camera calibration
+
+Asked for 2026-11-25. After discussing lens calibration and tying the bench camera to the arm, the
+owner said "have an agent start this". Now: `a465/camcal.py`, `scripts/a465-camcal` and
+`tests/test_camcal.py` (synthetic data only), `docs/CAMERA.md` (procedure), and printable targets in
+`docs/camera/` (ChArUco board for the lens, one ArUco marker for the gripper). The lens step
+(`grab`, `lens`, `undistort`) and the camera-to-robot step (`robot`, `project`) are built and tested on
+synthetic data. Remaining: the lens capture (board held by a person), the robot capture (marker on the
+gripper, arm taken to 12 or more stopped poses), then using both to locate parts on the bench.
+
 ## Digital twin
 
 Asked for 2026-11-24. The web page's 3D arm should mirror the real arm live, and the page should be

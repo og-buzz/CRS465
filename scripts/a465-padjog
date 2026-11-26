@@ -19,6 +19,24 @@ stopped and started again at the new speed, which costs about half a second of s
 With --stick-speed the speed of a jog is instead set when it starts from the largest stick deflection in its first
 0.12 s (1 percent at the start of the stick's travel, the speed setting at the end). Delay from stick to motion is
 about 0.4 s. It does not apply soft limits and --zero-at only gives true angles.
+Frames: the pad's Options button changes the mode (joint, world, tool) and the change is carried out at once: jogd is
+quit and started again in the controller's matching manual mode (it takes the mode only when it starts), which takes
+about 1.5 s; no jog starts after it until the stick has been let go. World and tool jog the axes through FRAME_AXES in
+a465/jogd.py (the signs are not yet confirmed on the arm).
+With world or tool in --frames, every frame runs through jogd-c (controller/programs/jogd-c, put on the controller as /tmp/jogd-c
+when it differs; --program-c LOCAL names another local file): in those frames a push is ONE straight-line move of 150 mm (45
+degrees for rotations) that ends by itself and is started again while the stick is held. Stick X, Y, Z: with two of them
+deflected (past the start threshold) the move is a straight line along their direction (an `@` vector); it is stopped and
+started again if the sticks stay more than 25 degrees off that direction for 0.3 s. A rotation (D-pad, right stick left /
+right) is always one axis, and wins when it is the largest deflection. With only joint in --frames jogd is used, as before.
+Joint-limit guard (world and tool frames, on by default, --no-limit-guard turns it off): the controller kills the jog program
+when a straight-line move runs a joint into its limit, so the PC stops the move (`.`) when a joint moving toward a limit will be
+within 4 degrees of it 0.8 s ahead, and refuses to start a move that would push a joint already inside the margin further toward
+its limit (moving the other way is allowed). Limits: GUARD_LIMITS_DEG in a465/jogd.py. The joint frame is not touched.
+Speed caps (percent, the speed sent is the smallest of the pad's setting, --max-speed and the cap that applies):
+--joint-cap 2=25,3=25 (the default; `none` for no caps) and --frame-cap world=15,tool=15 (the default).
+The controller's own messages (for instance "Arm power is OFF") are shown when it kills jogd.
+--status-port (default 8466 with --jogd, 0 for off) serves a status page, see a465/indicator.py.
 If the controller asks for it, press the PAUSE/CONTINUE button on its front panel; if jogd is killed it restarts
 by itself (and asks for the button). Without --jogd nothing changes.
 Stop with Ctrl-C or SIGTERM: the arm is halted and the controller is left at its `$` prompt.
@@ -27,6 +45,7 @@ import argparse
 import asyncio
 import os
 import signal
+import socket
 import sys
 import time
 
@@ -43,6 +62,26 @@ def say(text):
     print(f"{time.monotonic() - START:8.1f}  {text}", flush=True)
 
 
+def lan_address():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("192.0.2.1", 9))         # no packet is sent: this only picks the outgoing interface
+            return probe.getsockname()[0]
+    except OSError:
+        return "localhost"
+
+
+def say_caps(arm):
+    joints = arm.joint_caps
+    say("speed caps: " + (", ".join(f"joint {j} {c}%" for j, c in sorted(joints.items())) if joints else "no joint caps")
+        + "; " + ", ".join(f"{f} frame {c}%" for f, c in arm.frame_caps.items()) + f"; max speed {arm.max_speed}%")
+    if arm.limit_guard:
+        say("joint-limit guard (world and tool frames): " + ", ".join(f"J{i + 1} {lo:g}..{hi:g}" for i, (lo, hi) in enumerate(arm.guard_limits))
+            + f"; margin {jogd.GUARD_MARGIN_DEG:g} deg, look-ahead {jogd.GUARD_LOOKAHEAD_S:g} s")
+    else:
+        say("joint-limit guard: OFF (--no-limit-guard): a move into a joint limit makes the controller kill the jog program")
+
+
 async def run(args):
     try:
         zero_at = [float(v) for v in args.zero_at.split(",")] if args.zero_at else None
@@ -50,14 +89,18 @@ async def run(args):
             sys.exit("--zero-at needs six numbers, one per joint")
         if args.jogd:
             arm = jogd.JogdArm(args.port, args.baud, say=say, zero_at=zero_at, max_speed=args.max_speed, respeed=not args.no_respeed,
-                                  stick_speed=args.stick_speed)
+                                  stick_speed=args.stick_speed, joint_caps=args.joint_caps, frame_caps=args.frame_caps,
+                                  frames=args.frames, local_c=args.program_c or jogd.LOCAL_C,
+                                  limit_guard=not args.no_limit_guard)
         else:
             arm = crs.RealArm(args.port, args.baud, say=say, zero_at=zero_at)
     except RobotError as err:
         sys.exit(f"cannot start: {err}")
-    task = None
+    task = status_task = None
     try:
         arm.speed = args.speed
+        if args.jogd:
+            say_caps(arm)
         switches = arm.state()["home_switches"]
         say(("connected to the arm, true angles (soft limits on).  " if arm.zero_at and not args.jogd
              else "connected to the arm, true angles, NO soft limits (jogd).  " if arm.zero_at else "connected to the arm, NO soft limits.  ")
@@ -65,12 +108,35 @@ async def run(args):
             + ("   home switches " + "".join(str(b) for b in switches) if switches else ""))
         pad = Gamepad(arm, args.gamepad)
         task = asyncio.ensure_future(pad.run())
+        if args.status_port:
+            def get_state():
+                state = arm.state()
+                status = pad.status()
+                state["pad"] = {"connected": status["connected"], "name": status["name"], "l1": bool(status["enabled"])}
+                state["speed"] = arm.speed
+                return state
+            try:
+                from a465 import indicator
+                indicator.serve
+            except (ImportError, AttributeError) as err:
+                print(f"no status page ({err})", flush=True)
+            else:
+                status_task = asyncio.ensure_future(indicator.serve(get_state, host="0.0.0.0", port=args.status_port))
+                status_task.add_done_callback(lambda t: t.cancelled() or not t.exception() or say(f"the status page stopped: {t.exception()!r}"))
+                say(f"status page: http://{lan_address()}:{args.status_port}")
         stop = asyncio.Event()
         for sig in (signal.SIGINT, signal.SIGTERM):
             asyncio.get_running_loop().add_signal_handler(sig, stop.set)
         last = None
+        frame_seen = getattr(arm, "frame", None)
         while not stop.is_set() and not task.done():
             status = pad.status()
+            if args.jogd and status["frame"] != frame_seen:      # the switch happens at the button press, not at the next push
+                frame_seen = status["frame"]
+                try:
+                    arm.set_frame(frame_seen)
+                except RobotError as err:
+                    say(f"cannot change frame: {err}")
             now = (status["connected"], status["name"], status["message"], status["enabled"], status["frame"], arm.speed, arm.notice)
             if now != last:
                 say(f"pad: {'connected' if now[0] else 'NOT connected'} ({now[1]})  L1 {'held' if now[3] else 'up'}  mode {now[4]}  speed {now[5]}%"
@@ -80,8 +146,9 @@ async def run(args):
         if task.done() and not task.cancelled() and task.exception():
             say(f"the controller-pad reader failed: {task.exception()!r}")
     finally:                                  # whatever happens, stop the arm and leave the controller's shell properly
-        if task is not None:
-            task.cancel()
+        for t in (task, status_task):
+            if t is not None:
+                t.cancel()
         arm.close()
         say("stopped; the controller is back at its system prompt")
 
@@ -100,12 +167,41 @@ def main():
     ap.add_argument("--stick-speed", action="store_true",
                     help="with --jogd: how far the stick is pushed sets the speed of a jog when it starts. Without it the stick "
                          "gives the direction only and every jog runs at the pad's speed setting (L1 + R1 + L2 / R2)")
+    ap.add_argument("--frames", default="joint", metavar="joint[,world,tool]",
+                    help="with --jogd: the frames the Options button may use (default joint only: world and tool stay off "
+                         "until a bench run has confirmed what each axis does on this arm)")
+    ap.add_argument("--program-c", metavar="LOCAL", default=None,
+                    help="with --jogd and world or tool in --frames: the local jogd-c file to use (default controller/programs/jogd-c)")
     ap.add_argument("--max-speed", type=int, default=jogd.DEFAULT_MAX_SPEED, choices=range(1, 101), metavar="1-100",
                     help="with --jogd: the most speed (percent) the arm is ever sent, also jogd's own clamp (default %(default)s)")
+    ap.add_argument("--joint-cap", metavar="J=PCT,...", default=None,
+                    help="with --jogd: speed cap (percent, 1 to 99) per joint in the joint frame, like 2=25,3=25 (the default); `none` for no caps")
+    ap.add_argument("--frame-cap", metavar="FRAME=PCT,...", default=None,
+                    help="with --jogd: speed cap (percent, 1 to 99) for the world and tool frames, like world=15,tool=15 (the default)")
+    ap.add_argument("--no-limit-guard", action="store_true",
+                    help="with --jogd: turn the joint-limit guard off (in world and tool frames the PC otherwise stops a move before a joint "
+                         "reaches its limit, and refuses a start that would push further into one)")
+    ap.add_argument("--status-port", type=int, default=None, metavar="PORT",
+                    help="serve the arm's status page on this port (default 8466 with --jogd; 0 turns it off)")
     ap.add_argument("--gamepad", metavar="DEVICE", help="input device to use instead of the first controller found")
     args = ap.parse_args()
-    if not args.jogd and (args.max_speed != jogd.DEFAULT_MAX_SPEED or args.no_respeed or args.stick_speed):
-        ap.error("--max-speed, --no-respeed and --stick-speed need --jogd")
+    if not args.jogd and (args.max_speed != jogd.DEFAULT_MAX_SPEED or args.no_respeed or args.stick_speed
+                          or args.joint_cap is not None or args.frame_cap is not None or args.no_limit_guard):
+        ap.error("--max-speed, --no-respeed, --stick-speed, --joint-cap, --frame-cap and --no-limit-guard need --jogd")
+    try:
+        args.joint_caps = None if args.joint_cap is None else jogd.parse_joint_caps(args.joint_cap)
+        args.frame_caps = None if args.frame_cap is None else jogd.parse_frame_caps(args.frame_cap)
+    except ValueError as err:
+        ap.error(str(err))
+    args.frames = tuple(f.strip() for f in args.frames.split(",") if f.strip())
+    if "joint" not in args.frames or any(f not in jogd.FRAME_MODE for f in args.frames):
+        ap.error(f"--frames must include joint and come from {', '.join(jogd.FRAME_MODE)}")
+    if args.program_c is not None and not (args.jogd and {"world", "tool"} & set(args.frames)):
+        ap.error("--program-c needs --jogd and world or tool in --frames")
+    if args.status_port is None:
+        args.status_port = 8466 if args.jogd else 0
+    if not 0 <= args.status_port <= 65535:
+        ap.error("--status-port must be 0 to 65535")
     if args.jogd and args.max_speed > jogd.TOP_SPEED:
         print(f"--max-speed {args.max_speed}: jogd's command carries two digits, so {jogd.TOP_SPEED} is the top; using {jogd.TOP_SPEED}")
         args.max_speed = jogd.TOP_SPEED

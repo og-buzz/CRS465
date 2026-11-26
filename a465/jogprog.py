@@ -102,12 +102,73 @@ What the listings say (bin/pendant, sbin/robotsrv, lib/robotlib.r; addresses are
   opens it and dup()s it to fd 0). The dead-man clock is mtime(&t), whose first word syslib's own
   delay() and TimeStampEnd use as milliseconds.
 
+
+jogd-v (controller/programs/jogd-v, option maxvel; the other builds are byte for byte unchanged): a bench
+build to try whether a RUNNING manual jog follows the motor speed limit table. At start it reads the table
+with maxvels_get (robotlib 0x15 -> 0x04ba: request 9 op 0, 8 floats; the manual gives rpm) and prints
+`MV v1 .. v8`. `vNN` (two digits, 01..99) while a move is in force sets the moving joint's entry to NN
+percent of the value read at start, every other entry as read (maxvels_set, 0x16 -> 0x04c3, request 9 op 1;
+robotsrv 0x04b0 sends it to the servo board at once as message 1167 and keeps nothing; no file is written
+for it), and prints `V NN <value>`; it can never set an entry above the value read at start. Every stop
+(`.`, the dead-man, a change of command, a failed start, `q`, an input error) puts the table read at start
+back right after man_move_stop, and finish() tries once more. A kill (Ctrl-Z, Ctrl-E) cannot restore it.
+`v` also ends a half-received jog command; a letter ends a half-received `v`.
+
+
+jogd-c (controller/programs/jogd-c, option cart; the other builds are byte for byte unchanged). Mode 1 (and 2)
+letters are jogd's manual moves, unchanged. Modes 3 (world) and 4 (tool): online(ON 1) after speed_get, and
+online(OFF 0) at every exit that runs finish() (q, an input error); a letter is one straight-line move of CART_MM
+(150) mm, or CART_DEG (45) degrees for D E F, with jog_ws (mode 3) or jog_ts (mode 4) at speed_set(NN):
+    jog_ws(axis, distance) robotlib 0x34 -> 0x07f5: request 19 [axis, distance, 0]; jog_w 0x07df sends 1 there
+        (joint-interpolated). robotsrv 0x08e0 puts the distance (negated for a negative axis) in element |axis| of
+        eight floats and sends them with that flag as message 1005; jog_ts 0x36 -> 0x0821 is request 58, robotsrv
+        0x0964, message 1198. ash's wxs .. zrots / txs .. rolls are these with a fixed axis (robotlib 0x14c9 ..
+        0x1598): 1 X, 2 Y, 3 Z, 4 Z rotation (zrots, yaws), 5 Y rotation (yrots, pitchs), 6 X rotation (xrots,
+        rolls); ash passes the distance as a float in current units (ash 0x0487: an int argument is itof'd).
+    Letters A..F / a..f: + / - axis 1..6 in that numbering. `+Xnn` when the call has returned 0.
+    Stop (`.`, the dead-man, another letter, q, an input error): halt() first (robotlib 0x21, request 23: robotsrv
+        0x0b2b sends message 1999 and answers at once; its wait loop 0x00bf returns 0 at 0x00c1), then `-` / `T` as
+        soon as it returns, then settle(): robotisfinished until it says 1, at most SETTLE_MS (1500), delay(10) between
+        (the shape of robotsrv's disabled post-halt loop 0x00c3-0x00f4, which polls message 1010; 1010 is the one
+        message the -42 lock-out lets through, 0x003a-0x0041), and only then the next start. halt() does not start the
+        1000 ms -42 lock-out ("device is being reset"): only Ctrl-Z / Ctrl-A at the console (fastacid 0x0137 / 0x013c
+        signal the server with 6 / 8; robotsrv 0x202c, which also sends 6 to the controlling program, 0x2044) and arm
+        power going off (0x1fb2) do.
+    Input first: during an online move a `p` is only noted and answered when reads() finds nothing waiting, and the
+        end-by-itself poll runs only then too (main loop, idle), so a `.` waits at most for the one call under way.
+    A move that ends by itself: with no input waiting, at most every FIN_MS (1000) ms and not sooner after the start,
+        robotisfinished (robotlib 0x3e -> 0x09d4, request 20 op 1; the manual: 1 finished, 0 not); 1 prints `-` and the
+        command's repeats are then ignored. The same letter at another speed while moving: a keep-alive (the speed is
+        fixed per move). An error from the move call: `E`, then the stop (halt, `-`).
+    SIGABRT (6): robotsrv sends it to its controlling process on a board error (`Error 0x4000006` / `Path error`), arm
+        power off (0x1f9b-0x2017: unless the process registered a signal with sig_arm_set) and on Ctrl-Z (0x2044); its
+        default action ends the program. jogd-c installs a handler (signal(6, on_sigabrt, 0), as ash does at
+        0x27fb-0x2800) that only notes it; the main loop then ends the move, reads robot_error_get (robotlib 0x7a,
+        request 55: robotsrv's G654, the code it prints as `Error 0x...`; after -42, i.e. the lock-out, it waits
+        ABORT_WAIT_MS (1100) and asks again), prints `A <code> <text>` (or `A abort`), puts manual mode off (mode 1) or
+        online(ON) again (modes 3, 4) and reads on. The command in force stays, so its repeats are ignored. Control is
+        kept: robotsrv's error path does not touch G557, online (G563) or manual mode. Ctrl-E (fastacid 0x012e:
+        sigfifo SIGINT 7 to the console's readers) still ends jogd-c.
+`@` vectors (jogd-c, all modes but 2): `@` then six components, each a sign and a digit (+0..+9, -0..-9), then
+two speed digits: `@+3+4+0+0+0+002` (15 bytes). A letter, `.`, `q`, `@` or any character that does not fit its
+place drops a half-received vector (then it is taken as usual); `p` does not. `+@...` echoes it as used (signs and
+digits as received, the speed clamped) when the move call has returned 0. While a vector move is in force any
+vector is its keep-alive; the vector last started is ignored when nothing is moving (it ended or failed); a vector
+while a letter's move is in force stops that first. Modes 3, 4: components 4..6 must be 0 (else `E -22`); the
+target is the commanded pose shifted by CART_MM x (x, y, z) / |(x, y, z)|, one moves() (robotlib 0x2d -> 0x0714:
+straight; 0x0319 refuses a precision location for it, -16777217): here() into a cloc (class 1: robotlib 0x0f88
+-> motor_to_world, request 36), mode 3 adds to loc_cdata words 1..3 (x, y, z, then yaw, pitch, roll: manual), mode 4
+calls shift_t(&pose, 1, displacement cloc tag 5) as ash's tshift does (ash 0x1cc2-0x1cd3; robotlib 0x13c7, request
+57). Mode 1: one move() (robotlib 0x2c) to pos_get(2) with joint k advanced by c_k x VEC_DEG (30) / max|c| degrees
+(counts per degree from a465/calfile.py), in online(ON) set just before it and put back to OFF at its stop or end.
 """
 import argparse
+import math
+import struct
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from a465 import r3asm, r3dis
+from a465 import calfile, r3asm, r3dis
 
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "controller" / "programs"
@@ -116,7 +177,9 @@ BUILD_TIME = 0x6B057C40          # 2026-11-24 12:00 UTC; the firmware is not kno
 # robotlib routine numbers (controller/robotlib-functions.txt)
 CTL_GET, CTL_REL, POS_GET, HALT, SPEED_GET, SPEED_SET = 0x02, 0x04, 0x0E, 0x21, 0x43, 0x44
 MAN_MODE_SET, MAN_MOVE_START, MAN_MOVE_STOP, ROBOT_MODE_GET = 0x52, 0x53, 0x54, 0x55
+MOVE, MOVES, JOG_WS, JOG_TS, ROBOTISFINISHED, ONLINE, HERE, SHIFT_T = 0x2C, 0x2D, 0x34, 0x36, 0x3E, 0x3F, 0x62, 0x80
 STR_ERROR, DELAY = 0x07, 0x14    # syslib
+VEC_AXIS = 99                    # jogd-c: `axis` while an `@` vector is the command in force
 
 
 @dataclass(frozen=True)
@@ -131,7 +194,787 @@ class Options:
     open_flags: int = 5          # O_RDONLY | O_NONBLOCK
     speed_set: bool = True       # False: never speed_get/speed_set (the jogd-nospeedset build)
     pos_type: int = 1            # pos_get type for `p`: POSITION_ACTUAL, as w2's PULSES row
+    maxvel: bool = False         # True: the `vNN` bench command (the jogd-v build); see the docstring
+    cart: bool = False           # True: modes 3, 4 as straight-line online moves, and `@` vectors (jogd-c)
+    cart_mm: int = 150           # jogd-c: a letter's (and a vector's) distance in modes 3, 4, mm ...
+    cart_deg: int = 45           # ... and a rotation letter's, degrees
+    vec_deg: int = 30            # jogd-c mode 1 `@`: the largest joint change, degrees
+    fin_ms: int = 1000           # jogd-c: robotisfinished (end by itself) at most this often, only with no input waiting
+    settle_ms: int = 1500        # jogd-c: after halt, robotisfinished until 1 for at most this long
+    abort_wait_ms: int = 1100    # jogd-c: after SIGABRT, when the server answers -42 (its 1000 ms lock-out)
     build_time: int = BUILD_TIME
+
+
+def _float_word(x):
+    return struct.unpack("<I", struct.pack("<f", x))[0]
+
+
+def _cart(opts):
+    """jogd-c's pieces of source, keyed by the place in source() they go; all empty for other builds."""
+    keys = ("equ", "data", "setup", "loop", "vbyte", "keep", "start", "stop", "tprint", "idle", "finish", "code")
+    if not opts.cart:
+        return dict.fromkeys(keys, "")
+    if not opts.speed_set:
+        raise ValueError("the cart option needs speed_set")
+    if not (1 <= opts.cart_mm <= 1000 and 1 <= opts.cart_deg <= 180 and 1 <= opts.vec_deg <= 90
+            and 1 <= opts.fin_ms <= 10000 and 1 <= opts.settle_ms <= 10000):
+        raise ValueError("cart_mm 1..1000, cart_deg 1..180, vec_deg 1..90, fin_ms and settle_ms 1..10000")
+    ktab = [0] + [_float_word(opts.cart_mm / math.sqrt(n)) for n in range(1, 244)]
+    rows = "\n".join("            word " + ", ".join(str(w) for w in ktab[i:i + 8]) for i in range(0, len(ktab), 8))
+    cpd = ", ".join(str(round(c * 100)) for c in calfile.COUNTS_PER_DEGREE)
+    lib = "\n    libcall robotlib:"
+    p = {}
+    p["equ"] = f"""
+.equ CART_MM {opts.cart_mm}
+.equ CART_DEG {opts.cart_deg}
+.equ VEC_DEG {opts.vec_deg}
+.equ FIN_MS {opts.fin_ms}
+.equ SETTLE_MS {opts.settle_ms}
+.equ ABORT_WAIT_MS {opts.abort_wait_ms}
+.equ SIGABRT 6
+.equ VEC_AXIS {VEC_AXIS}"""
+    p["data"] = f"""
+cart:       word 0                  ; jogd-c: 1 in modes 3, 4 (online ON from start to exit)
+mkind:      word 0                  ; the move in force is an online move (jog_ws, jog_ts, moves, move): halt stops it
+lastfin:    word 0, 0               ; mtime() of the last robotisfinished (or of the start)
+ppend:      word 0                  ; a `p` read during an online move, answered once no input is waiting
+settle0:    word 0, 0               ; mtime() when settle() began
+aborted:    word 0                  ; set by the SIGABRT handler, acted on at the top of the main loop
+errw:       zeros 2                 ; robot_error_get's word: the server's last board error (robotsrv G654)
+s_abort:    string "A abort\\n"
+s_aborte:   string "A {{}} {{}}\\n"
+vpos:       word 0                  ; `@` parser: 0 none, else the position (1..14) of the next character
+vtens:      word 0
+vsg:        zeros 6                 ; the received signs (1 = '-') ...
+vdg:        zeros 6                 ; ... and digits of the six components
+vc:         zeros 6                 ; their values
+vl:         zeros 6                 ; the values of the vector last started
+vloc:       zeros 9                 ; here() / pos_get(2), then the target
+vdisp:      zeros 9                 ; mode 4: the displacement for shift_t
+vf:         zeros 8                 ; loc_cdata_get's eight floats, or loc_pdata_get's eight counts
+vd:         zeros 8                 ; the displacement (floats): x, y, z, then zeros
+s_plus:     string "+"
+s_minus:    string "-"
+s_vline:    string "+@{{}}{{}}{{}}{{}}{{}}{{}}{{}}{{}}{{}}{{}}{{}}{{}}{{}}{{}}\\n"
+cpd:        word {cpd}             ; counts per degree x 100, joints 1..6 (a465/calfile.py)
+ktab:                               ; CART_MM / sqrt(n) as floats, n = 0..243 (n = x*x + y*y + z*z)
+{rows}"""
+    p["setup"] = """
+    pushi 0
+    pushaddr text:on_sigabrt
+    pushi SIGABRT
+    pushi 3
+    builtinx signal                 ; survive SIGABRT, as ash does (ash 0x27fb-0x2800: signal(6, 0x000d, 0))
+    getg L6, mode
+    gtc L5, L6, 2
+    putg L5, cart                   ; modes 3, 4: straight-line online moves
+    ifnot L5, c_setup_done
+    pushi 1
+    pushi 1
+    call setonline                  ; online(ON): a move call returns at once (segtest, robotsrv 0x0b66)
+    pop L5
+    ltc L4, L5, 0
+    if L4, setup_failed
+c_setup_done:"""
+    p["loop"] = """
+    getg L6, aborted
+    ifnot L6, l_read
+    pushi 0
+    call onabort                    ; jogd-c: a SIGABRT came
+l_read:"""
+    p["vbyte"] = """
+    eqc L5, A3, 'p'                 ; ---- jogd-c: `p` during an online move is answered later (main loop, idle)
+    ifnot L5, vb_notp
+    getg L6, mkind
+    ifnot L6, vb_notp               ; no online move: at once, as jogd
+    ldi L6, 1
+    putg L6, ppend
+    ldi L5, 0
+    retv L5
+vb_notp:
+    getg L6, vpos                   ; ---- `@` and the 14 characters after it
+    ifnot L6, vb_none
+    ltc L5, L6, 13
+    ifnot L5, vb_speed
+    modc L5, L6, 2
+    ifnot L5, vb_digit
+    ldi L4, 0                       ; odd positions: the sign
+    eqc L5, A3, '+'
+    if L5, vb_sign
+    ldi L4, 1
+    eqc L5, A3, '-'
+    if L5, vb_sign
+    goto vb_drop
+vb_sign:
+    subc L5, L6, 1
+    divc L5, L5, 2
+    leag L3, vsg
+    stx L4, L3, L5
+    goto vb_next
+vb_digit:                           ; even positions: the digit
+    gec L5, A3, '0'
+    lec L4, A3, '9'
+    land L5, L5, L4
+    ifnot L5, vb_drop
+    subc L4, A3, '0'
+    subc L5, L6, 2
+    divc L5, L5, 2
+    leag L3, vdg
+    stx L4, L3, L5
+    goto vb_next
+vb_speed:                           ; positions 13, 14: the speed
+    gec L5, A3, '0'
+    lec L4, A3, '9'
+    land L5, L5, L4
+    ifnot L5, vb_drop
+    subc L4, A3, '0'
+    eqc L5, L6, 13
+    ifnot L5, vb_last
+    putg L4, vtens
+    goto vb_next
+vb_last:
+    ldi L5, 0
+    putg L5, vpos
+    getg L5, vtens
+    mulc L5, L5, 10
+    add L4, L5, L4
+    push L4
+    pushi 1
+    call vcommand
+    goto vb_ret
+vb_next:
+    addc L6, L6, 1
+    putg L6, vpos
+vb_ret:
+    ldi L5, 0
+    retv L5
+vb_drop:
+    eqc L5, A3, 'p'
+    if L5, vb_none                  ; `p` leaves a half-received vector alone, as it does a jog command
+    ldi L5, 0
+    putg L5, vpos                   ; anything else that does not fit drops it and is then taken as usual
+vb_none:
+    eqc L5, A3, '@'
+    ifnot L5, vb_end
+    ldi L5, 1
+    putg L5, vpos
+    ldi L5, 0
+    putg L5, pstate                 ; `@` ends a half-received jog command, as a letter does
+    goto vb_ret
+vb_end:"""
+    p["keep"] = """
+    getg L6, mkind
+    ifnot L6, c_kj                  ; jogd-c: an online move in force ...
+    getg L6, moving
+    ifnot L6, c_kj
+    ifnot L4, c_kj
+    goto c_done                     ; ... and its letter again, at any speed: a keep-alive (the speed is fixed per move)
+c_kj:"""
+    p["start"] = f"""
+    getg L6, cart
+    ifnot L6, s_manual              ; jogd-c modes 3, 4: one straight-line move, online
+    ldi L6, 1
+    putg L6, moving
+    putg L6, mkind
+    put A3, L7                      ; put SRC, DST: L7 = A3
+    ltc L5, A3, 0
+    ifnot L5, s_cabs
+    neg L7, L7
+s_cabs:
+    ldi L6, CART_MM
+    gtc L5, L7, 3
+    ifnot L5, s_cdist
+    ldi L6, CART_DEG                ; axes 4, 5, 6 are rotations (degrees)
+s_cdist:
+    ltc L5, A3, 0
+    ifnot L5, s_cpos
+    neg L6, L6
+s_cpos:
+    itof L6, L6
+    getg L5, mode
+    eqc L4, L5, 4
+    if L4, s_ctool
+    push L6
+    push L7
+    pushi 2{lib}jog_ws             ; wxs .. zrots: robotlib 0x07f5, request 19 [axis, distance, 0 = straight]
+    goto s_ccalled
+s_ctool:
+    push L6
+    push L7
+    pushi 2{lib}jog_ts             ; txs .. rolls: robotlib 0x0821, request 58
+s_ccalled:
+    pop L5
+    ltc L4, L5, 0
+    if L4, s_failed
+    pushleag lastfin
+    pushi 1
+    builtinx mtime
+    goto s_moving
+s_manual:"""
+    p["stop"] = f"""
+    getg L6, mkind
+    ifnot L6, t_manual              ; jogd-c: an online move stops with halt (robotsrv 0x0b2b: message 1999)
+    ldi L6, 0
+    putg L6, mkind
+    pushi 0{lib}halt               ; the first call after the stop cause
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, t_halted
+    push L5
+    pushi 1
+    call report
+t_halted:
+    ifnot A3, t_cdash               ; the line as soon as halt has returned
+    pushi 0
+    pushleag s_dead
+    pushi 2
+    builtinx printf
+    goto t_settle
+t_cdash:
+    pushi 0
+    pushleag s_stop
+    pushi 2
+    builtinx printf
+t_settle:
+    pushi 0
+    call settle                     ; then wait until the board reports the move finished
+    getg L6, cart
+    if L6, t_done
+    pushi 0
+    pushi 1
+    call setonline                  ; mode 1: a vector's move is over: online(OFF) before the next jog
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, t_done
+    push L5
+    pushi 1
+    call report
+    ret
+t_manual:"""
+    p["tprint"] = ""
+    p["idle"] = """
+    getg L6, ppend                  ; jogd-c: nothing to read, so now the deferred work, one piece, then read again
+    ifnot L6, i_poll
+    ldi L6, 0
+    putg L6, ppend
+    pushi 0
+    call position
+    goto loop
+i_poll:
+    pushi 0
+    call finpoll
+    pop L5
+    if L5, loop"""
+    p["finish"] = """
+    getg L6, cart
+    ifnot L6, f_online
+    pushi 0
+    pushi 1
+    call setonline                  ; online(OFF) again
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, f_online
+    push L5
+    pushi 1
+    call report
+f_online:"""
+    p["code"] = f"""
+
+setonline:                          ; setonline(on): online(ON 1 / OFF 0) (robotlib 0x09e6, request 24); its result
+    enter 10
+    push A3
+    pushi 1{lib}online
+    pop L5
+    retv L5
+    retv 0
+
+finpoll:                            ; finpoll(): robotisfinished at most every FIN_MS while an online move is in force;
+    enter 10                        ; 1 when it made the call
+    getg L6, mkind
+    ifnot L6, fp_none
+    getg L6, moving
+    ifnot L6, fp_none
+    pushleag now
+    pushi 1
+    builtinx mtime
+    getg L5, now
+    getg L6, lastfin
+    sub L4, L5, L6
+    ldi L3, FIN_MS
+    lt L3, L4, L3
+    if L3, fp_none
+    putg L5, lastfin
+    pushi 0{lib}0x3e              ; robotisfinished: robotlib 0x09d4, request 20 FINISH_TEST: 1 finished, 0 not
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, fp_result
+    push L5
+    pushi 1
+    call report
+    pushi 0
+    pushi 1
+    call stop                       ; an error: the whole stop
+    goto fp_done
+fp_result:
+    eqc L4, L5, 1
+    ifnot L4, fp_done
+    ldi L6, 0                       ; the move has ended by itself: the line first
+    putg L6, moving
+    putg L6, mkind
+    pushi 0
+    pushleag s_stop
+    pushi 2
+    builtinx printf
+    getg L6, cart
+    if L6, fp_done
+    pushi 0
+    pushi 1
+    call setonline
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, fp_done
+    push L5
+    pushi 1
+    call report
+fp_done:
+    ldi L5, 1
+    retv L5
+fp_none:
+    ldi L5, 0
+    retv L5
+    retv 0
+
+settle:                             ; settle(): after halt, robotisfinished until 1, at most SETTLE_MS (as robotsrv's
+    enter 10                        ; disabled post-halt loop 0x00c3-0x00f4 polls message 1010 with delay(10))
+    pushleag settle0
+    pushi 1
+    builtinx mtime
+st_poll:
+    pushi 0{lib}0x3e
+    pop L5
+    eqc L4, L5, 1
+    if L4, st_done
+    ltc L4, L5, 0
+    ifnot L4, st_wait
+    push L5
+    pushi 1
+    call report
+    goto st_done
+st_wait:
+    pushleag now
+    pushi 1
+    builtinx mtime
+    getg L6, now
+    getg L5, settle0
+    sub L6, L6, L5
+    ldi L5, SETTLE_MS
+    lt L4, L6, L5
+    ifnot L4, st_done
+    pushi 10
+    pushi 1
+    libcall syslib:delay
+    chkpop
+    goto st_poll
+st_done:
+    ret
+
+on_sigabrt:                         ; on_sigabrt(sig): the handler. robotsrv sends 6 to its controlling process on a
+    enter 5                         ; board error or arm power off (0x2013-0x2017) and on Ctrl-Z (0x2040-0x2044)
+    ldi L4, 1
+    putg L4, aborted
+    ret
+
+errget:                             ; errget(): robot_error_get(&errw) (robotlib 0x133c, request 55); its result
+    enter 10
+    pushleag errw
+    pushi 1{lib}robot_error_get
+    pop L5
+    retv L5
+    retv 0
+
+onabort:                            ; onabort(): the move is over (the board stopped it, or robotsrv halted it);
+    enter 10                        ; say so, then be ready again
+    getg L7, mkind
+    ldi L6, 0
+    putg L6, aborted
+    putg L6, moving
+    putg L6, mkind
+    pushi 0
+    call errget
+    pop L5
+    eqc L4, L5, -42
+    ifnot L4, ab_said               ; -42: the server's lock-out after Ctrl-Z or arm power off (robotsrv 0x22e3)
+    pushi ABORT_WAIT_MS
+    pushi 1
+    libcall syslib:delay
+    chkpop
+    pushi 0
+    call errget
+    pop L5
+ab_said:
+    ltc L4, L5, 0
+    if L4, ab_plain
+    getg L6, errw
+    ifnot L6, ab_plain
+    neg L5, L6
+    push L5
+    pushi 1
+    libcall syslib:str_error
+    pop L5
+    push L5 tag 19
+    push L6 tag 1
+    pushi 2
+    pushleag s_aborte
+    pushi 6
+    builtinx printf                 ; A <the board's error> <its text>, as robotsrv prints them (0x1fcb-0x1fdd)
+    goto ab_fix
+ab_plain:
+    pushi 0
+    pushleag s_abort
+    pushi 2
+    builtinx printf
+ab_fix:
+    getg L6, inmanual
+    ifnot L6, ab_online
+    pushi 0
+    pushi 1
+    call setman                     ; manual mode off, as after a jog
+    pop L5
+ab_online:
+    getg L6, cart
+    if L6, ab_on
+    ifnot L7, ab_done               ; mode 1: online was on only for a vector's move
+    pushi 0
+    pushi 1
+    call setonline
+    goto ab_result
+ab_on:
+    pushi 1
+    pushi 1
+    call setonline                  ; modes 3, 4: online(ON) again
+ab_result:
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, ab_done
+    push L5
+    pushi 1
+    call report
+ab_done:
+    ret
+
+vspeed:                             ; vspeed(s): speed_set(s) unless it is the speed in force; 0, or r < 0
+    enter 10
+    getg L6, speedset
+    eq L5, L6, A3
+    if L5, vs_same
+    push A3
+    pushi 1{lib}speed_set
+    pop L5
+    ltc L4, L5, 0
+    if L4, vs_ret
+    putg A3, speedset
+vs_same:
+    ldi L5, 0
+vs_ret:
+    retv L5
+    retv 0
+
+vcommand:                           ; vcommand(speed): a whole `@` command has arrived (vsg, vdg)
+    enter 10
+    ltc L5, A3, 1
+    if L5, vc_done                  ; 00 is not a speed: ignored
+    getg L6, maxspeed
+    gt L5, A3, L6
+    ifnot L5, vc_clamped
+    put L6, A3
+vc_clamped:
+    ldi L7, 0
+vc_value:
+    leag L6, vdg
+    ldx L5, L6, L7
+    leag L6, vsg
+    ldx L4, L6, L7
+    ifnot L4, vc_signed
+    neg L5, L5
+vc_signed:
+    leag L6, vc
+    stx L5, L6, L7
+    addc L7, L7, 1
+    ltc L5, L7, 6
+    if L5, vc_value
+    pushleag last
+    pushi 1
+    builtinx mtime                  ; a vector feeds the dead-man as a jog command does
+    getg L6, moving
+    ifnot L6, vc_idle
+    getg L6, axis
+    eqc L5, L6, VEC_AXIS
+    ifnot L5, vc_stop
+    goto vc_done                    ; a vector move in force: any vector is its keep-alive
+vc_stop:
+    pushi 0
+    pushi 1
+    call stop                       ; a letter's move in force: stop it first
+    goto vc_go
+vc_idle:
+    getg L6, axis
+    eqc L5, L6, VEC_AXIS
+    ifnot L5, vc_go
+    getg L6, speed
+    eq L5, L6, A3
+    ifnot L5, vc_go
+    ldi L7, 0
+vc_same:
+    leag L6, vc
+    ldx L5, L6, L7
+    leag L6, vl
+    ldx L4, L6, L7
+    eq L3, L5, L4
+    ifnot L3, vc_go
+    addc L7, L7, 1
+    ltc L5, L7, 6
+    if L5, vc_same
+    goto vc_done                    ; the vector last started (it has ended or failed): ignored
+vc_go:
+    leag L7, vl
+    leag L6, vc
+    ldi L5, 6
+    memcopy L7, L6, L5
+    ldi L6, VEC_AXIS
+    putg L6, axis
+    putg A3, speed
+    push A3
+    pushi 1
+    call vstart
+vc_done:
+    ret
+
+vstart:                             ; vstart(speed): one move toward the vector vc
+    enter 30
+    getg L6, mode
+    eqc L5, L6, 2
+    if L5, v_bad                    ; no vector in cylindrical mode
+    push A3
+    pushi 1
+    call vspeed
+    pop L5
+    ltc L4, L5, 0
+    if L4, v_report
+    getg L6, mode
+    eqc L5, L6, 1
+    if L5, v_joint
+    leag L7, vc                     ; ---- modes 3, 4: rotations must be 0 in this version
+    ldp L6, L7, 3
+    ldp L5, L7, 4
+    or L6, L6, L5
+    ldp L5, L7, 5
+    or L6, L6, L5
+    if L6, v_bad
+    ldp L6, L7, 0
+    mul L5, L6, L6
+    ldp L6, L7, 1
+    mul L6, L6, L6
+    add L5, L5, L6
+    ldp L6, L7, 2
+    mul L6, L6, L6
+    add L5, L5, L6
+    ifnot L5, v_done                ; all zero: nothing
+    leag L6, ktab
+    ldx L8, L6, L5                  ; CART_MM / |v|
+    ldi L9, 0
+v_scale:
+    leag L7, vc
+    ldx L6, L7, L9
+    itof L6, L6
+    fmul L6, L6, L8
+    leag L7, vd
+    stx L6, L7, L9
+    addc L9, L9, 1
+    ltc L5, L9, 3
+    if L5, v_scale
+    pushi 1
+    pushleag vloc
+    pushi 2
+    builtin loc_class_set           ; loc_cartesian (robotlib's here 0x0f88: class 1 -> motor_to_world)
+    pushleag vloc
+    pushi 1{lib}here               ; the commanded pose as a cloc (robotlib 0x0f79)
+    pop L5
+    ltc L4, L5, 0
+    if L4, v_report
+    getg L6, mode
+    eqc L5, L6, 4
+    if L5, v_tool
+    pushleag vf                     ; ---- world: x, y, z (loc_cdata words 1..3) + the displacement
+    pushleag vloc
+    pushi 2
+    builtin loc_cdata_get
+    ldi L9, 0
+v_add:
+    leag L7, vf
+    ldx L6, L7, L9
+    leag L7, vd
+    ldx L5, L7, L9
+    fadd L6, L6, L5
+    leag L7, vf
+    stx L6, L7, L9
+    addc L9, L9, 1
+    ltc L5, L9, 3
+    if L5, v_add
+    pushleag vf
+    pushleag vloc
+    pushi 2
+    builtin loc_cdata_set
+    pushleag vloc
+    pushi 1
+    builtin loc_re_check
+    goto v_move
+v_tool:                             ; ---- tool: shift_t(&pose, 1, displacement cloc), as ash's tshift (0x1cc2-0x1cd3)
+    leag L7, vdisp
+    leag L6, vloc
+    ldi L5, 9
+    memcopy L7, L6, L5              ; the displacement gets the pose's header word
+    pushleag vd
+    pushleag vdisp
+    pushi 2
+    builtin loc_cdata_set
+    pushleag vdisp
+    pushi 1
+    builtin loc_re_check
+    getg9 L20, vdisp
+    push9 L20 tag 5
+    pushi 1
+    pushleag vloc
+    pushi 12{lib}shift_t            ; robotlib 0x13c7, request 57 (message 1967); the shifted pose back in vloc
+    pop L5
+    ltc L4, L5, 0
+    if L4, v_report
+v_move:
+    ldi L6, 1
+    putg L6, moving
+    putg L6, mkind
+    getg9 L20, vloc
+    push9 L20
+    pushi 9{lib}moves              ; straight line (robotlib 0x0714, request 18, message 1002); a cloc only
+    pop L5
+    ltc L4, L5, 0
+    if L4, v_failed
+    goto v_started
+v_joint:                            ; ---- mode 1: one move() with joints 1..6 advanced in proportion
+    ldi L9, 0
+    ldi L8, 0
+v_max:
+    leag L7, vc
+    ldx L6, L7, L9
+    ltc L5, L6, 0
+    ifnot L5, v_abs
+    neg L6, L6
+v_abs:
+    gt L5, L6, L8
+    ifnot L5, v_maxed
+    put L6, L8
+v_maxed:
+    addc L9, L9, 1
+    ltc L5, L9, 6
+    if L5, v_max
+    ifnot L8, v_done                ; all zero: nothing
+    mulc L8, L8, 100                ; the largest component gets VEC_DEG degrees
+    pushleag vloc
+    pushi 2
+    pushi 2{lib}pos_get            ; POSITION_COMMANDED, as segtest's kind l
+    pop L5
+    ltc L4, L5, 0
+    if L4, v_report
+    pushleag vf
+    pushleag vloc
+    pushi 2
+    builtin loc_pdata_get
+    ldi L9, 0
+v_joints:
+    leag L7, vc
+    ldx L6, L7, L9
+    mulc L6, L6, VEC_DEG
+    leag L7, cpd
+    ldx L5, L7, L9
+    mul L6, L6, L5
+    div L6, L6, L8                  ; counts: c x VEC_DEG x cpd100 / (100 x max|c|)
+    leag L7, vf
+    ldx L5, L7, L9
+    add L5, L5, L6
+    stx L5, L7, L9
+    addc L9, L9, 1
+    ltc L5, L9, 6
+    if L5, v_joints
+    pushleag vf
+    pushleag vloc
+    pushi 2
+    builtin loc_pdata_set
+    pushleag vloc
+    pushi 1
+    builtin loc_re_check
+    pushi 1
+    pushi 1
+    call setonline                  ; online(ON) for this move only (manual jogs need it OFF)
+    pop L5
+    ltc L4, L5, 0
+    if L4, v_report
+    ldi L6, 1
+    putg L6, moving
+    putg L6, mkind
+    getg9 L20, vloc
+    push9 L20
+    pushi 9{lib}move               ; joint-interpolated (robotlib 0x0702)
+    pop L5
+    ltc L4, L5, 0
+    if L4, v_failed
+v_started:
+    pushleag last
+    pushi 1
+    builtinx mtime
+    pushleag lastfin
+    pushi 1
+    builtinx mtime
+    getg L6, speed                  ; +@ and the command as used: signs and digits as received, the speed clamped
+    modc L5, L6, 10
+    push L5 tag 1
+    divc L5, L6, 10
+    push L5 tag 1
+    ldi L9, 5
+v_echo:
+    leag L7, vdg
+    ldx L6, L7, L9
+    push L6 tag 1
+    leag L7, vsg
+    ldx L6, L7, L9
+    leag L5, s_plus
+    ifnot L6, v_sign
+    leag L5, s_minus
+v_sign:
+    push L5 tag 19
+    subc L9, L9, 1
+    gec L6, L9, 0
+    if L6, v_echo
+    pushi 14
+    pushleag s_vline
+    pushi 30
+    builtinx printf
+    ret
+v_failed:
+    push L5
+    pushi 1
+    call report
+    pushi 0
+    pushi 1
+    call stop                       ; halt (and online OFF in mode 1), then -
+    ret
+v_bad:
+    ldi L5, -22
+v_report:
+    push L5
+    pushi 1
+    call report
+v_done:
+    ret"""
+    return p
 
 
 def source(opts=Options()):
@@ -175,6 +1018,139 @@ s_go:""" if opts.speed_set else ""
     if L4, setup_failed
     getg L6, saved
     putg L6, speedset               ; its G84: speed_set is called only for another speed""" if opts.speed_set else ""
+    mv = opts.maxvel
+    mv_data = """
+s_mv:       string "MV {} {} {} {} {} {} {} {}\\n"
+s_v:        string "V {} {}\\n"
+vstate:     word 0                  ; `v`: 0 none, 1 `v`, 2 `v` and one digit
+vdigit:     word 0
+mvchanged:  word 0                  ; maxvels differ from the values read at start (or a set was tried)
+mvsaved:    zeros 8                 ; maxvels_get() at start: floats, never written again
+mvwork:     zeros 8""" if mv else ""
+    mv_setup = """
+    pushleag mvsaved
+    pushi 1
+    libcall robotlib:maxvels_get    ; request 9, op 0 (robotlib 0x04ba)
+    pop L5
+    ltc L4, L5, 0
+    if L4, setup_failed
+    leag L6, mvsaved""" + "".join(f"""
+    ldp L5, L6, {k}
+    push L5 tag 2""" for k in range(7, -1, -1)) + """
+    pushi 8
+    pushleag s_mv
+    pushi 18
+    builtinx printf""" if mv else ""
+    mv_letter = """
+    ldi L5, 0
+    putg L5, vstate""" if mv else ""
+    mv_digit = """
+    getg L5, vstate
+    ifnot L5, b_vno
+    eqc L4, L5, 1
+    ifnot L4, b_v2
+    putg L6, vdigit
+    ldi L5, 2
+    putg L5, vstate
+    goto b_none
+b_v2:
+    ldi L5, 0
+    putg L5, vstate
+    getg L5, vdigit
+    mulc L5, L5, 10
+    add L6, L5, L6
+    push L6
+    pushi 1
+    call vel
+    goto b_none
+b_vno:""" if mv else ""
+    after_p = "b_vel" if mv else "b_none"
+    c = _cart(opts)
+    mv_byte = """
+    goto b_none
+b_vel:
+    eqc L5, A3, 'v'
+    ifnot L5, b_none
+    ldi L5, 1
+    putg L5, vstate                 ; `v` starts the two digits, and ends any half-received jog command
+    ldi L5, 0
+    putg L5, pstate""" if mv else ""
+    mv_stop = """
+    pushi 0
+    call mvrestore                  ; the values read at start back, once the joint is stopped""" if mv else ""
+    mv_finish = """
+    pushi 0
+    call mvrestore""" if mv else ""
+    mv_code = """
+
+vel:                                ; vel(pct): the moving joint's maxvels entry to pct % of the value read at start
+    enter 10
+    getg L6, moving
+    ifnot L6, v_done                ; only while a move is in force
+    ltc L5, A3, 1
+    if L5, v_done                   ; 00: nothing
+    leag L7, mvwork
+    leag L6, mvsaved
+    ldi L5, 8
+    memcopy L7, L6, L5              ; every other entry as read at start
+    getg L6, axis
+    ltc L5, L6, 0
+    ifnot L5, v_abs
+    neg L6, L6
+v_abs:
+    subc L6, L6, 1
+    leag L5, mvsaved
+    ldx L4, L5, L6
+    itof L3, A3
+    fmul L4, L4, L3
+    ldi L3, 100
+    itof L3, L3
+    fdiv L4, L4, L3                 ; start value x pct / 100: pct is 1..99, so never above it
+    leag L5, mvwork
+    stx L4, L5, L6
+    ldi L5, 1
+    putg L5, mvchanged              ; before the call: any attempt is followed by a restore
+    pushleag mvwork
+    pushi 1
+    libcall robotlib:maxvels_set    ; request 9, op 1, forwarded at once to the servo board (robotsrv 0x04c6)
+    pop L5
+    ltc L2, L5, 0
+    ifnot L2, v_ok
+    push L5
+    pushi 1
+    call report
+    ret
+v_ok:
+    push L4 tag 2
+    push A3 tag 1
+    pushi 2
+    pushleag s_v
+    pushi 6
+    builtinx printf
+v_done:
+    ret
+
+mvrestore:                          ; mvrestore(): maxvels back to the values read at start, if changed
+    enter 10
+    getg L6, mvchanged
+    ifnot L6, r_done
+    ldi L6, 0
+    putg L6, mvchanged
+    leag L7, mvwork
+    leag L6, mvsaved
+    ldi L5, 8
+    memcopy L7, L6, L5              ; a copy: maxvels_set writes the board's answer back into its array
+    pushleag mvwork
+    pushi 1
+    libcall robotlib:maxvels_set
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, r_done
+    push L5
+    pushi 1
+    call report
+r_done:
+    ret""" if mv else ""
     return f"""; jogd: continuous jog from 3-byte console commands. Built by a465/jogprog.py; see its docstring.
 .build {opts.build_time:#010x}
 .entry main
@@ -185,7 +1161,7 @@ s_go:""" if opts.speed_set else ""
 .equ POLL_MS {opts.poll_ms}
 .equ OPEN_FLAGS {opts.open_flags}
 .equ POS_TYPE {opts.pos_type}
-.equ NO_DATA -35                    ; -EAGAIN: reads() on a non-blocking fd with nothing to read
+.equ NO_DATA -35                    ; -EAGAIN: reads() on a non-blocking fd with nothing to read{c['equ']}
 
 .data
 s_cin:      string {r3asm.quote_bytes(opts.input_path.encode())}
@@ -224,7 +1200,7 @@ pul3:       word 0
 pul4:       word 0
 pul5:       word 0
 pul6:       word 0
-            zeros 2                 ; axes 7 and 8
+            zeros 2                 ; axes 7 and 8{mv_data}{c['data']}
 
 .code
 main:
@@ -341,7 +1317,7 @@ opened:
     pushi 1
     pushi 1
     builtinx exit
-have_control:{speed_get}
+have_control:{speed_get}{mv_setup}{c['setup']}
     goto ready
 setup_failed:
     push L5
@@ -358,7 +1334,7 @@ ready:
     pushleag s_ready
     pushi 2
     builtinx printf
-loop:                               ; ---- one byte, or a short wait
+loop:                               ; ---- one byte, or a short wait{c['loop']}
     pushi 1
     pushleag inbuf
     getg L6, fd
@@ -394,7 +1370,7 @@ no_byte:
     pushi 1
     pushi 1
     call finish
-idle:
+idle:{c['idle']}
     pushi POLL_MS
     pushi 1
     libcall syslib:delay
@@ -427,7 +1403,7 @@ quit:
     retv 0
 
 byte:                               ; byte(c): one input byte; returns 1 for q
-    enter 10
+    enter 10{c['vbyte']}
     gec L5, A3, 'A'
     lec L4, A3, 'F'
     land L5, L5, L4
@@ -444,14 +1420,14 @@ b_lower:
 b_letter:
     putg L6, paxis
     ldi L5, 1
-    putg L5, pstate
+    putg L5, pstate{mv_letter}
     goto b_none
 b_digit:
     gec L5, A3, '0'
     lec L4, A3, '9'
     land L5, L5, L4
     ifnot L5, b_dot
-    subc L6, A3, '0'
+    subc L6, A3, '0'{mv_digit}
     getg L5, pstate
     eqc L4, L5, 1
     ifnot L4, b_second
@@ -491,9 +1467,9 @@ b_quit:
     retv L5
 b_pos:
     eqc L5, A3, 'p'
-    ifnot L5, b_none
+    ifnot L5, {after_p}
     pushi 0
-    call position                   ; no pstate change, no dead-man feed
+    call position                   ; no pstate change, no dead-man feed{mv_byte}
 b_none:
     ldi L5, 0
     retv L5
@@ -515,7 +1491,7 @@ c_clamped:
     eq L4, L6, A3                   ; same joint and direction as the command in force
     getg L6, speed
     eq L3, L6, A4
-    land L2, L4, L3
+    land L2, L4, L3{c['keep']}
     if L2, c_done                   ; the command in force: keep-alive
     getg L6, moving
     ifnot L6, c_start
@@ -537,7 +1513,7 @@ c_done:
 start:                              ; start(axis, speed): one jog as the pendant starts it (0x0d40, 0x06d7)
     enter 10
     putg A3, axis
-    putg A4, speed{speed_set}
+    putg A4, speed{speed_set}{c['start']}
     getg L6, moving
     if L6, s_move                   ; variant r: manual mode is on already
     pushi 1
@@ -600,7 +1576,7 @@ stop:                               ; stop(deadman): as the pendant's 0x07d9; pr
     getg L6, moving
     ifnot L6, t_done
     ldi L6, 0
-    putg L6, moving
+    putg L6, moving{c['stop']}
     getg L6, axis
     ltc L5, L6, 0
     ifnot L5, t_abs
@@ -623,11 +1599,11 @@ t_abs:
     push L5
     pushi 1
     call report
-t_said:
+t_said:{mv_stop}
     pushi 0
     pushi 1
     call setman                     ; man_mode_set(0) after each jog (pendant 0x07f3)
-    pop L5
+    pop L5{c['tprint']}
     ifnot A3, t_dash
     pushi 0
     pushleag s_dead
@@ -741,7 +1717,7 @@ finish:                             ; finish(code): manual mode off if still on,
     pushi 0
     pushi 1
     call setman
-    pop L5{restore}
+    pop L5{mv_finish}{c['finish']}{restore}
 f_release:
     pushi 0
     libcall robotlib:ctl_rel
@@ -755,7 +1731,7 @@ f_exit:
     push A3
     pushi 1
     builtinx exit
-    retv 0
+    retv 0{mv_code}{c['code']}
 """
 
 
@@ -772,7 +1748,8 @@ def listing(image, name="jogd"):
     return "\n".join(lines + ["; data segment"] + r3dis.data_listing(mod)) + "\n"
 
 
-BUILDS = {"jogd": Options(), "jogd-nospeedset": replace(Options(), speed_set=False)}
+BUILDS = {"jogd": Options(), "jogd-nospeedset": replace(Options(), speed_set=False),
+          "jogd-v": replace(Options(), maxvel=True), "jogd-c": replace(Options(), cart=True)}
 
 
 def write(out_dir=OUT, builds=None):

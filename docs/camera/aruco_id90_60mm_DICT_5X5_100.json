@@ -1,0 +1,9 @@
+{
+ "kind": "aruco_marker",
+ "marker_id": 90,
+ "marker_mm": 60.0,
+ "dictionary": "DICT_5X5_100",
+ "page": "US Letter portrait",
+ "dpi": 300,
+ "made": "2026-11-25T20:16:46-05:00"
+}

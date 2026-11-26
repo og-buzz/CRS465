@@ -35,8 +35,8 @@ offset 0x544c):
   fp. builtin error_code() (0x10a, dispatched by the table at 0x78d4 to 0x875c) returns that code.
 
 Builtins provided (by number, see r3dis.BUILTINS): exit, msleep, argc, argv, time, mtime, open,
-close, reads, print, fprint, printf, fprintf, str_len, str_chr_get, str_to_int, error_code and
-the location builtins loc_pdata_get/set, loc_class/machtype/flags_get/set, loc_check and
+close, reads, print, fprint, printf, fprintf, str_len, str_chr_get, str_to_int, error_code, signal and
+the location builtins loc_pdata_get/set, loc_cdata_get/set, loc_class/machtype/flags_get/set, loc_check and
 loc_re_check (as the interpreter's 0x6e94..0x70a0: header bytes class, machine type, flags,
 check; data in words 1..8). Also itof, push9/pop9, ldp9/stp9 and the memcopy opcode. A
 format "{}" prints one argument (tag 1 an int, tag 2 a float as %g, the manual's default for
@@ -85,6 +85,14 @@ class ProgramExit(Exception):
     def __init__(self, code):
         super().__init__(code)
         self.code = code
+
+
+class Killed(Exception):
+    """A posted signal with no handler installed (the manual's default action for 1..16: terminate)."""
+
+    def __init__(self, sig):
+        super().__init__(sig)
+        self.sig = sig
 
 
 class Uncaught(R3VMError):
@@ -192,6 +200,8 @@ class VM:
         self.step_us, self._us = step_us, 0   # fake time per instruction (0: instructions take none)
         self.pc = None
         self._inits = {}
+        self.handlers = {}                   # signal number -> handler text address (builtin signal)
+        self.posted = []                     # [(clock ms, signal)], delivered at an instruction boundary
 
     # -- memory -----------------------------------------------------------------------------
     def _load_data(self):
@@ -331,6 +341,15 @@ class VM:
             raise R3VMError(f"builtin {number:#x} {r3dis.BUILTINS.get(number, '?')} is not provided")
         return f(args)
 
+    def b_signal(self, args):             # signal(sig, sigsub, oldsigsub): ash 0x27fb-0x2800 installs one so
+        sig = s32(args[0])                # (6, <its own text 0x000d>, 0)
+        if not 1 < sig <= 24:
+            return -22
+        if args[2]:
+            self.store(args[2], 0, self.handlers.get(sig, 0))
+        self.handlers[sig] = args[1]
+        return 0
+
     def b_exit(self, args):
         raise ProgramExit(s32(args[0]))
 
@@ -434,6 +453,12 @@ class VM:
             self.store(args[0], 1 + k, self.load(args[1], k))
         return None
 
+    # loc_cdata_get / loc_cdata_set (0xca, 0xcb) are the same code: the 3.1 interpreter's builtin
+    # table at 0x78d4 sends 0xca to 0x86d8 (call 0x7020) and 0xcb to 0x86e4 (call 0x70a0), the
+    # handlers of 0xc8 and 0xc9. For a cloc the eight words are floats (x, y, z, yaw, pitch, roll, ...).
+    b_loc_cdata_get = b_loc_pdata_get
+    b_loc_cdata_set = b_loc_pdata_set
+
     # A location's word 0: byte 0 class, byte 1 machine type, byte 2 flags, byte 3 the check byte
     # (0x6e94..0x6f70); loc_re_check (0x6fe4) makes its 36 bytes sum to 0, loc_check (0x6f9c) is 1
     # when they do not.
@@ -520,7 +545,27 @@ class VM:
             self.exit_code = e.code
             return e.code
 
+    def post_signal(self, at_ms, sig):
+        """A signal that arrives at `at_ms`: its handler is called between two instructions, as a call
+        handler(sig) would be (the manual: signal's sigsub "takes 1 integer parameter"); with no handler
+        the program is killed (Killed)."""
+        self.posted = sorted(self.posted + [(at_ms, sig)])
+
+    def _deliver(self):
+        _, sig = self.posted.pop(0)
+        handler = self.handlers.get(sig)
+        if not handler:
+            raise Killed(sig)
+        self.push(sig)
+        self.push(1)
+        self.push(TEXT << 16 | self.pc)
+        self.push(self.fp)
+        self.fp = self.sp
+        self.pc = handler & 0xFFFF
+
     def step(self):
+        if self.posted and self.posted[0][0] <= self.clock:
+            self._deliver()
         self.steps += 1
         if self.step_us:
             self._us += self.step_us
@@ -616,6 +661,9 @@ class VM:
             S(i16, F(a))
         elif op == 0x4b:
             self.segments[DATA][u16] = F(a)
+        elif op == 0x4d:                      # A..+8 = G..+8 (as robotsrv 0x2164 copies a location)
+            for k in range(9):
+                S(a + k, self.segments[DATA][u16 + k])
         elif op == 0x50:
             self.push(F(i16))
             self._tag(a)

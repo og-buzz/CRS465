@@ -544,3 +544,978 @@ def test_program_and_remote_name_options(rig):
                         open_port=lambda a: ctl, clock=rig.clock, sleep=rig.clock.sleep, log_dir=str(rig.tmp))
     assert code == 0
     assert "/tmp/jogd-b 1 5 s" in b"".join(ctl.sent).decode()
+
+
+# ---- --maxvel: jogd-v, the moving joint's maxvels entry changed mid-jog
+
+VIMAGE = jogprog.build(jogprog.BUILDS["jogd-v"])
+START_MV = [180.0, 180.0, 180.0, 171.089, 172.8, 172.089, 2368.57, 350.0]
+
+
+class MaxvelController(FakeController):
+    """Runs jogd-v. maxvels_get answers START_MV; a maxvels_set while a joint moves scales that joint's
+    speed by new / start value from that moment (applies=True), or changes nothing (applies=False)."""
+
+    def __init__(self, clock, applies=True, **kw):
+        super().__init__(clock, image=VIMAGE, **kw)
+        self.files = {"/tmp/jogd-v": VIMAGE}
+        self.applies = applies
+        self.sets = []
+
+    def _results(self):
+        res = super()._results()
+
+        def get(vm, args):
+            for k, x in enumerate(START_MV):
+                vm.store(args[0], k, r3vm.from_float(x))
+            return 0
+
+        def put(vm, args):
+            vals = [r3vm.to_float(vm.load(args[0], k)) for k in range(8)]
+            self.sets.append([round(v, 3) for v in vals])
+            if self.applies:
+                for j, (sign, speed, t, p0, fast) in list(self.moving.items()):
+                    self.moving[j] = (sign, speed * vals[j - 1] / START_MV[j - 1], vm.clock, self._pos(j, vm.clock), None)
+            return 0
+        res.update({0x15: get, 0x16: put})
+        return res
+
+
+@pytest.fixture
+def vrig(tmp_path):
+    clock = FakeClock()
+    local = tmp_path / "jogd-v"
+    local.write_bytes(VIMAGE)
+
+    def go(*argv, **kw):
+        ctl = MaxvelController(clock, **kw)
+        code = jogtest.main(["--local", str(local), *argv], repo=str(tmp_path), open_port=lambda a: ctl,
+                            clock=clock, sleep=clock.sleep, log_dir=str(tmp_path))
+        go.text = "\n".join(p.read_text() for p in sorted(tmp_path.glob("*-jogtest.log")))
+        return code, ctl
+    return go
+
+
+def maxvel_ratio(text):
+    import re
+    found = re.search(r"MAXVEL REPORT: .*speed before ([-+\d.]+) deg/s .* after ([-+\d.]+) deg/s .* ratio ([\d.]+)", text)
+    return tuple(float(x) for x in found.groups())
+
+
+def test_maxvel_applied_mid_jog_halves_the_sampled_speed(vrig):
+    code, ctl = vrig("F", "--maxvel", "50", "--speed", "5", "--hold", "1.5")
+    assert code == 0, vrig.text
+    data = b"".join(ctl.sent)
+    assert b"/tmp/jogd-v 1 5 s\r" in data and b"v50" in data
+    assert data.index(b"v50") > data.index(b"F05")
+    before, after, ratio = maxvel_ratio(vrig.text)
+    assert before == pytest.approx(5.0, rel=0.1) and ratio == pytest.approx(0.5, abs=0.06)
+    assert ctl.sets == [[180.0, 180.0, 180.0, 171.089, 172.8, 86.045, 2368.57, 350.0], START_MV]   # set, then restored
+    assert "maxvel: F05, v50 after 1.5 s" in vrig.text and "as expected" in vrig.text
+
+
+def test_maxvel_not_applied_shows_no_change(vrig):
+    code, ctl = vrig("c", "--maxvel", "30", "--speed", "4", "--hold", "1.0", applies=False)
+    assert code == 0, vrig.text
+    before, after, ratio = maxvel_ratio(vrig.text)
+    assert ratio == pytest.approx(1.0, abs=0.06)
+    assert ctl.sets[-1] == START_MV
+
+
+@pytest.mark.parametrize("argv", [["--maxvel", "50"], ["--dry", "--maxvel", "50"], ["F", "--maxvel", "50", "--reverse"],
+                                  ["F", "--maxvel", "50", "--speed2", "3"], ["F", "--maxvel", "0"], ["F", "--maxvel", "100"]])
+def test_maxvel_arguments_are_checked_before_the_port(vrig, argv, tmp_path):
+    opened = []
+    (tmp_path / "jv").write_bytes(VIMAGE)
+    with pytest.raises(SystemExit):
+        jogtest.main(["--local", str(tmp_path / "jv"), *argv], repo=str(tmp_path), open_port=lambda a: opened.append(a))
+    assert not opened
+
+
+def test_maxvel_defaults_to_the_jogd_v_files(tmp_path):
+    (tmp_path / "controller" / "programs").mkdir(parents=True)
+    (tmp_path / "controller" / "programs" / "jogd-v").write_bytes(VIMAGE)
+    args = jogtest.parse_args(["F", "--maxvel", "40"], str(tmp_path))
+    assert args.remote == "/tmp/jogd-v" and args.local.endswith("controller/programs/jogd-v") and args.sample
+
+
+def test_dry_run_of_jogd_v_is_clean(vrig, tmp_path):
+    code, ctl = vrig("--dry", "--remote", "/tmp/jogd-v")
+    assert code == 0, vrig.text
+    assert "jogd line (MV): MV 180 180 180 171.089 172.8 172.089 2368.57 350" in vrig.text and ctl.sets == []
+
+
+# ---- modes 3 and 4: a letter moves the fake joints by a fixed joint-space step per percent and second
+
+import re
+
+import numpy as np
+
+from a465 import model
+
+# joint velocity (degrees per second per percent of speed) for each letter in the fake's mode 3 / 4
+DIRS = {1: [1, 0, 0, 0, 0, 0], 2: [0, 1, 0.5, 0, 0, 0], 3: [0, 0, 1, 0, 0, 0],
+        4: [0, 0, 0, 1, 0, 0], 5: [0, 0, 0, 0, 1, 0], 6: [0, 0, 0, 0, 0, 1]}
+START6 = [0.0, -30.0, 60.0, 0.0, 30.0, 0.0]
+
+
+class SixController(FakeController):
+    """A letter (axis 1..6) moves ALL the fake joints along DIRS[axis]; `fail_axis` makes that axis's start return -13."""
+
+    def __init__(self, clock, fail_axis=None, **kw):
+        super().__init__(clock, **kw)
+        self.joints = list(START6)
+        self.fail_axis = fail_axis
+
+    def _results(self):
+        res = super()._results()
+
+        def start(vm, args):
+            joint, speed = jogprog_s32(args[0]), jogprog_s32(args[1])
+            if abs(joint) == self.fail_axis:
+                return -13
+            self._close_move(abs(joint), vm.clock)
+            self.moving.clear()
+            self.moving[abs(joint)] = (1 if joint > 0 else -1, speed, vm.clock, list(self.joints), None)
+            return 0
+        res[0x53] = start
+        return res
+
+    def _close_move(self, joint, now):
+        if joint in self.moving:
+            self.joints = [self._pos(j, now) for j in range(1, 7)]
+            self.moving.pop(joint)
+
+    def _pos(self, joint, now):
+        if not self.moving:
+            return self.joints[joint - 1]
+        (axis, (sign, speed, t, p0, _)), = self.moving.items()
+        return p0[joint - 1] + sign * speed * self.rate * max(now - t, 0) / 1000 * DIRS[axis][joint - 1]
+
+
+@pytest.fixture
+def six(tmp_path):
+    clock = FakeClock()
+    local = tmp_path / "jogd"
+    local.write_bytes(IMAGE)
+
+    def go(*argv, **kw):
+        ctl = SixController(clock, **kw)
+        start = list(ctl.joints)
+        code = jogtest.main(["--local", str(local), *argv], repo=str(tmp_path), open_port=lambda a: ctl,
+                            clock=clock, sleep=clock.sleep, log_dir=str(tmp_path))
+        go.text = "\n".join(p.read_text() for p in sorted(tmp_path.glob("*-jogtest.log")))
+        go.start = start
+        return code, ctl
+    return go
+
+
+def sent6(ctl, mode=3):
+    data = b"".join(ctl.sent)
+    return data.split(f"/tmp/jogd {mode} ".encode(), 1)[1].split(b"\r", 1)[1].split(b"w2\r")[0]
+
+
+def nums(text, label, n=3):
+    found = re.search(label + r"((?:\s+[+-]?\d+\.\d+){%d})" % n, text)
+    return [float(x) for x in found.group(1).split()]
+
+
+def test_mode_reaches_the_jogd_command_line_and_the_plan_is_printed_first(six):
+    code, ctl = six("--mode", "3", "A")
+    assert code == 0, six.text
+    assert "/tmp/jogd 3 5 s\r" in b"".join(ctl.sent).decode()
+    assert "the exact jogd command line: /tmp/jogd 3 5 s" in six.text
+    assert "limits in force" in six.text and "40 mm" in six.text and "10 degrees" in six.text
+    assert six.text.index("limits in force") < six.text.index("starting: /tmp/jogd 3 5 s")
+    code, ctl = six("--mode", "4", "--dry", "--max", "3", "--variant", "r")
+    assert code == 0, six.text
+    assert "/tmp/jogd 4 3 r\r" in b"".join(ctl.sent).decode()
+    assert ctl.p_count >= 1 and b"A" not in sent6(ctl, 4)
+
+
+def test_mode3_move_reports_the_displacement_the_model_gives(six):
+    code, ctl = six("--mode", "3", "B", "--speed", "2")
+    assert code == 0, six.text
+    sent = sent6(ctl)
+    assert b"p" in sent and sent.endswith(b"q")
+    assert sent.replace(b"p", b"").startswith(b"B02" * 10 + b".")
+    p0 = model.forward(six.start)[0]
+    p1 = model.forward(ctl.joints)[0]
+    assert np.linalg.norm(p1 - p0) > 5
+    found = re.search(r"dx ([+-][\d.]+)  dy ([+-][\d.]+)  dz ([+-][\d.]+) mm; length ([\d.]+) mm", six.text)
+    got = np.array([float(x) for x in found.groups()[:3]])
+    assert got == pytest.approx(p1 - p0, abs=0.15)
+    assert float(found.group(4)) == pytest.approx(np.linalg.norm(p1 - p0), abs=0.15)
+    dj = re.search(r"joint change \(degrees, from counts\): (.*)", six.text).group(1)
+    assert [float(x) for x in re.findall(r"J\d ([+-][\d.]+)", dj)] == pytest.approx([b - a for a, b in zip(six.start, ctl.joints)], abs=0.01)
+    ypr0, ypr1 = model.yaw_pitch_roll(model.forward(six.start)[1]), model.yaw_pitch_roll(model.forward(ctl.joints)[1])
+    m = re.search(r"yaw / pitch / roll: ([+-][\d.]+) / ([+-][\d.]+) / ([+-][\d.]+)", six.text)
+    assert [float(x) for x in m.groups()] == pytest.approx([b - a for a, b in zip(ypr0, ypr1)], abs=0.02)
+    assert re.search(r"mean tool-point speed [\d.]+ mm/s, mean rotation rate [\d.]+ deg/s", six.text)
+    assert "VERDICT: " in six.text
+    assert "from the PC's model (a465/model.py), whose frame has not been checked against the controller's." in six.text
+    assert "tool's own frame" not in six.text                      # tool mode only
+
+
+def test_mode4_move_also_reports_the_tool_frame_displacement(six):
+    code, ctl = six("--mode", "4", "C")
+    assert code == 0, six.text
+    p0, r0, _, _ = model.forward(six.start)
+    d = model.forward(ctl.joints)[0] - p0
+    m = re.search(r"tool's own frame at the start \(rot.T @ d\): ([+-][\d.]+)  ([+-][\d.]+)  ([+-][\d.]+) mm", six.text)
+    assert [float(x) for x in m.groups()] == pytest.approx(list(r0.T @ d), abs=0.15)
+
+
+def test_the_verdict_names_what_dominated(six):
+    code, ctl = six("--mode", "3", "E", "--speed", "4")          # wrist pitch joint: mostly rotation at the tool point
+    assert code == 0, six.text
+    line = re.search(r"VERDICT: (.*)", six.text).group(1)
+    assert line.startswith(("mostly", "mixed")), line
+    assert "deg" in line and "mm" in line
+
+
+def test_verdict_for_a_pure_translation_and_a_pure_rotation(six, monkeypatch):
+    monkeypatch.setitem(DIRS, 1, [0, 1, -1, 0, 0, 0])               # shoulder and elbow cancel: the tool keeps its attitude
+    code, ctl = six("--mode", "3", "A", "--speed", "3")
+    assert code == 0, six.text
+    m = re.search(r"VERDICT: mostly ([+-])([XYZ]) translation \(([\d.]+) mm; off-axis ([\d.]+) mm; rotation ([\d.]+) deg\)", six.text)
+    assert m, six.text
+    assert float(m.group(3)) > 5 and float(m.group(5)) < 0.1
+    monkeypatch.setitem(DIRS, 1, [0, 0, 0, 0, 1, 0])
+    code, ctl = six("--mode", "4", "A", "--speed", "3")
+    assert code == 0, six.text
+    assert re.search(r"VERDICT: mostly rotation \([\d.]+ deg about [+-][XYZ] \(tool\); translation [\d.]+ mm\)", six.text), six.text
+
+
+def test_tcp_limit_writes_dot_at_once(six):
+    code, ctl = six("--mode", "3", "A", "--speed", "5", "--hold", "3.0", "--max-tcp", "3")
+    assert code == 1
+    assert "LIMIT: the tool point is" in six.text and "--max-tcp 3" in six.text and "LimitTrip" in six.text
+    sent = sent6(ctl)
+    assert b".q" in sent[-4:] or sent.endswith(b".q")
+    assert sent.count(b"A05") < 15
+    assert not ctl.ctrlz and ctl.joints[0] - six.start[0] < 4
+
+
+def test_joint_limit_writes_dot_at_once(six):
+    code, ctl = six("--mode", "3", "D", "--speed", "5", "--hold", "3.0", "--max-joint", "1")
+    assert code == 1
+    assert "LIMIT: joint 4 is" in six.text and "--max-joint 1" in six.text
+    assert sent6(ctl).count(b"D05") < 15 and abs(ctl.joints[3]) < 4
+    assert not ctl.ctrlz
+
+
+def test_sweep_runs_twelve_moves_in_order_and_prints_one_table(six):
+    code, ctl = six("--mode", "3", "--sweep")
+    assert code == 0, six.text
+    sent = sent6(ctl)
+    order = [m.group(1).decode() for m in re.finditer(rb"([A-Fa-f])02", re.sub(rb"([A-Fa-f]02)(?:\1)+", rb"\1", sent.replace(b"p", b"")))]
+    assert order == list("AaBbCcDdEeFf")
+    assert sent.count(b".") == 12 and sent.endswith(b"q")
+    assert six.text.count("SWEEP TABLE") == 1
+    rows = [ln for ln in six.text.splitlines() if re.match(r"\s+[A-Fa-f]\s+[+-]\d", ln)]
+    assert len(rows) == 12
+    assert "d-yaw d-pitch d-roll" in six.text and "mm/s" in six.text and "deg/s" in six.text
+    assert "where the arm ended against where the sweep began" in six.text
+    ended = re.search(r"joints \(degrees\): (.*)", six.text.split("where the arm ended")[1]).group(1)
+    assert all(abs(float(x)) < 0.3 for x in re.findall(r"J\d ([+-][\d.]+)", ended))
+
+
+def test_sweep_letters_limits_the_sweep_and_mode4_adds_tool_frame_rows(six):
+    code, ctl = six("--mode", "4", "--sweep", "--letters", "ab")
+    assert code == 0, six.text
+    sent = sent6(ctl, 4)
+    assert sent.count(b".") == 4 and b"C02" not in sent and b"A02" in sent and b"b02" in sent
+    assert "tool-frame displacement at each move's start" in six.text
+
+
+def test_sweep_stops_at_the_first_move_that_does_not_answer_as_expected(six):
+    code, ctl = six("--mode", "3", "--sweep", fail_axis=2)
+    assert code == 1
+    sent = sent6(ctl)
+    assert b"A02" in sent and b"a02" in sent and sent.count(b"B02") <= 3
+    assert b"b02" not in sent and b"C02" not in sent
+    assert "STOPPED EARLY" in six.text and "E -13" in six.text
+    assert six.text.count("SWEEP TABLE") == 1                       # the moves that did run are tabulated
+
+
+def test_a_limit_trip_in_a_sweep_ends_it(six):
+    code, ctl = six("--mode", "3", "--sweep", "--max-joint", "1.5")
+    assert code == 1 and "LIMIT: joint" in six.text
+    assert b"B02" not in sent6(ctl)
+
+
+def test_modes_3_4_never_move_if_p_is_not_answered(six):
+    code, ctl = six("--mode", "3", "A", drop=b"p")
+    assert code == 1
+    assert "`p` WAS NOT ANSWERED" in six.text
+    assert [b for b in sent6(ctl) if chr(b) in "ABCDEFabcdef"] == []
+
+
+@pytest.mark.parametrize("argv", [
+    ["--mode", "3", "A", "--reverse"], ["--mode", "3", "A", "--maxvel", "50"], ["--mode", "4", "A", "--speed2", "3"],
+    ["--mode", "3", "A", "--no-deadman-test"], ["--mode", "3", "A", "--max-travel", "5"],
+    ["--mode", "2", "A"], ["--mode", "3", "--sweep", "A"], ["--mode", "3", "--sweep", "--dry"], ["--sweep"],
+    ["--mode", "1", "--sweep"], ["--mode", "3", "--sweep", "--letters", "AG"], ["--mode", "3", "--sweep", "--letters", "AA"],
+    ["--mode", "3", "A", "--letters", "AB"], ["--mode", "3"], ["A", "--max-tcp", "10"], ["A", "--max-joint", "5"],
+    ["--mode", "3", "A", "--max-tcp", "0"], ["--mode", "3", "A", "--max-tcp", "201"], ["--mode", "3", "A", "--max-joint", "46"],
+    ["--mode", "3", "A", "--speed", "6"], ["--mode", "3", "A", "--hold", "5.1"],
+])
+def test_mode_3_4_refused_combinations_never_open_the_port(rig, argv, capsys):
+    opened = []
+    with pytest.raises(SystemExit):
+        jogtest.main(["--local", str(rig.local), *argv], repo=str(rig.tmp), open_port=lambda a: opened.append(a),
+                     clock=rig.clock, sleep=rig.clock.sleep, log_dir=str(rig.tmp))
+    assert opened == []
+
+
+def test_refusal_message_names_the_option_and_the_mode(rig, capsys):
+    with pytest.raises(SystemExit):
+        jogtest.main(["--local", str(rig.local), "--mode", "3", "A", "--reverse"], repo=str(rig.tmp))
+    assert "--reverse cannot be used with --mode 3" in capsys.readouterr().err
+
+
+def test_mode_3_defaults():
+    a = jogtest.parse_args(["--mode", "3", "A"], "/home/buzz/dev/crs-a465")
+    assert (a.mode, a.speed, a.hold, a.max, a.max_tcp, a.max_joint, a.sample) == (3, 2, 1.0, 5, 40.0, 10.0, True)
+    a = jogtest.parse_args(["A"], "/home/buzz/dev/crs-a465")
+    assert (a.mode, a.max_travel, a.sample) == (1, 12.0, False)
+
+
+# ---------------------------------------------------------------------------------- jogd-c: modes 3 / 4 as bounded moves
+import numpy as np      # noqa: E402  (already imported above; kept for this section's readability)
+
+
+class CartController(FakeController):
+    """A protocol-level stand-in for jogd-c in mode 3 or 4 (no interpreter): a letter or a 15-byte `@` vector starts ONE move at
+    `mm_per_s` mm/s per percent (`deg_per_s` for D E F); the tool point goes along the direction (inverse kinematics from START6),
+    `.` ends it with `-` after `minus_delay` s. Knobs: ack_delay (s before `+`; None = never), end_after (s after the start the move
+    ends BY ITSELF with a bare `-`), coast (s the arm keeps moving after `.`), echo_wrong (a wrong echo of the vector)."""
+
+    def __init__(self, clock, ack_delay=0.05, end_after=None, coast=0.0, minus_delay=0.02, mm_per_s=5.0, deg_per_s=2.0,
+                 no_minus=False, abort_after=None, abort_line=b"A -67108870 Path error\r\n", dead_after_abort=False,
+                 button_after_abort=False, e_after=None, abort_delay=0.0, **kw):
+        super().__init__(clock, **kw)
+        self.abort_after, self.abort_line, self.abort_delay = abort_after, abort_line, abort_delay   # the first move is aborted this long after its start
+        self.dead_after_abort = dead_after_abort        # later moves are acknowledged but the arm does not move
+        self.button_after_abort = button_after_abort    # the next start prints the PAUSE/CONTINUE request, and is acknowledged 1 s later
+        self.e_after = e_after                          # an `E` line this long after the first start
+        self.aborted = False
+        self.joints = list(START6)
+        self.ack_delay, self.end_after, self.coast, self.minus_delay = ack_delay, end_after, coast, minus_delay
+        self.mm_per_s, self.deg_per_s, self.no_minus = mm_per_s, deg_per_s, no_minus
+        self.cur = None
+        self.buf = bytearray()
+        self.writes = []                   # (time, bytes) of everything the tool wrote
+        self.commands = []                 # every complete command that reached the program (starts and keep-alives)
+        self.starts = []
+
+    def write(self, data):
+        self.writes.append((self.clock(), bytes(data)))
+        return super().write(data)
+
+    # -- the program
+    def _launch(self, w):
+        self.vm, self.exited, self.mode = True, False, int(w[1])
+        self._put(b"jogd ready" + self.nl, 0.05)
+
+    def _sync(self):
+        pass
+
+    def _deliver(self):
+        pass
+
+    def _exit(self):
+        self._freeze()
+        super()._exit()
+
+    def _freeze(self):
+        if self.cur:
+            self.joints = self._pose(self.clock())
+            self.cur = None
+
+    def _shell(self, line):
+        self._freeze()
+        super()._shell(line)
+
+    def _tool_dir(self, name):
+        """(unit tool-point direction in the world frame, rotation joint or None)."""
+        if name[0] == "@":
+            comps = np.array([int(x) for x in re.findall(r"[+-]\d", name[1:7])], dtype=float)
+            v = comps / np.linalg.norm(comps)
+        else:
+            axis = ord(name[0].upper()) - 64
+            if axis > 3:
+                return None, (axis, 1 if name[0].isupper() else -1)
+            v = np.zeros(3)
+            v[axis - 1] = 1 if name[0].isupper() else -1
+        return v, None
+
+    def _pose(self, t):
+        c = self.cur
+        if c is None:
+            return list(self.joints)
+        dt = max(min(t, c["phys_end"]) - c["t0"], 0.0)
+        q0 = c["q0"]
+        if c["rot"]:
+            q = list(q0)
+            axis, sign = c["rot"]
+            q[axis - 1] += sign * c["speed"] * self.deg_per_s * dt
+            return q
+        p0, r0 = model.forward(q0)[:2]
+        v = r0 @ c["dir"] if self.mode == 4 else c["dir"]
+        target = p0 + v * c["speed"] * self.mm_per_s * dt
+        q = np.array(q0, dtype=float)
+        for _ in range(30):
+            err = target - model.forward(q)[0]
+            if np.linalg.norm(err) < 1e-4:
+                break
+            q += np.degrees(np.linalg.pinv(model.jacobian(q)[:3]) @ err)
+        return list(q)
+
+    def _to_jogd(self, b):
+        if self.echo:
+            self._put(b)
+        if b == b"p":
+            self.p_count += 1
+            counts = [round(x * SAMPLE_CPD[j]) for j, x in zip(range(1, 7), self._pose(self.clock()))]
+            self._put(("P " + " ".join(str(c) for c in counts)).encode() + self.nl, self.p_delay)
+            return
+        ch = b.decode("latin-1")
+        self.to_jogd += b
+        if self.buf:
+            self.buf += b
+            if len(self.buf) == 15:
+                name, self.buf = bytes(self.buf).decode(), bytearray()
+                self._command(name)
+            return
+        if ch == "@":
+            self.buf = bytearray(b)
+        elif ch == ".":
+            self._dot()
+        elif ch == "q":
+            self._exit()
+        elif ch in "ABCDEFabcdef":
+            self._letter = ch
+            self.buf2 = getattr(self, "buf2", b"") + b
+            if len(self.buf2) == 3:
+                name, self.buf2 = self.buf2.decode(), b""
+                self._command(name)
+        elif ch.isdigit() and getattr(self, "buf2", b""):
+            self.buf2 += b
+            if len(self.buf2) == 3:
+                name, self.buf2 = self.buf2.decode(), b""
+                self._command(name)
+
+    def _command(self, name):
+        self.commands.append((self.clock(), name))
+        if self.cur and self.cur["name"] == name:
+            return                                                    # a keep-alive
+        now = self.clock()
+        self._freeze()
+        d, rot = self._tool_dir(name)
+        speed = int(name[-2:])
+        self.cur = dict(name=name, t0=now, q0=list(self.joints), dir=d, rot=rot, speed=speed, phys_end=float("inf"), end_entry=None)
+        self.starts.append(now)
+        ack = self.ack_delay
+        if self.aborted and self.dead_after_abort:
+            self.cur["speed"] = 0                                   # acknowledged, but the arm stays where it is
+        if self.aborted and self.button_after_abort and len(self.starts) == 2:
+            self._put(b"\r\n" + BUTTON.encode(), 0.02)
+            ack = 1.0
+        if ack is not None:
+            self._put(b"+" + name.encode() + self.nl, ack)
+        if self.e_after is not None and len(self.starts) == 1:
+            self._put(b"E -22 invalid argument" + self.nl, self.e_after)
+        if self.abort_after is not None and not self.aborted:
+            self.aborted = True
+            self.cur["phys_end"] = now + self.abort_after
+            self.cur["aborted"] = True
+            self._put(self.abort_line.replace(b"\r\n", self.nl), self.abort_after + self.abort_delay)
+        if self.end_after is not None:
+            self.cur["phys_end"] = now + self.end_after
+            self.cur["end_entry"] = [now + self.end_after, b"-" + self.nl]
+            self.out.append(self.cur["end_entry"])
+
+    def _dot(self):
+        c = self.cur
+        if c is None:
+            return
+        now = self.clock()
+        if c["end_entry"] is not None and c["end_entry"] in self.out:
+            self.out.remove(c["end_entry"])
+        c["phys_end"] = min(c["phys_end"], now + self.coast)
+        c["name"] = None
+        if c.get("aborted") and now >= c["phys_end"]:
+            return                                                    # jogd-c has ended the move: `.` prints nothing
+        if not self.no_minus and not (c["end_entry"] is not None and c["end_entry"][0] <= now):
+            self._put(b"-" + self.nl, self.minus_delay)
+
+
+@pytest.fixture
+def cart(tmp_path):
+    clock = FakeClock()
+    local = tmp_path / "jogd"
+    local.write_bytes(IMAGE)
+
+    def go(*argv, **kw):
+        ctl = CartController(clock, **kw)
+        start = list(ctl.joints)
+        code = jogtest.main(["--local", str(local), *argv], repo=str(tmp_path), open_port=lambda a: ctl,
+                            clock=clock, sleep=clock.sleep, log_dir=str(tmp_path))
+        go.text = "\n".join(p.read_text() for p in sorted(tmp_path.glob("*-jogtest.log")))
+        go.start = start
+        return code, ctl
+    go.clock, go.local, go.tmp = clock, local, tmp_path
+    return go
+
+
+def tcp(joints):
+    return model.forward(joints)[0]
+
+
+def test_cart_letter_reports_start_ack_and_stop_figures(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--hold", "1.0", coast=0.3, ack_delay=0.08)
+    assert code == 0, cart.text
+    m = re.search(r"start acknowledged after (\d+) ms", cart.text)
+    assert m and 70 <= int(m.group(1)) <= 130
+    assert "may be BLOCKING" not in cart.text
+    m = re.search(r"STOP: `-` came (\d+) ms after `\.`; the tool point travelled ([\d.]+) mm \(([\d.]+) degrees of rotation\) after `\.` was written; "
+                  r"tool-point speed just before the `\.`: ([\d.]+) mm/s", cart.text)
+    assert m, cart.text
+    assert 15 <= int(m.group(1)) <= 60
+    assert float(m.group(2)) == pytest.approx(0.3 * 10.0, abs=1.0)          # 2 % x 5 mm/s per % x 0.3 s of coasting
+    assert float(m.group(4)) == pytest.approx(10.0, abs=1.5)
+    up = tcp(ctl.joints) - tcp(cart.start)
+    assert up[2] > 10 and abs(up[0]) < 0.5 and abs(up[1]) < 0.5            # straight up, C = +Z
+    assert sent6(ctl).replace(b"p", b"").endswith(b".q")
+
+
+def test_cart_stop_figure_without_coasting_is_small(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "1.0")
+    assert code == 0, cart.text
+    assert float(re.search(r"travelled ([\d.]+) mm", cart.text).group(1)) < 1.0
+
+
+def test_start_over_600_ms_warns_that_the_call_may_block(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "1.0", ack_delay=0.7)
+    assert code == 0, cart.text
+    assert re.search(r"start acknowledged after 7\d\d ms", cart.text)
+    assert "WARNING" in cart.text and "may be BLOCKING" in cart.text and "150 mm" in cart.text
+    assert "START ACKNOWLEDGED LATE" in cart.text
+
+
+def test_start_at_the_limit_of_600_ms_does_not_warn(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "1.0", ack_delay=0.5)
+    assert code == 0 and "BLOCKING" not in cart.text
+
+
+def test_no_plus_after_1500_ms_writes_dot_at_once(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "2.0", ack_delay=None)
+    assert code == 1
+    assert "NoAnswer" in cart.text and "may be blocking" in cart.text and "NOT ACKNOWLEDGED" in cart.text
+    t0 = next(t for t, d in ctl.writes if d == b"A02")
+    dots = [t for t, d in ctl.writes if d == b"."]
+    assert len(dots) == 1 and 1.5 <= dots[0] - t0 <= 1.65
+    assert sum(1 for _, d in ctl.writes if d == b"A02") <= 17
+    assert [d for _, d in ctl.writes if d in (b".", b"q")] == [b".", b"q"] and not ctl.ctrlz
+
+
+def test_a_bare_minus_before_dot_is_the_move_ending_by_itself(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "3", "--hold", "2.0", end_after=0.6)
+    assert code == 0, cart.text
+    m = re.search(r"the move ended by itself (\d+) ms after the start, after ([\d.]+) mm", cart.text)
+    assert m and 580 <= int(m.group(1)) <= 700
+    assert float(m.group(2)) == pytest.approx(0.6 * 15.0, abs=1.5)
+    sent = sent6(ctl)
+    assert b"." not in sent and sent.count(b"C03") <= 8 and sent.endswith(b"q")
+    assert "STOP:" not in cart.text and "STOPPED EARLY" not in cart.text
+
+
+def test_a_rotation_move_that_ends_by_itself_is_reported_in_degrees(cart):
+    code, ctl = cart("--mode", "3", "E", "--speed", "3", "--hold", "2.0", end_after=0.5)
+    assert code == 0, cart.text
+    m = re.search(r"ended by itself (\d+) ms after the start, after ([\d.]+) degrees", cart.text)
+    assert m and float(m.group(2)) == pytest.approx(0.5 * 6.0, abs=0.6)
+
+
+def test_a_sweep_carries_on_after_a_move_that_ended_by_itself(cart):
+    code, ctl = cart("--mode", "3", "--sweep", "--letters", "AB", "--hold", "1.0", end_after=0.4, coast=0.2)
+    assert code == 0, cart.text
+    sent = sent6(ctl)
+    assert b"." not in sent
+    order = [m.group(1).decode() for m in re.finditer(rb"([A-Fa-f])02", re.sub(rb"([A-Fa-f]02)(?:\1)+", rb"\1", sent.replace(b"p", b"")))]
+    assert order == list("AaBb")
+    rows = [ln for ln in cart.text.splitlines() if re.match(r"\s+[A-Fa-f]\s+[+-]\d", ln)]
+    assert len(rows) == 4 and all("yes, " in r for r in rows)
+
+
+def test_a_missing_minus_after_dot_is_still_a_failure(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "0.5", no_minus=True)
+    assert code == 1
+    assert "NotStopped" in cart.text and ctl.ctrlz == 1
+
+
+def test_hold_up_to_5_seconds_in_modes_3_and_4(cart):
+    a = jogtest.parse_args(["--mode", "4", "A", "--hold", "5.0"], "/home/buzz/dev/crs-a465")
+    assert a.hold == 5.0
+    code, ctl = cart("--mode", "3", "A", "--hold", "4.5", speed_degrees_per_percent=1.0)
+    assert code == 1 and "LIMIT" in cart.text                      # 4.5 s x 10 mm/s is past --max-tcp 40: the limit still works
+    code, ctl = cart("--mode", "3", "A", "--hold", "4.5", "--max-tcp", "100", "--max-joint", "20")
+    assert code == 0, cart.text
+    assert sent6(ctl).count(b"A02") >= 44
+
+
+def test_vector_bytes_expected_echo_and_keepalives(cart):
+    code, ctl = cart("--mode", "3", "--vector", "+1+1+0", "--speed", "2", "--hold", "1.0")
+    assert code == 0, cart.text
+    sent = sent6(ctl).replace(b"p", b"")
+    assert sent.startswith(b"@+1+1+0+0+0+002" * 10 + b".") and sent.endswith(b".q")
+    assert {d for _, d in ctl.commands} == {"@+1+1+0+0+0+002"}
+    times = [t for t, d in ctl.writes if d == b"@+1+1+0+0+0+002"]
+    gaps = [b - a for a, b in zip(times, times[1:])]
+    assert all(0.09 <= g <= 0.13 for g in gaps)
+    assert "move 1/1: @+1+1+0+0+0+002: as expected" in cart.text
+    assert "expected lines ['+@+1+1+0+0+0+002', '-']" in cart.text
+
+
+def test_vector_report_angle_and_off_line_distance_in_the_world_frame(cart):
+    code, ctl = cart("--mode", "3", "--vector", "+1+1+0", "--hold", "1.0")
+    assert code == 0, cart.text
+    m = re.search(r"VECTOR: requested \(\+1 \+1 \+0\) in the world frame; measured displacement is ([\d.]+) degrees from it; off-line distance ([\d.]+) mm", cart.text)
+    assert m and float(m.group(1)) < 1.0 and float(m.group(2)) < 0.5
+    assert "start acknowledged after" in cart.text and "STOP: `-` came" in cart.text
+    d = tcp(ctl.joints) - tcp(cart.start)
+    assert d[0] > 5 and d[0] == pytest.approx(d[1], abs=0.5)
+
+
+def test_vector_report_shows_a_wrong_direction(cart, monkeypatch):
+    orig = CartController._tool_dir
+    monkeypatch.setattr(CartController, "_tool_dir", lambda self, name: orig(self, "@+1+0+0+0+0+0" if name[0] == "@" else name))
+    code, ctl = cart("--mode", "3", "--vector", "+1+1+0", "--hold", "1.0")
+    assert code == 0, cart.text
+    m = re.search(r"measured displacement is ([\d.]+) degrees from it; off-line distance ([\d.]+) mm", cart.text)
+    assert 44 <= float(m.group(1)) <= 46 and float(m.group(2)) > 5
+
+
+def test_vector_in_mode_4_is_compared_in_the_tools_own_frame(cart):
+    code, ctl = cart("--mode", "4", "--vector", "+1+0-1", "--hold", "1.0", "--max-tcp", "60")
+    assert code == 0, cart.text
+    m = re.search(r"in the tool frame \(the tool's own frame at the start\); measured displacement is ([\d.]+) degrees", cart.text)
+    assert m and float(m.group(1)) < 1.0
+    p0, r0, _, _ = model.forward(cart.start)
+    d = tcp(ctl.joints) - p0
+    assert (r0.T @ d)[0] > 5 and (r0.T @ d)[2] < -5
+
+
+def test_vector_return_runs_the_opposite_vector_and_reports_the_distance_from_the_start(cart):
+    code, ctl = cart("--mode", "3", "--vector", "+2-1+0", "--hold", "1.0", "--return")
+    assert code == 0, cart.text
+    sent = sent6(ctl).replace(b"p", b"")
+    assert b"@+2-1+0+0+0+002" in sent and b"@-2+1+0+0+0+002" in sent
+    assert sent.index(b"@+2-1") < sent.index(b".") < sent.index(b"@-2+1") and sent.count(b".") == 2
+    assert [d for _, d in ctl.commands if d.startswith("@")][-1] == "@-2+1+0+0+0+002"
+    assert "move 2/2: @-2+1+0+0+0+002" in cart.text
+    m = re.search(r"RETURN: .* ended ([\d.]+) mm from where it started", cart.text)
+    assert m and float(m.group(1)) < 1.5
+    assert float(m.group(1)) == pytest.approx(float(np.linalg.norm(tcp(ctl.joints) - tcp(cart.start))), abs=0.3)
+    assert cart.text.count("start acknowledged after") == 2
+
+
+def test_return_zero_components_stay_plus_zero():
+    assert jogtest.opposite_vector("+1-2+0") == "-1+2+0"
+    assert jogtest.opposite_vector("-0+0-3") == "+0+0+3"
+    assert jogtest.vector13("+1+1+0") == "@+1+1+0+0+0+0"
+
+
+def test_a_wrong_vector_echo_is_not_as_expected(cart):
+    class Wrong(CartController):
+        def _command(self, name):
+            super()._command(name)
+            if self.starts and len(self.starts) == 1 and name.startswith("@") and self.out:
+                self.out[:] = [e for e in self.out if not e[1].startswith(b"+@")]
+                self._put(b"+@+9+9+0+0+0+002" + self.nl, 0.05)
+    clock = cart.clock
+    ctl = Wrong(clock)
+    code = jogtest.main(["--local", str(cart.local), "--mode", "3", "--vector", "+1+1+0"], repo=str(cart.tmp), open_port=lambda a: ctl,
+                        clock=clock, sleep=clock.sleep, log_dir=str(cart.tmp))
+    assert code == 1
+
+
+def test_vector_move_that_ends_by_itself(cart):
+    code, ctl = cart("--mode", "3", "--vector", "+0+0+1", "--hold", "2.0", end_after=0.5)
+    assert code == 0, cart.text
+    assert re.search(r"ended by itself (\d+) ms after the start, after [\d.]+ mm", cart.text)
+    assert b"." not in sent6(ctl)
+
+
+def test_sweep_table_has_the_new_columns(cart):
+    code, ctl = cart("--mode", "3", "--sweep", "--letters", "CD", "--hold", "1.0", coast=0.2, end_after=None)
+    assert code == 0, cart.text
+    head = next(ln for ln in cart.text.splitlines() if "d-yaw d-pitch d-roll" in ln)
+    for col in ("start ms", "stop ms", "after `.`", "ended by itself"):
+        assert col in head
+    rows = [ln for ln in cart.text.splitlines() if re.match(r"\s+[A-Fa-f]\s+[+-]\d", ln)]
+    assert len(rows) == 4
+    assert re.search(r"\s5\d\s+\d+\s+[\d.]+ mm\s+no ", rows[0]), rows[0]          # C: ms to `+`, ms to `-`, mm after `.`
+    assert re.search(r"[\d.]+ deg\s+no ", rows[2]), rows[2]                       # D: degrees after `.`
+    assert "!" not in "".join(rows)
+
+
+def test_sweep_table_marks_a_slow_start(cart):
+    code, ctl = cart("--mode", "3", "--sweep", "--letters", "A", "--hold", "1.0", ack_delay=0.7)
+    assert code == 0, cart.text
+    assert re.search(r"7\d\d!", cart.text)
+
+
+@pytest.mark.parametrize("argv", [
+    ["--mode", "3", "--vector", "+1+1+0", "C"], ["--mode", "3", "--vector", "+1+1+0", "--sweep"], ["--vector", "+1+1+0"],
+    ["--mode", "1", "--vector", "+1+1+0"], ["--mode", "3", "--vector", "+1+1"], ["--mode", "3", "--vector", "1+1+0"],
+    ["--mode", "3", "--vector", "+0+0+0"], ["--mode", "3", "--vector", "+10+1+0"], ["--mode", "3", "--vector", "+1+1+0", "--dry"],
+    ["--mode", "3", "--vector", "+1+1+0", "--reverse"], ["--mode", "3", "C", "--return"], ["--mode", "3", "--sweep", "--return"],
+    ["--mode", "3", "--vector", "+1+1+0", "--letters", "AB"], ["--mode", "4", "--vector", "+1+1+0", "--speed", "6"],
+    ["--mode", "4", "--vector", "+1+1+0", "--hold", "5.1"], ["--return"],
+])
+def test_vector_refused_combinations_never_open_the_port(rig, argv):
+    opened = []
+    with pytest.raises(SystemExit):
+        jogtest.main(["--local", str(rig.local), *argv], repo=str(rig.tmp), open_port=lambda a: opened.append(a),
+                     clock=rig.clock, sleep=rig.clock.sleep, log_dir=str(rig.tmp))
+    assert opened == []
+
+
+def test_mode_1_hold_is_still_limited_to_3_seconds(rig):
+    with pytest.raises(SystemExit):
+        jogtest.main(["--local", str(rig.local), "A", "--hold", "3.5"], repo=str(rig.tmp), open_port=lambda a: None)
+
+
+# ---------------------------------------------------------------------------------- the controller aborts the move: `A` line
+
+A_TEXT = "A -67108870 Path error"
+
+
+def test_a_lines_are_classified():
+    assert jogtest.classify(A_TEXT) == ("A", A_TEXT)
+    assert jogtest.classify("A abort") == ("A", "A abort")
+    assert jogtest.classify("$ A abort") == ("A", "A abort")
+    for text in ("+A02", "E -22 invalid", "S: Arm power is OFF", "-", "P 1 2 3 4 5 6"):
+        assert jogtest.classify(text)[0] != "A"
+
+
+def test_an_abort_ends_the_move_in_a_letter_run_and_is_reported(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--hold", "3.0", abort_after=0.8)
+    assert code == 0, cart.text
+    m = re.search(r"ABORTED BY THE CONTROLLER: A -67108870 Path error, (\d+) ms after the start, after ([\d.]+) mm", cart.text)
+    assert m, cart.text
+    assert 800 <= int(m.group(1)) <= 1000 and float(m.group(2)) == pytest.approx(0.8 * 10.0, abs=1.5)
+    sent = sent6(ctl)
+    assert b"." not in sent and sent.endswith(b"q") and sent.count(b"C02") <= 12      # no keep-alives after the A line, no `.`
+    assert "prompt after `q`: back" in cart.text and not ctl.ctrlz and not ctl.ctrle
+    assert "STOPPED EARLY" not in cart.text and "NOT AS EXPECTED" not in cart.text
+
+
+def test_an_abort_of_a_rotation_is_reported_in_degrees(cart):
+    code, ctl = cart("--mode", "3", "D", "--speed", "3", "--hold", "3.0", abort_after=0.9, abort_line=b"A abort\r\n")
+    assert code == 0, cart.text
+    assert re.search(r"ABORTED BY THE CONTROLLER: A abort, \d+ ms after the start, after [\d.]+ degrees", cart.text)
+
+
+def test_an_abort_of_a_vector_move_ends_the_run_and_no_return_is_run(cart):
+    code, ctl = cart("--mode", "3", "--vector", "+1+1+0", "--return", "--hold", "3.0", abort_after=0.8)
+    assert code == 0, cart.text
+    assert "ABORTED BY THE CONTROLLER: A -67108870 Path error" in cart.text
+    assert len(ctl.starts) == 1 and b"." not in sent6(ctl)
+
+
+def test_the_abort_report_comes_without_samples_too(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "3.0", abort_after=0.5, p_delay=0.095)
+    assert code == 0 and cart.text.count("ABORTED BY THE CONTROLLER") >= 1
+
+
+def test_an_abort_while_dot_is_in_flight_completes_the_stop(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "1.0", abort_after=1.06, no_minus=True)
+    assert code == 0, cart.text                                  # the `.` was answered by the `A` line, not `-`
+    assert [d for _, d in ctl.writes if d == b"."] == [b"."]
+    assert "an `A` line came while `.` was in flight: the stop is complete" in cart.text
+    assert "NotStopped" not in cart.text and not ctl.ctrlz
+
+
+def test_a_run_without_an_abort_is_unchanged(cart):
+    code, ctl = cart("--mode", "3", "A", "--hold", "1.0")
+    assert code == 0 and "ABORTED BY THE CONTROLLER" not in cart.text and "AFTER THE ABORT" not in cart.text
+
+
+def test_an_a_line_between_moves_is_listed_and_does_not_fail_the_run(cart):
+    class Between(CartController):
+        def _dot(self):
+            super()._dot()
+            self._put(A_TEXT.encode() + self.nl, 0.5)           # in the pause after the first move: nothing in force
+
+    ctl = Between(cart.clock)
+    local = cart.local
+    code = jogtest.main(["--local", str(local), "--mode", "3", "--sweep", "--letters", "A"], repo=str(cart.tmp), open_port=lambda a: ctl,
+                        clock=cart.clock, sleep=cart.clock.sleep, log_dir=str(cart.tmp))
+    text = "\n".join(p.read_text() for p in sorted(cart.tmp.glob("*-jogtest.log")))
+    assert code == 0, text
+    assert "an `A` line came between moves" in text and "lines during the pauses" not in text
+
+
+# ---- --after-abort
+
+def test_after_abort_with_a_fake_that_moves(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--hold", "1.5", "--after-abort", "c", abort_after=0.8)
+    assert code == 0, cart.text
+    assert "AFTER THE ABORT (--after-abort c)" in cart.text
+    assert "MOVED AFTER THE ABORT: yes" in cart.text and "PAUSE/CONTINUE text seen after the abort: no" in cart.text
+    assert re.search(r"move after the abort: c02: start acknowledged after \d+ ms", cart.text)
+    a_line = next(t for t, k in [(t, d) for t, d in ctl.writes if d == b"C02"][:1])
+    c_cmd = [t for t, d in ctl.writes if d == b"c02"]
+    abort_t = a_line + 0.8
+    assert c_cmd and 1.5 <= c_cmd[0] - abort_t <= 1.75                 # 1.5 s after the `A` line
+    seq = [d for _, d in ctl.writes if d in (b".", b"q")]
+    assert seq == [b".", b"q"]                                         # the aborted move got no `.`; the after-abort move did
+    assert tcp(ctl.joints)[2] < tcp(cart.start)[2]                  # up 8 mm, then down 15 mm
+    assert "STOPPED EARLY" not in cart.text
+
+
+def test_after_abort_with_a_fake_that_does_not_move(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--hold", "1.5", "--after-abort", "c", abort_after=0.8, dead_after_abort=True)
+    assert "MOVED AFTER THE ABORT: no" in cart.text
+    assert code == 0, cart.text                                        # movement is reported, not judged
+    assert re.search(r"after the abort: c02: start acknowledged", cart.text)
+
+
+def test_after_abort_same_letter_writes_one_dot_first(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--hold", "1.5", "--after-abort", "C", abort_after=0.8)
+    assert code == 0, cart.text
+    seq = [d for _, d in ctl.writes if d in (b".", b"q") or d.startswith(b"C")]
+    first_dot = seq.index(b".")
+    assert seq[first_dot + 1] == b"C02" and seq.count(b".") == 2       # `.` then the new start, and the `.` that stops it
+    assert "MOVED AFTER THE ABORT: yes" in cart.text
+
+
+def test_after_abort_reports_pause_continue_text(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--hold", "2.0", "--after-abort", "c", abort_after=0.8, button_after_abort=True)
+    assert "PAUSE/CONTINUE text seen after the abort: YES" in cart.text
+    assert "MOVED AFTER THE ABORT: yes" in cart.text
+
+
+def test_after_abort_without_an_abort_is_not_run_and_fails(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--hold", "1.0", "--after-abort", "c")
+    assert code == 1
+    assert "no `A` line came, so the after-abort move was NOT run" in cart.text and len(ctl.starts) == 1
+
+
+def test_after_abort_with_a_vector(cart):
+    code, ctl = cart("--mode", "3", "--vector", "+1+0+0", "--hold", "2.0", "--after-abort", "a", abort_after=0.8)
+    assert code == 0, cart.text
+    assert "MOVED AFTER THE ABORT: yes" in cart.text and len(ctl.starts) == 2
+
+
+def test_after_abort_a_second_abort_is_reported_not_a_failure(cart):
+    class Twice(CartController):
+        def _command(self, name):
+            self.aborted = False if len(self.starts) == 1 else self.aborted     # abort the second move too
+            super()._command(name)
+
+    ctl = Twice(cart.clock, abort_after=0.7)
+    code = jogtest.main(["--local", str(cart.local), "--mode", "3", "C", "--hold", "1.5", "--after-abort", "c"], repo=str(cart.tmp),
+                        open_port=lambda a: ctl, clock=cart.clock, sleep=cart.clock.sleep, log_dir=str(cart.tmp))
+    text = "\n".join(p.read_text() for p in sorted(cart.tmp.glob("*-jogtest.log")))
+    assert code == 0 and text.count("ABORTED BY THE CONTROLLER") >= 2, text
+
+
+# ---- --toward-limit
+
+def test_toward_limit_ends_on_an_a_line(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--toward-limit", "--max-tcp", "100", abort_after=3.0)
+    assert code == 0, cart.text
+    assert "WARNING: --toward-limit is meant to END IN A CONTROLLER ABORT" in cart.text
+    assert "TOWARD-LIMIT ENDED BY: an `A` line" in cart.text and "ABORTED BY THE CONTROLLER" in cart.text
+    assert b"." not in sent6(ctl) and sent6(ctl).count(b"C02") > 20                  # kept going well past any fixed hold
+
+
+def test_toward_limit_ends_on_a_dash_by_itself(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--toward-limit", end_after=2.0)
+    assert code == 0, cart.text
+    assert "TOWARD-LIMIT ENDED BY: a `-` by itself" in cart.text and b"." not in sent6(ctl)
+
+
+def test_toward_limit_ends_on_an_e_line(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--toward-limit", e_after=1.0)
+    assert code == 1 and "TOWARD-LIMIT ENDED BY: an `E` line" in cart.text and "EError" in cart.text
+
+
+def test_toward_limit_ends_on_the_tool_limit(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--toward-limit", "--max-tcp", "30")
+    assert code == 1 and "TOWARD-LIMIT ENDED BY: a tool limit" in cart.text and "LIMIT: the tool point is" in cart.text
+
+
+def test_toward_limit_ends_on_the_joint_limit(cart):
+    code, ctl = cart("--mode", "3", "D", "--speed", "3", "--toward-limit", "--max-joint", "5", "--max-tcp", "200")
+    assert code == 1 and "TOWARD-LIMIT ENDED BY: a tool limit" in cart.text and "LIMIT: joint" in cart.text
+
+
+def test_toward_limit_ends_on_the_time_limit(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "1", "--toward-limit", "--time-limit", "2.5")
+    assert code == 0, cart.text
+    assert "TOWARD-LIMIT ENDED BY: --time-limit 2.5 s" in cart.text
+    t0 = next(t for t, d in ctl.writes if d == b"C01")
+    dot = next(t for t, d in ctl.writes if d == b".")
+    assert 2.5 <= dot - t0 <= 2.8 and [d for _, d in ctl.writes if d in (b".", b"q")] == [b".", b"q"]
+
+
+def test_toward_limit_with_after_abort_is_the_bench_check(cart):
+    code, ctl = cart("--mode", "3", "C", "--speed", "2", "--toward-limit", "--max-tcp", "100", "--after-abort", "c", abort_after=2.0)
+    assert code == 0, cart.text
+    assert "MOVED AFTER THE ABORT: yes" in cart.text
+    assert re.search(r"after the abort: c02", cart.text)
+    c = [t for t, d in ctl.writes if d == b"c02"]
+    assert c and 1.9 <= (c[-1] - c[0]) <= 2.3                                          # the after-abort hold defaults to 2.0 s
+
+
+def test_toward_limit_time_limit_default_and_range():
+    a = jogtest.parse_args(["--mode", "3", "A", "--toward-limit"], "/home/buzz/dev/crs-a465")
+    assert a.time_limit == 20.0 and a.toward_limit and a.hold == 2.0
+    a = jogtest.parse_args(["--mode", "3", "A", "--toward-limit", "--time-limit", "60", "--max-tcp", "200", "--max-joint", "45"], "/home/buzz/dev/crs-a465")
+    assert (a.time_limit, a.max_tcp, a.max_joint) == (60.0, 200.0, 45.0)
+
+
+@pytest.mark.parametrize("argv", [
+    ["--mode", "3", "A", "--toward-limit", "--time-limit", "61"], ["--mode", "3", "A", "--toward-limit", "--time-limit", "0"],
+    ["A", "--toward-limit"], ["--mode", "3", "--toward-limit"], ["--mode", "3", "--vector", "+1+0+0", "--toward-limit"],
+    ["--mode", "3", "--sweep", "--toward-limit"], ["--mode", "3", "--dry", "--toward-limit"],
+    ["--mode", "3", "A", "--time-limit", "5"], ["--mode", "3", "A", "--toward-limit", "--hold", "2"],
+    ["--mode", "3", "A", "--toward-limit", "--max-tcp", "201"], ["--mode", "3", "A", "--toward-limit", "--max-joint", "46"],
+    ["--mode", "3", "A", "--after-abort", "AB"], ["--mode", "3", "A", "--after-abort", "1"], ["--mode", "3", "--sweep", "--after-abort", "a"],
+    ["--mode", "3", "--dry", "--after-abort", "a"], ["--mode", "3", "--after-abort", "a"], ["A", "--after-abort", "b"],
+    ["A", "--reverse", "--after-abort", "a"],
+])
+def test_the_new_options_are_refused_before_the_port_is_opened(rig, argv, capsys):
+    opened = []
+    with pytest.raises(SystemExit):
+        jogtest.main(["--local", str(rig.local), *argv], repo=str(rig.tmp), open_port=lambda a: opened.append(a))
+    assert not opened
+
+
+def test_mode_1_after_abort_takes_the_same_joint_and_switches_sampling_on():
+    a = jogtest.parse_args(["F", "--after-abort", "f"], "/home/buzz/dev/crs-a465")
+    assert a.sample and a.after_abort == "f"
+
+
+def test_an_abort_in_a_mode_1_run_ends_it_without_a_dot(tmp_path):
+    clock = FakeClock()
+    local = tmp_path / "jogd"
+    local.write_bytes(IMAGE)
+
+    class Aborting(FakeController):
+        def _launch(self, w):
+            super()._launch(w)
+            self._put(A_TEXT.encode() + self.nl, 1.6)          # about 0.5 s into the first move
+
+    ctl = Aborting(clock)
+    code = jogtest.main(["--local", str(local), "F", "--speed", "2", "--hold", "3.0"], repo=str(tmp_path), open_port=lambda a: ctl,
+                        clock=clock, sleep=clock.sleep, log_dir=str(tmp_path))
+    text = "\n".join(p.read_text() for p in sorted(tmp_path.glob("*-jogtest.log")))
+    assert "ABORTED BY THE CONTROLLER: A -67108870 Path error" in text, text
+    assert b"." not in commands_sent(ctl).replace(b"p", b"") and not ctl.ctrlz and "prompt after `q`: back" in text

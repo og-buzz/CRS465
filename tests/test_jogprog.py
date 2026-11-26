@@ -13,10 +13,12 @@ import pytest
 
 from a465 import crosprog, jogprog, r3asm, r3dis, r3vm
 
-NAMES = {0x02: "ctl_get", 0x04: "ctl_rel", 0x0E: "pos_get", 0x21: "halt", 0x43: "speed_get", 0x44: "speed_set",
+NAMES = {0x02: "ctl_get", 0x04: "ctl_rel", 0x0E: "pos_get", 0x15: "maxvels_get", 0x16: "maxvels_set",
+         0x21: "halt", 0x43: "speed_get", 0x44: "speed_set",
          0x52: "man_mode_set", 0x53: "man_move_start", 0x54: "man_move_stop", 0x55: "robot_mode_get"}
 IMAGE = jogprog.build()
 NOSPEEDSET = jogprog.build(jogprog.Options(speed_set=False))
+VBUILD = jogprog.build(jogprog.BUILDS["jogd-v"])
 COUNTS = [4225, 0, -1, -24830, 2147483647, -2147483648, 77, 88]     # axes 7 and 8 are not printed
 SAVED_SPEED = 40
 SETUP = [("ctl_get",), ("speed_get",)]
@@ -95,7 +97,7 @@ def assert_pendant_order(calls, restart=False):
     assert not manual, "manual mode left on"
 
 
-@pytest.mark.parametrize("name,image", [("jogd", IMAGE), ("jogd-nospeedset", NOSPEEDSET)])
+@pytest.mark.parametrize("name,image", [("jogd", IMAGE), ("jogd-nospeedset", NOSPEEDSET), ("jogd-v", VBUILD)])
 def test_built_files_are_current(name, image):
     out = jogprog.OUT
     if not (out / name).exists():
@@ -106,7 +108,7 @@ def test_built_files_are_current(name, image):
     assert jogprog.build(jogprog.BUILDS[name]) == image
 
 
-@pytest.mark.parametrize("image", [IMAGE, NOSPEEDSET])
+@pytest.mark.parametrize("image", [IMAGE, NOSPEEDSET, VBUILD])
 def test_file_is_a_program_for_this_controller(image):
     assert image[:4] == bytes.fromhex("1fabad10")                    # not gzip: the firmware refuses that
     assert crosprog.check_ok(image)
@@ -122,7 +124,7 @@ def test_the_nospeedset_build_has_no_speed_calls():
     assert "call robotlib:0x44 speed_set" in jogprog.listing(IMAGE)
 
 
-@pytest.mark.parametrize("image", [IMAGE, NOSPEEDSET])
+@pytest.mark.parametrize("image", [IMAGE, NOSPEEDSET, VBUILD])
 def test_every_function_frame_covers_its_locals(image):
     insns = r3dis.decode(r3dis.Module(image))
     frame = None
@@ -487,3 +489,112 @@ def test_idle_loop_waits_with_delay_and_never_blocks():
     delays = [args for n, args in r.syslib.calls if n == 0x14]
     assert delays and set(delays) == {(jogprog.Options.poll_ms,)}
     assert 1000 // jogprog.Options.poll_ms <= len(delays) <= 1000 // jogprog.Options.poll_ms + 1
+
+
+# ---- jogd-v: the `vNN` bench command (maxvels_set on the moving joint, restored at every stop)
+
+MAXVELS = [180.0, 180.0, 180.0, 171.089, 172.8, 172.089, 2368.57, 350.0]
+
+
+def floats(vm, ptr, n=8):
+    return [round(r3vm.to_float(vm.load(ptr, k)), 3) for k in range(n)]
+
+
+class VRun(Run):
+    """jogd-v with a fake maxvels table; `sets` records every maxvels_set, as the values passed. The fake
+    answers like robotlib does: it writes the board's values back into the array (here: doubled), which
+    must not change what jogd-v takes as the start values."""
+
+    def __init__(self, inputs, argv=(), results=None, **kw):
+        self.sets = []
+
+        def mv_get(vm, args):
+            for k, x in enumerate(MAXVELS):
+                vm.store(args[0], k, r3vm.from_float(x))
+            return 0
+
+        def mv_set(vm, args):
+            self.sets.append(floats(vm, args[0]))
+            for k in range(8):
+                vm.store(args[0], k, r3vm.from_float(2 * r3vm.to_float(vm.load(args[0], k))))
+            return 0
+        res = {0x15: mv_get, 0x16: mv_set}
+        res.update(results or {})
+        super().__init__(inputs, argv=argv, results=res, image=VBUILD, **kw)
+
+
+def scaled(joint, pct):
+    want = list(MAXVELS)
+    want[joint - 1] = round(MAXVELS[joint - 1] * pct / 100, 3)
+    return want
+
+
+def test_default_builds_have_no_maxvels_calls():
+    for image in (IMAGE, NOSPEEDSET):
+        listing = jogprog.listing(image)
+        assert "maxvels" not in listing and "call robotlib:0x15" not in listing and "call robotlib:0x16" not in listing
+    assert "call robotlib:0x16 maxvels_set" in jogprog.listing(VBUILD)
+
+
+def test_v_sets_the_moving_joint_and_every_stop_restores():
+    r = VRun([(0, b"F05"), (100, b"F05v50"), (200, b"F05"), (250, b"."), (300, b"q")])
+    assert r.code == 0
+    assert r.lines == ["MV 180 180 180 171.089 172.8 172.089 2368.57 350", "jogd ready", "+F05", "V 50 86.0445", "-"]
+    assert r.sets == [scaled(6, 50), MAXVELS]
+    i = r.calls.index(("man_move_stop", 6))
+    assert r.calls[i - 1][0] == "maxvels_set" or r.calls[i + 1][0] == "maxvels_set"
+    assert [c[0] for c in r.calls[i:i + 3]] == ["man_move_stop", "maxvels_set", "man_mode_set"]   # restored, then mode off
+    assert r.calls[:3] == [("ctl_get",), ("speed_get",), ("maxvels_get", r.calls[2][1])]
+
+
+def test_v_is_always_relative_to_the_start_values_and_never_above():
+    r = VRun([(0, b"D05"), (100, b"v30"), (150, b"D05"), (200, b"v99"), (250, b"D05v01"), (300, b"."), (400, b"q")])
+    assert r.sets == [scaled(4, 30), scaled(4, 99), scaled(4, 1), MAXVELS]
+    assert all(s[3] <= MAXVELS[3] for s in r.sets)
+
+
+@pytest.mark.parametrize("ending,inputs", [
+    ("dead-man", [(0, b"C05"), (100, b"v40"), (2000, b"q")]),
+    ("change of joint", [(0, b"C05"), (100, b"v40"), (150, b"B05"), (300, b"q")]),
+    ("reversal", [(0, b"C05"), (100, b"v40"), (150, b"c05"), (300, b"q")]),
+    ("quit", [(0, b"C05"), (100, b"v40"), (150, b"q")]),
+])
+def test_every_way_out_of_a_move_restores(ending, inputs):
+    r = VRun(inputs)
+    assert r.code == 0
+    assert r.sets[0] == scaled(3, 40) and r.sets[1] == MAXVELS and len(r.sets) == 2
+    i = [k for k, c in enumerate(r.calls) if c[0] == "maxvels_set"][1]
+    assert r.calls[i - 1] == ("man_move_stop", 3)
+
+
+def test_input_error_restores_before_release():
+    class Broken(r3vm.Input):
+        def read(self, now, n):
+            return -5 if now >= 200 else super().read(now, n)
+    r = VRun([], files={"/dev/cin": Broken([(0, b"A07"), (100, b"A07v20")])})
+    assert r.code == 1 and r.sets == [scaled(1, 20), MAXVELS]
+    assert [c[0] for c in r.calls][-3:] == ["man_mode_set", "speed_set", "ctl_rel"]
+
+
+def test_v_when_idle_or_00_does_nothing_and_no_restore_without_a_change():
+    r = VRun([(0, b"v50"), (50, b"A05"), (100, b"v00"), (150, b"A05"), (200, b"."), (300, b"q")])
+    assert r.sets == [] and "maxvels_set" not in [c[0] for c in r.calls]
+    assert r.lines[-2:] == ["+A05", "-"]
+
+
+def test_v_and_letters_do_not_mix():
+    r = VRun([(0, b"E07"), (100, b"Ev5"), (150, b"0"), (200, b"E07"), (250, b"v2E07"), (300, b"."), (400, b"q")])
+    assert r.sets == [scaled(5, 50), MAXVELS]                          # `Ev5` `0`: the letter is dropped, v50
+    assert r.lines.count("+E07") == 1                                  # `v2E07`: the v is dropped, a keep-alive
+
+
+def test_a_failed_maxvels_set_is_reported_and_still_restored():
+    r = VRun([(0, b"F05"), (100, b"F05v50"), (200, b"."), (300, b"q")], results={0x16: [-22, 0]})
+    assert "E -22 error 22" in r.lines
+    assert [c[0] for c in r.calls].count("maxvels_set") == 2           # the restore is tried anyway
+
+
+def test_maxvels_get_failure_releases_control():
+    r = VRun([(0, b"F05")], results={0x15: -13})
+    assert r.code == 1 and r.lines == ["E -13 not the controlling client"]
+    assert [c[0] for c in r.calls] == ["ctl_get", "speed_get", "maxvels_get", "ctl_rel"]

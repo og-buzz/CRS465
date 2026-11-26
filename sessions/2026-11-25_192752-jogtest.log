@@ -1,0 +1,289 @@
+log: /home/buzz/dev/crs-a465/sessions/2026-11-25_192752-jogtest.log
+    0.00 -> \r
+    0.04 <- \r\n$ 
+    0.95 -> cksum /tmp/jogd\r
+    1.03 <- ck
+    1.10 <- su
+    1.17 <- m /
+    1.19 <- t
+    1.23 <- m
+    1.24 <- p
+    1.27 <- /j
+    1.31 <- o
+    1.32 <- g
+    1.35 <- d
+    1.36 <- \r\n
+    4.44 <- 0
+    4.45 <- x0002fedb 24
+    4.46 <- 44 /tmp/jogd\r
+    4.47 <- \n$ 
+/tmp/jogd is on the controller: 2444 bytes, sum 0x2fedb, the same as /home/buzz/dev/crs-a465/controller/programs/jogd
+    4.57 -> w2\r
+    4.62 <- w
+    4.63 <- 2
+    4.67 <- \r\n
+    5.15 <- Actual Position :
+    5.15 <- \r
+    5.15 <- \n
+    5.43 <- \r
+    5.48 <- \n    
+    5.49 <-       Axis 1/7   Axis 2/8     Axis 3   
+    5.49 <-  
+    5.50 <-  Axis 4     Ax
+    5.51 <- is 5     Axis 6\r\nPULSES          -8   
+    5.51 <-  
+    5.52 <-      -1     +24997         
+    5.53 <- +0      +6249      +3010\r\n            
+    5.54 <-     +0         +0\r\n
+    5.55 <- \r\n          Axi
+    5.56 <- s 1/7   Axis 2/8     Axis 3    
+    5.59 <-  Ax
+    5.60 <- is 4     Axis 5     Axis 6\r\nJOINTS     
+    5.60 <-  
+    5.61 <- -0.029     -0.004  
+    5.63 <-   -89.989      0.000    -44.9
+    5.64 <- 93    -21.457\r\n             0.000
+    5.66 <-       0.000\r\n\r\n          X/
+    5.66 <- T
+    5.67 <- rackX   Y/TrackY          Z      Z-Rot 
+    5.68 <-      Y-Rot      X-
+    5.69 <- Rot\r\nWORLD      3
+    5.70 <- 84.114     -0.193    581.173     -0.029 
+    5.70 <-  
+    5.71 <-    44.986    -21.457\r\n             0.0
+    5.71 <- 0
+    5.72 <- 0      0.000\r\n$ 
+before: joints -0.029 -0.004 -89.989 0.000 -44.993 -21.457 counts -8 -1 +24997 +0 +6249 +3010
+MODE 3 (world frame): one move: A05 for 1.5 s
+limits in force (checked on every sample, `.` at once): tool point (model) 40 mm from the first sample, any joint 10 degrees from the first sample; speed 5% (jogd ceiling 5); hold 1.5 s per move
+the exact jogd command line: /tmp/jogd 3 5 s
+starting: /tmp/jogd 3 5 s
+    5.82 -> /tmp/jogd 3 5 s\r
+    5.90 <- /
+    5.90 <- t
+    5.96 <- m
+    5.97 <- p
+    6.02 <- /
+    6.03 <- jo
+    6.06 <- g
+    6.07 <- d
+    6.10 <-  
+    6.10 <- 3
+    6.14 <-  
+    6.14 <- 5
+    6.18 <-  
+    6.18 <- s
+    6.20 <- \r
+    6.21 <- \n
+  [    388.5 ms] jogd line (other): /tmp/jogd 3 5 s
+    6.87 <- j
+    6.88 <- ogd
+    6.88 <-  ready\r\n
+  [   1061.8 ms] jogd line (ready): jogd ready
+jogd ready after 1061.4 ms
+    6.88 -> p
+    7.00 <- P
+    7.01 <-  -8 -1
+    7.01 <-  24997 0
+    7.01 <-  
+    7.02 <- 6249 3
+    7.02 <- 010\r\n
+sampling every 200 ms; first sample: joints -0.029 -0.004 -89.988 -0.000 -44.992 -21.457 tool point (model) 383.8 -0.2 581.3 mm
+MODE 3 LETTER A ABOUT TO MOVE THE ARM (axes unknown). Keep a hand on the E-stop.
+    7.02 -> A05
+    7.08 -> p
+    7.12 -> A05
+    7.22 -> A05
+    7.28 -> p
+    7.31 <- +
+    7.32 <- A
+    7.32 -> A05
+    7.35 <- 05
+    7.35 <- \r\n
+  [   1532.7 ms] jogd line (+): +A05
+    7.41 <- P
+    7.42 <-  -8 
+    7.42 <- -1 24997 
+    7.42 <- 0 6
+    7.42 -> A05
+    7.44 <- 249 30
+    7.44 <- 10\r\n
+    7.48 -> p
+    7.52 -> A05
+    7.58 <- P
+    7.58 <-  -8
+    7.59 <-  -1 2499
+    7.59 <- 7 0 6249
+    7.59 <-  301
+    7.60 <- 0
+    7.61 <- \r\n
+    7.62 -> A05
+    7.68 -> p
+    7.72 -> A05
+    7.75 <- P
+    7.75 <-  -8
+    7.75 <-  -1 24997
+    7.76 <-  0 624
+    7.76 <- 9
+    7.78 <-  
+    7.79 <- 3010\r\n
+    7.82 -> A05
+    7.88 -> p
+    7.92 <- P
+    7.92 -> A05
+    7.92 <-  
+    7.93 <- -8 -1 24
+    7.93 <- 997 0 62
+    7.93 <- 4
+    7.94 <- 9 
+    7.95 <- 3010\r\n
+    8.02 -> A05
+    8.08 -> p
+    8.09 <- P
+    8.09 <-  -8
+    8.09 <-  -1 24
+    8.09 <- 997 0 62
+    8.12 <- 49 3
+    8.12 -> A05
+    8.12 <- 0
+    8.12 <- 10\r\n
+    8.22 -> A05
+    8.26 <- P
+    8.27 <-  -8 -
+    8.27 <- 1 24997 
+    8.27 <- 0 6249
+    8.28 -> p
+    8.30 <-  3010
+    8.30 <- \r\n
+    8.32 -> A05
+    8.42 -> A05
+    8.43 <- P
+    8.43 <-  
+    8.43 <- -8 -1 2
+    8.43 <- 4997 0 
+    8.45 <- 6
+    8.45 <- 249 3010
+    8.46 <- \r\n
+    8.48 -> p
+    8.52 -> .
+    8.61 <- P
+    8.62 <-  
+    8.62 <- -8 -1 24
+    8.62 <- 997 0 624
+    8.62 <- 9
+    8.64 <-  3010\r\n
+    8.68 -> p
+    8.81 <- -
+    8.81 <- \r\n
+  [   2993.0 ms] jogd line (-): -
+    8.87 <- P
+    8.87 <-  -
+    8.88 <- 8 -1 24
+    8.88 <- 997 0 624
+    8.88 <- 9 3010
+    8.88 -> p
+    8.89 <- \r\n
+    9.00 <- P
+    9.01 <-  -8 -1
+    9.01 <-  24997 0
+    9.01 <-  6249 3
+    9.01 <- 010
+    9.01 <- \r\n
+    9.08 -> p
+    9.18 <- P
+    9.18 <-  
+    9.19 <- -8 -1 
+    9.19 <- 2499
+    9.19 <- 7 0
+    9.20 <-  6249 3
+    9.20 <- 010\r\n
+    9.28 -> p
+    9.38 <- P
+    9.38 <-  
+    9.39 <- -
+    9.39 <- 8 -1
+    9.39 <-  24997 0
+    9.39 <-  6249 301
+    9.40 <- 0\r\n
+    9.48 -> p
+    9.58 <- P
+    9.58 <-  -8 -
+    9.58 <- 1 24997
+    9.59 <-  0 6249
+    9.59 <-  3010\r\n
+    9.68 -> p
+    9.79 <- P
+    9.79 <-  -8 
+    9.79 <- -1 
+    9.80 <- 24997
+    9.80 <-  0 6249
+    9.81 <-  3010\r\n
+    9.81 -> q
+sent `q`
+    9.95 <- $
+    9.96 <-  
+   10.06 -> w2\r
+   10.11 <- w
+   10.12 <- 2
+   10.14 <- \r\n
+   10.64 <- Actual Position
+   10.64 <-  
+   10.65 <- :\r
+   10.67 <- \n
+   10.91 <- \r
+   10.96 <- \n          Axis 1/7   Ax
+   10.98 <- is 2/8     A
+   10.99 <- xis 3     Axis 4     Axis 5     Axis 6\r
+   11.00 <- \nPULSES          -8         -1     +249
+   11.01 <- 97         +0      +6249      +3010\r\n  
+   11.01 <-  
+   11.02 <-              +0         +0\r\n
+   11.04 <- \r\n          Axis 1/7   Axis 2/8     A
+   11.04 <- x
+   11.05 <- is 3     Ax
+   11.08 <- is 4     Axis 5     Axis 6\r\nJOINTS   
+   11.09 <-    -0.029     -0.004    -89.98
+   11.10 <- 9      0.
+   11.10 <- 0
+   11.11 <- 00    -44.993    -21.457\r\n             
+   11.11 <- 0
+   11.12 <- .000      0
+   11.13 <- .000\r\n\r\n          X/TrackX   Y/Tr
+   11.14 <- ackY          Z      Z-Rot  
+   11.15 <-     Y-Rot      X-
+   11.16 <- Rot\r\nWORLD    
+   11.17 <-   384.114     -0.193    581.173     -0.
+   11.17 <- 0
+   11.18 <- 29     44.986    -21.457\r\n             
+   11.19 <- 0.000      0.000\r\n$ 
+after: joints -0.029 -0.004 -89.989 0.000 -44.993 -21.457 counts -8 -1 +24997 +0 +6249 +3010
+
+SUMMARY
+
+MOVE REPORT, mode 3 (world frame). These axes are from the PC's model (a465/model.py), whose frame has not been checked against the controller's.
+  move 1/1: A05
+    joint change (degrees, from counts): J1 +0.000  J2 +0.000  J3 +0.000  J4 +0.000  J5 +0.000  J6 +0.000
+    tool point displacement (model world frame): dx +0.0  dy +0.0  dz +0.0 mm; length 0.0 mm
+    change of yaw / pitch / roll: +0.00 / +0.00 / +0.00 degrees
+    mean tool-point speed not known (only 0 moving sample(s))
+    total rotation 0.00 degrees about +0.00 +0.00 +0.00 (world frame)
+    VERDICT: no motion seen (translation 0.0 mm; rotation 0.0 deg)
+move 1/1: A05: as expected
+          0.2 ms  sent A05 (first)
+        333.1 ms  jogd: +A05
+       1402.4 ms  sent the last keep-alive (14 keep-alives after the first command)
+       1502.0 ms  sent .
+       1793.4 ms  jogd: -
+    expected lines ['+A05', '-'], got ['+A05', '-']
+    keep-alive gaps: max 102.4 ms; none late
+change from before to after:
+    joint 1: +0.000 degrees, +0 counts   (-0.029 -> -0.029)
+    joint 2: +0.000 degrees, +0 counts   (-0.004 -> -0.004)
+    joint 3: +0.000 degrees, +0 counts   (-89.989 -> -89.989)
+    joint 4: +0.000 degrees, +0 counts   (0.000 -> 0.000)
+    joint 5: +0.000 degrees, +0 counts   (-44.993 -> -44.993)
+    joint 6: +0.000 degrees, +0 counts   (-21.457 -> -21.457)
+E lines: none
+jogd ready seen: yes
+prompt after `q`: back
+Ctrl-Z sent: no; Ctrl-E sent: no

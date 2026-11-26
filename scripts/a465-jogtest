@@ -4,6 +4,11 @@
     scripts/a465-jogtest --dry                     # start jogd, wait for `jogd ready`, `q`: no motion command is sent
     scripts/a465-jogtest F --speed 2 --hold 1.0    # joint 6 positive: start/stop, dead-man; f is the negative direction
     scripts/a465-jogtest F --speed 2 --speed2 3    # also a speed change (--variant s|r)
+    scripts/a465-jogtest F --maxvel 50 --speed 5 --hold 1.5   # jogd-v: halve joint 6's maxvels entry mid-jog
+    scripts/a465-jogtest --mode 3 A --speed 2 --hold 1.0      # world-frame letter (limits --max-tcp 40 mm, --max-joint 10 deg)
+    scripts/a465-jogtest --mode 3 --sweep                     # A..F, each + then -; --mode 4 = tool frame; --letters ABC
+    scripts/a465-jogtest --mode 3 --vector +1+1+0 --return    # jogd-c: straight move along (x, y, z), then back; --hold up to 5 s
+    # jogd-c: add  --program controller/programs/jogd-c --remote /tmp/jogd-c
 
 See the docstring of a465/jogtest.py. Log: sessions/<time>-jogtest.log. Exit code 0 only if everything ran as expected
 and the prompt came back after `q` without Ctrl-Z or Ctrl-E.

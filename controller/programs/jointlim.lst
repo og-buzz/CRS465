@@ -1,0 +1,50 @@
+; jointlim: 42 code words, 13 data words, libraries {2: 'syslib', 3: 'robotlib'}
+  0000 [00040] 00000044  ; word 0: 00000044
+func_0001:
+  0001 [00044] fff60054  enter 10   ; frame of 10 words; initialiser sets 36 bytes to zero
+  0003 [0004c] 0001f933  L7 = 1
+loc_0004:
+  0004 [00050] 000c0069  push &G12
+  0005 [00054] 000b0069  push &G11
+  0006 [00058] fff90050  push L7
+  0007 [0005c] 00030035  push 3
+  0008 [00060] 006e8356  call robotlib:0x6e jointlim_get   ; (L7, &G11, &G12)
+  0009 [00064] fffb0052  pop L5
+  000a [00068] 00fbfc0e  L4 = L5 < 0
+  000b [0006c] 0019fc3f  ifnot L4 goto 0x0019
+  000c [00070] 00fbfa1f  L6 = -L5
+  000d [00074] fffa0050  push L6
+  000e [00078] 00010035  push 1
+  000f [0007c] 00078256  call syslib:0x7 str_error   ; (L6)
+  0010 [00080] fffa0052  pop L6
+  0011 [00084] fffa1350  push L6 tag 19
+  0012 [00088] fffb0150  push L5 tag 1
+  0013 [0008c] fff90150  push L7 tag 1
+  0014 [00090] 00030035  push 3
+  0015 [00094] 00040069  push &G4   ; 'E {} {} {}\n'
+  0016 [00098] 00080035  push 8
+  0017 [0009c] 00430067  builtin! 0x43 printf   ; (&G4 'E {} {} {}\n', 3, L7:1, L5:1, L6:19)
+  0018 [000a0] 00220044  goto 0x0022
+loc_0019:
+  0019 [000a4] 000cfa49  L6 = G12
+  001a [000a8] fffa0250  push L6 tag 2
+  001b [000ac] 000bfa49  L6 = G11
+  001c [000b0] fffa0250  push L6 tag 2
+  001d [000b4] fff90150  push L7 tag 1
+  001e [000b8] 00030035  push 3
+  001f [000bc] 00000069  push &G0   ; 'J {} {} {}\n'
+  0020 [000c0] 00080035  push 8
+  0021 [000c4] 00430067  builtin! 0x43 printf   ; (&G0 'J {} {} {}\n', 3, L7:1, L6:2, L6:2)
+loc_0022:
+  0022 [000c8] 01f9f916  L7 = L7 + 1
+  0023 [000cc] 06f9fc0a  L4 = L7 > 6
+  0024 [000d0] 0004fc3f  ifnot L4 goto 0x0004
+  0025 [000d4] 00000035  push 0
+  0026 [000d8] 00080069  push &G8   ; 'done\n'
+  0027 [000dc] 00020035  push 2
+  0028 [000e0] 00430067  builtin! 0x43 printf   ; (&G8 'done\n', 0)
+  0029 [000e4] 00000058  return 0
+; data segment
+  G0     string[12] 'J {} {} {}\n'
+  G4     string[12] 'E {} {} {}\n'
+  G8     string[8] 'done\n'

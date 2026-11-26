@@ -40,8 +40,8 @@ def test_joint_frame_mapping():
 
 
 def test_world_frame_mapping():
-    assert jog_vector("world", dict(NEUTRAL, ly=-1.0)) == [1, 0, 0, 0, 0, 0]    # stick up = +X forward
-    assert jog_vector("world", dict(NEUTRAL, lx=-1.0)) == [0, 1, 0, 0, 0, 0]    # stick left = +Y
+    assert jog_vector("world", dict(NEUTRAL, lx=1.0)) == [1, 0, 0, 0, 0, 0]     # stick right = +X
+    assert jog_vector("world", dict(NEUTRAL, ly=-1.0)) == [0, 1, 0, 0, 0, 0]    # stick up = +Y
     assert jog_vector("world", dict(NEUTRAL, ry=-1.0)) == [0, 0, 1, 0, 0, 0]    # right stick up = +Z
     assert jog_vector("world", NEUTRAL, {"dpad_up", "dpad_left"}) == [0, 0, 0, -1, -1, 0]    # roll -, pitch up
 

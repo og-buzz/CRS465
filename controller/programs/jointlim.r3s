@@ -1,0 +1,59 @@
+; jointlim: print the controller's joint travel limits. Built by a465/jlimprog.py; see its docstring.
+.build 0x6b057c40
+.entry main
+.lib syslib 2 0x377a8993 0x0a0d4875 5
+.lib robotlib 3 0x377a899b 0xae952686 2
+.equ NAXES 6
+
+.data
+s_j:        string "J {} {} {}\n"
+s_e:        string "E {} {} {}\n"
+s_done:     string "done\n"
+pos:        word 0
+neg:        word 0
+
+.code
+main:
+    enter 10
+    ldi L7, 1
+next:
+    pushleag neg
+    pushleag pos
+    push L7
+    pushi 3
+    libcall robotlib:jointlim_get   ; robotlib 0x1178: request 51 op 0, message 1166
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, got
+    neg L6, L5
+    push L6
+    pushi 1
+    libcall syslib:str_error
+    pop L6
+    push L6 tag 19
+    push L5 tag 1
+    push L7 tag 1
+    pushi 3
+    pushleag s_e
+    pushi 8
+    builtinx printf
+    goto after
+got:
+    getg L6, neg
+    push L6 tag 2
+    getg L6, pos
+    push L6 tag 2
+    push L7 tag 1
+    pushi 3
+    pushleag s_j
+    pushi 8
+    builtinx printf
+after:
+    addc L7, L7, 1
+    gtc L4, L7, NAXES
+    ifnot L4, next
+    pushi 0
+    pushleag s_done
+    pushi 2
+    builtinx printf
+    retv 0

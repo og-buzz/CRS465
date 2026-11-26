@@ -54,7 +54,7 @@ HELP = {
     "joint": [["Left stick", "J1 waist (left/right), J2 shoulder (up/down)"],
               ["Right stick", "J4 wrist rotate (left/right), J3 elbow (up/down)"],
               ["D-pad", "J5 wrist pitch (up/down), J6 tool roll (left/right)"]],
-    "world": [["Left stick", "X forward/back (up/down), Y (left/right)"],
+    "world": [["Left stick", "X (left/right), Y (up/down)"],
               ["Right stick", "Z (up/down), yaw (left/right)"],
               ["D-pad", "pitch (up/down), roll (left/right)"]],
     "after": [["L1 + L2 / R2", "track back / forward"],
@@ -91,8 +91,9 @@ def jog_vector(frame, axes, buttons=frozenset()):
     roll = 0.0 if "r1" in buttons else float(("dpad_right" in buttons) - ("dpad_left" in buttons))
     if frame == "joint":
         return [-lx, -ly, -ry, rx, pitch_up, roll]
-    # world / tool: x, y, z, then rotation about x (roll), y (pitch, up is negative), z (yaw)
-    return [-ly, -lx, -ry, roll, -pitch_up, -rx]
+    # world / tool: x, y, z, then rotation about x (roll), y (pitch, up is negative), z (yaw).
+    # Left stick: left / right is X, up / down is Y (the owner's layout, 2026-11-25); stick right is +X, stick up is +Y.
+    return [lx, -ly, -ry, roll, -pitch_up, -rx]
 
 
 def trigger_pull(axes):

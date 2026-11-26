@@ -46,6 +46,8 @@ COUNTS_PER_DEGREE = {1: 277.78, 2: 277.78, 3: -277.78, 4: -140.28, 5: -138.89, 6
 COUNTS_PER_TURN = {1: 1000, 2: 1000, 3: 1000, 4: 500, 5: 500, 6: 500}
 PARK_TOLERANCE_COUNTS = 40
 WARN_DEGREES = 180.0
+ARRIVED_DEGREES = 0.01      # one reading this close to the target ends the watch of a move
+NEAR_DEGREES = 0.05         # at the time limit a joint this close to the target counts as arrived
 DEFAULT_CAL = os.path.join("controller", "backup-2026-11-23", "conf", "robot.cal")
 DEFAULT_REMOTE = "/tmp/homezo"
 DEFAULT_LOCAL = os.path.join("sessions", "controller-files", "patched", "homezc-offset")
@@ -112,7 +114,10 @@ class MoveResult:
 
 
 def move_time_limit(degrees, speed):
-    return 6.0 + 2.0 * abs(degrees) / speed       # assumes the joint does at least 100 deg/s at 100%
+    """Seconds after the command: twice the time the move should take (at least 100 deg/s at 100%), plus 6 s, plus
+    5 s so that at least 3 more `w2` readings (about 1.5 s each on this controller) come after the move itself."""
+    expected = 2.0 * abs(degrees) / speed
+    return max(6.0 + expected, expected + 5.0) + 5.0
 
 
 def move_joint(link, joint, degrees, speed, say, max_move=30.0):
@@ -153,7 +158,12 @@ def move_joint(link, joint, degrees, speed, say, max_move=30.0):
         after = console.read_joints(link)
         if after is None or (last is not None and abs(after[joint - 1] - last[joint - 1]) < 0.005):
             break
+        miss = abs(after[joint - 1] - want)
+        if miss <= ARRIVED_DEGREES:                     # on the target: no second reading needed
+            break
         if link.clock() - start > limit:
+            if miss <= NEAR_DEGREES:                    # creeping over its last hundredths: it has arrived
+                break
             say("STILL MOVING at the time limit: sending Ctrl-Z")
             homezc.stop(link, out, say, halt=True)
             after = console.read_joints(link)

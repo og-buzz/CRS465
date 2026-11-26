@@ -165,7 +165,7 @@ Nothing starts unless **L1 is held**. **Square stops everything**, with or witho
 
 | Control | Joint frame | World / tool frame |
 |---|---|---|
-| Left stick | J1 waist (left/right), J2 shoulder (up/down) | Y (left/right), X forward/back (up/down) |
+| Left stick | J1 waist (left/right), J2 shoulder (up/down) | X (left/right), Y (up/down) |
 | Right stick | J4 wrist rotate (left/right), J3 elbow (up/down) | yaw (left/right), Z (up/down) |
 | D-pad | J5 wrist pitch (up/down), J6 tool roll (left/right) | pitch (up/down), roll (left/right) |
 

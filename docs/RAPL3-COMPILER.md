@@ -18,9 +18,11 @@ The owner decided to keep the compiler. The spike is now a tool:
   the shim's sandbox; our libraries' stamps.
 - Compile the controller-check programs: `controller/programs/r3c-hello` and `r3c-fib` (both `-s`).
 
-**Still unproven:** that our controller (CROS 1.16.471) loads and runs a file this compiler wrote. That
-needs one supervised run, with `r3c-hello` first. Until then, build with `-s` (the shape of this unit's
-own small programs). The sections below are the spike's write-up as it was; where they say no vendor
+**Proven on the controller, 2026-11-26:** two programs built on the PC with `scripts/a465-r3c` against
+this controller's libraries ran on the controller (CROS 1.16.471): `controller/programs/r3c-hello` (152
+bytes) printed `hello from rc1`, and `r3c-fib` (376 bytes, the vendor's sample) printed its table
+correctly through fib(23) before it was stopped with Ctrl-E (the last line is slow). So the controller
+loads the compiler's output. The sections below are the spike's write-up as it was; where they say no vendor
 file is in the repo or that the spike lives in the scratchpad, this section supersedes them.
 
 Feasibility spike, 2026-11-25. Question: can the RAPL-3 compiler pass from a C500C (CROS 3.1.1249)

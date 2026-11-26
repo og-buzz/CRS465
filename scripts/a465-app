@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""Compile, send and run a RAPL-3 program: see a465/app.py.
+
+    scripts/a465-app build hello.r3 -o hello -s
+    scripts/a465-app send hello.r3 --to /tmp/hello
+    scripts/a465-app run /tmp/hello --no-robot --time-limit 30
+    scripts/a465-app go hello.r3
+"""
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+from a465 import app      # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(app.main(repo=REPO))

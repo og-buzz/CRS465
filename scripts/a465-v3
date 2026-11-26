@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Read and edit a controller taught-variable file (.v3) on the PC. Never talks to the controller.
+
+    scripts/a465-v3 list FILE [--json]
+    scripts/a465-v3 show FILE NAME[index]
+    scripts/a465-v3 set FILE NAME[index] VALUES... (-o OUT | --in-place) [--counts] [--machine N]
+    scripts/a465-v3 check FILE
+
+VALUES: one number for an int or float; x y z yaw pitch roll for a cartesian location; six joint
+angles in degrees for a precision location (or 6/8 motor counts with --counts). Format notes:
+docs/V3-FILES.md. Copy files off the controller with scripts/a465-getfile.
+"""
+import argparse
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from a465 import v3file  # noqa: E402
+
+
+def _elem_json(e):
+    if isinstance(e, v3file.Location):
+        d = {"class": e.cls, "machine": e.machine, "flags": e.flags, "check": e.check, "check_ok": e.check_ok,
+             "words": list(e.words)}
+        if e.is_cartesian:
+            d["cartesian"] = dict(zip(v3file.CARTESIAN_FIELDS, e.floats()[:6]))
+        if e.is_precision:
+            d["counts"] = list(e.counts())
+            d["joints_deg"] = list(e.joints_deg)
+        return d
+    return e
+
+
+def cmd_list(a):
+    t = v3file.load(a.file)
+    if a.json:
+        rows = [{"name": v.name, "type": v.type_name, "dims": list(v.dims), "taught": bool(v.taught),
+                 "string_limit": v.dim1 if v.kind == v3file.STRING else None,
+                 "value": _elem_json(v.element(0)) if v.count == 1 and not v.dims else None,
+                 "count": v.count} for v in t.variables]
+        print(json.dumps({"application": t.tag, "variables": rows}, indent=1))
+        return 0
+    print("application %r, %d variables" % (t.tag, len(t.variables)))
+    for v in t.variables:
+        dims = "[" + "][".join(map(str, v.dims)) + "]" if v.dims else ""
+        print("%-22s %-7s %-10s %s%s" % (v.name, v.type_name, dims, "" if v.taught else "(untaught) ", v.summary()))
+    return 0
+
+
+def cmd_show(a):
+    t = v3file.load(a.file)
+    name, idx = v3file.parse_ref(a.ref)
+    v = t.find(name)
+    print("%s: %s dims=%s taught=%s" % (v.name, v.type_name, list(v.dims) or "scalar", bool(v.taught)))
+    ks = [v.flat_index(idx)] if idx else range(v.count)
+    for k in ks:
+        e = v.element(k)
+        pos = ""
+        if len(v.dims) == 2:
+            pos = " [%d][%d]" % (k % v.dim1, k // v.dim1)
+        print("  #%d%s: %s" % (k, pos, e.describe() if isinstance(e, v3file.Location) else repr(e)))
+    return 0
+
+
+def cmd_set(a):
+    if not a.out and not a.in_place:
+        print("a465-v3: give -o OUT, or --in-place to overwrite the input", file=sys.stderr)
+        return 2
+    t = v3file.load(a.file)
+    v, k = v3file.set_value(t, a.ref, a.values, counts=a.counts, machine=a.machine)
+    if len(v.dims) == 2 and len(v3file.parse_ref(a.ref)[1]) == 2:
+        print("note: two-index order (first index varies fastest) is inferred, see docs/V3-FILES.md", file=sys.stderr)
+    data = v3file.dump(t)
+    dest = a.file if a.in_place else a.out
+    tmp = dest + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(data)
+    os.replace(tmp, dest)
+    e = v.element(k)
+    print("%s element #%d now %s -> %s" % (v.name, k, e.describe() if isinstance(e, v3file.Location) else repr(e), dest))
+    return 0
+
+
+def cmd_check(a):
+    with open(a.file, "rb") as f:
+        raw = f.read()
+    t = v3file.parse(raw)
+    again = v3file.dump(t)
+    if again != raw:
+        print("FAIL: re-dump differs from the file at byte %d" % next(
+            (i for i, (x, y) in enumerate(zip(raw, again)) if x != y), min(len(raw), len(again))))
+        return 1
+    print("ok: %d variables, %d bytes, table %s, %d slack bytes, re-dump identical" % (
+        len(t.variables), len(raw), "terminated" if t.end_word else "unterminated", len(t.slack)))
+    return 0
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    s = p.add_subparsers(dest="cmd", required=True)
+    x = s.add_parser("list"); x.add_argument("file"); x.add_argument("--json", action="store_true"); x.set_defaults(f=cmd_list)
+    x = s.add_parser("show"); x.add_argument("file"); x.add_argument("ref"); x.set_defaults(f=cmd_show)
+    x = s.add_parser("set"); x.add_argument("file"); x.add_argument("ref")
+    x.add_argument("values", nargs="+"); x.add_argument("-o", "--out"); x.add_argument("--in-place", action="store_true")
+    x.add_argument("--counts", action="store_true"); x.add_argument("--machine", type=int); x.set_defaults(f=cmd_set)
+    x = s.add_parser("check"); x.add_argument("file"); x.set_defaults(f=cmd_check)
+    a = p.parse_args(argv)
+    try:
+        return a.f(a)
+    except (v3file.V3Error, OSError) as e:
+        print("a465-v3: %s" % e, file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

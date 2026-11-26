@@ -16,12 +16,13 @@ does, with citations, and how each function compares with this repo is in
 - [~] Back up and restore controller files (a verified backup exists; no one-step command)
 - [ ] Make a directory on the controller as part of sending
 - [ ] Editor for RAPL-3 source
-- [~] Compile RAPL-3 source to an object file, with errors, warnings and options (`scripts/a465-r3c`, CRS's compiler under an emulator; output not yet loaded on our controller: see docs/RAPL3-COMPILER.md)
-- [~] Multi-file programs and libraries (`.include`, `-L`) (`a465-r3c --extra`, `--lib`; same caveat: docs/RAPL3-COMPILER.md)
+- [x] Compile RAPL-3 source to an object file, with errors, warnings and options (`scripts/a465-r3c`, CRS's compiler under an emulator; proven on the controller 2026-11-26: see docs/RAPL3-COMPILER.md)
+- [~] Multi-file programs and libraries (`.include`, `-L`) (`a465-r3c --extra`, `--lib`: they compile; only
+  single-file programs have run on the controller so far: docs/RAPL3-COMPILER.md)
 - [ ] Application setups: saved source, controller directory, object name and options; compile and send in one step
 - [~] Version check (`crosver` by hand; no check of a program's library stamps before sending)
 - [~] Application variable (`.v3`) files: copied, not read or edited
-- [ ] Teach, list and edit locations from the PC
+- [~] Teach, list and edit locations from the PC (poses can be saved from the pad and the status page and replayed with go-to moves (built 2026-11-26, not yet run on the arm); the controller's own .v3 variable files are still not read)
 - [~] Run and stop programs (specific supervised programs only; no general run)
 - [~] Configuration and calibration files (`robot.cal` is read; the rest only copied)
 - [ ] Firmware install (a separate vendor utility; not attempted)
@@ -137,6 +138,12 @@ vendor compiler was needed) runs on the controller, and `scripts/a465-padjog --j
 stick's deflection as a speed. First run on the arm: smooth, about 0.25 s from stick to motion.
 Still open: the driver's handling of a stop (being fixed), shortening the delay, travel limits in
 this mode, and straight-line jogging in X, Y, Z (jogd's modes 3 and 4).
+
+Status 2026-11-26: world and tool jogging work through `jogd-c` (measured in docs/CONTROLLER.md, "Jogging
+in world and tool frames"); the stick sets direction only, speed is capped, and a limit guard is in
+place (on the PC it stops a world or tool move before a joint reaches its limit and blocks only the
+direction that goes further in; if the controller still aborts a move, the jog program survives and
+reports it, with no front-panel button needed).
 
 Asked for 2026-11-23. On the real arm a stick is on/off today: a jog runs at the set speed
 (L1 + R1 + triggers) however far the stick is pushed, and one joint moves at a time.

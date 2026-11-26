@@ -316,6 +316,11 @@ Settings: 8 data bits, no parity, 1 stop bit, no handshake. Baud is not certain
 for this unit: the manuals give 38400 for the DB-25 port generation and 57600 for
 the C500C. `scripts/serial-probe scan` tries both.
 
+World and tool jogging on the real arm is on the pad: `scripts/a465-padjog --jogd --frames
+joint,world,tool`. The status page is on port 8466, and poses can be saved and replayed with
+`--poses`. What was measured, and the limits found, are in
+[docs/CONTROLLER.md](docs/CONTROLLER.md) ("Jogging in world and tool frames").
+
 ### The real controller: what has been measured
 
 Measured on this unit on 2026-11-23, through a StarTech ICUSB232DB25 adapter (a Prolific

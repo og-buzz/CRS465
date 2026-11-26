@@ -252,6 +252,11 @@ The program file format (header, check value, library stamps) is in the docstrin
 - This firmware refuses gzip-compressed programs ("not an executable"): `/app/test/fib` and `sieve`
   on the controller are gzip files of 2001 builds and do not run.
 
+On 2026-11-26 two programs built on the PC with `scripts/a465-r3c` against this controller's libraries
+ran on the controller: `controller/programs/r3c-hello` (152 bytes) printed `hello from rc1`, and
+`r3c-fib` (376 bytes, the vendor's sample) printed its table correctly through fib(23) before it was
+stopped with Ctrl-E (the last line is slow). So CROS 1.16.471 loads the compiler's output.
+
 ## Motion: what was measured
 
 Measured on this arm (CRS A465, C500, CROS 1.16.471).
@@ -310,6 +315,95 @@ What follows from these measurements: moves issued one after another by a progra
 each ends before the next begins. Only `cpath` runs through its points, and it holds one speed, set
 before it starts, and needs 1-2 s to load six points. So none of the controller's motion calls gives a
 speed that changes while the joint keeps moving. In no run did any joint other than J6 move.
+
+## Jogging in world and tool frames
+
+Measured 2026-11-25 and 2026-11-26 on this arm.
+
+### What does not work, and what does
+
+The pendant-style manual mode for world and tool frames (`man_mode_set` 3 or 4, then `man_move_start`)
+is accepted by the controller and moves nothing: five trials (world X at 2% and 5%, world Z, a world
+rotation, tool X), zero encoder counts each time, while joint mode moved normally straight after.
+Ruled out: the robot-level homed flag (`arm_status` in ash says "Robot is calibrated and homed", every
+axis homed) and the linear / rotational speed settings (`linspd` 1016.00, `linacc` 2540.00, `rotspd`
+2.00000, `rotacc` 20.0000). The pendant also makes an ioctl on `/dev/status` (its live-man switch) at
+key-down; not tried. Cause unknown.
+
+What works: the calls behind ash's `wxs`.. and `txs`.. commands (robotlib `jog_ws` and `jog_ts`; axis
+1 X, 2 Y, 3 Z, 4 about Z, 5 about Y, 6 about X; distance in mm or degrees), started in online mode,
+where the call returns at once, and stopped with `halt()`. In ash, `wzs 10` moved the tool 10.009 mm
+in Z with X +0.002 mm, Y +0.019 mm and no rotation; `wzs -10` returned to within 0.06 mm.
+
+### `controller/programs/jogd-c`
+
+Our program `controller/programs/jogd-c` does this. In world (mode 3) and tool (mode 4) a letter
+starts one straight move of at most 150 mm (45 degrees for rotations); joint mode (1) is unchanged.
+It also has:
+
+- `@` + six signed digits + speed: one straight move along X, Y, Z together.
+- `G` + six motor counts + speed: joint go-to.
+- `L` + x y z (hundredths of mm) yaw pitch roll (hundredths of a degree) + speed: straight-line go-to.
+- `w`: prints the controller's own tool pose in those units.
+- `-` by itself when a move ends by itself.
+
+The go-to commands had not run on the arm as of 2026-11-26. The protocol is in `a465/jogprog.py`.
+
+Bench sweep, 24 moves at 2%: X, Y, Z straight within 0.3 mm over 24 mm in both frames; rotation about
+world Z kept the tool point within 0.1 mm; two rotation moves (world about -X, tool about +Y) turned
+about an axis roughly 30 degrees off the intended one over 2 degrees, unexplained. Speed: 2% is about
+20 mm/s, i.e. the percentage applies to the 1016 mm/s linear speed setting; rotations about 2.3 deg/s
+at 2%.
+
+Stop after the stop command, world frame at 2%:
+
+| Build | Result |
+|---|---|
+| First build, 5504 bytes | `-` 0.55 to 0.65 s after `.`, about 11 mm travelled |
+| Second design (waiting input read first, status polled at most once a second), 7688 bytes | 0.31 s, 3.4 mm |
+| Fourth build, 7916 bytes, with the one-byte keep-alive | 0.28 s, 2.9 mm |
+
+Why the first was slow: every keep-alive could start a status call and every position request a
+position call, 75 to 100 ms each, so the stop command sat in a queue.
+
+Keep-alive: repeating a 15-byte vector command every 100 ms as its own keep-alive swamped the program
+(about 13 ms per input byte): the start was acknowledged after 734 ms, position requests went
+unanswered, and the stop came 1.45 s after it was sent. With the single byte `g` as the keep-alive for
+any move, and input read in batches, a diagonal (X and Y together) was acknowledged after 527 ms and
+stopped 0.28 s after the stop command, 3.7 mm on, 0.6 degrees from the requested direction.
+
+### Limits and aborts
+
+A vector whose 150 mm end point is out of reach is refused before it starts: `E -67108867 Location out
+of reach` (seen at the inner edge of the workspace, joint 3 near its limit). A single-axis jog there
+starts and is aborted on the way.
+
+Joint limits, read from the servo board with `controller/programs/jointlim` (robotlib `jointlim_get`;
+no ash command prints them):
+
+| Joint | J1 | J2 | J3 | J4 | J5 | J6 |
+|---|---|---|---|---|---|---|
+| Limit read (+/- degrees) | 171.887 | 90.012 | 114.993 | 180.000 | 104.995 | 180.000 |
+| Data sheet | 175 | 90 | 110 | 180 | 105 | 180 |
+
+In joint-mode jogging a joint stops at its limit without an error; a straight-line move that reaches a
+limit is aborted by the controller with `Error 0x4000006` / `Path error`.
+
+On a path error, a collision or Ctrl-Z the controller sends signal 6 (SIGABRT) to the program holding
+control; a program without a handler is killed (`[NNN killed by SIGABRT.]`), control stays held, and
+the next start needs the PAUSE/CONTINUE button. A program can install a handler (`signal(6, handler,
+0)`). jogd-c does: jogged into the J3 limit on purpose (54 mm inward from J3 -105), it printed `A
+-67108870 Path error` 3.4 s after the start and 1.5 s later the same program jogged the arm back out
+39.9 mm; no PAUSE/CONTINUE request. An earlier build that survived but quit afterwards also needed no
+button for the next program. After a collision arm power is off and has to be switched on at the front
+panel.
+
+### The controller's file system
+
+`/` holds `app bin conf dev diag host lib log mnt sbin tmp`; there is no compiler on board. `df` shows
+a 213 K RAM file system with 77 K free (2026-11-26). `crosver`: "CROS on a C500", 1.16.471. `axst`
+prints status lines forever and must be stopped with Ctrl-E. Leaving ash asks "Are you sure you want
+to exit?" and wants `yes`.
 
 ## `/diag/setup` and the old cell configuration
 

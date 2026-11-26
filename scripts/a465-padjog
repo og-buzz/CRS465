@@ -39,6 +39,10 @@ The controller's own messages (for instance "Arm power is OFF") are shown when i
 --status-port (default 8466 with --jogd, 0 for off) serves a status page, see a465/indicator.py.
 If the controller asks for it, press the PAUSE/CONTINUE button on its front panel; if jogd is killed it restarts
 by itself (and asks for the button). Without --jogd nothing changes.
+Teach and replay (with --jogd, which then always runs jogd-c on the controller): Share saves the arm's pose as P1, P2 ... (in
+--poses FILE, default poses.json in this directory) and selects it; hold L1 + Triangle to go to the selected pose (joint move) or
+L1 + R1 + Triangle (straight line), L1 + R1 + Cross selects the next saved pose. Letting go of a button stops the move, a stick
+wins over it. --goto-speed 1-50 (default 10) is the speed of a go-to (never above --max-speed). The status page lists the poses.
 Stop with Ctrl-C or SIGTERM: the arm is halted and the controller is left at its `$` prompt.
 """
 import argparse
@@ -51,7 +55,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from a465 import crs, jogd                # noqa: E402
+from a465 import crs, jogd, poses         # noqa: E402
 from a465.gamepad import Gamepad          # noqa: E402
 from a465.sim import RobotError           # noqa: E402
 
@@ -87,11 +91,16 @@ async def run(args):
         zero_at = [float(v) for v in args.zero_at.split(",")] if args.zero_at else None
         if zero_at is not None and len(zero_at) != 6:
             sys.exit("--zero-at needs six numbers, one per joint")
+        store = None
         if args.jogd:
+            store = poses.PoseStore(args.poses)
+            say(f"poses: {store.path}: {len(store)} saved" + (f" (selected {store.selected()})" if store.selected() else ""))
+            if store.message:
+                say(store.message)
             arm = jogd.JogdArm(args.port, args.baud, say=say, zero_at=zero_at, max_speed=args.max_speed, respeed=not args.no_respeed,
                                   stick_speed=args.stick_speed, joint_caps=args.joint_caps, frame_caps=args.frame_caps,
                                   frames=args.frames, local_c=args.program_c or jogd.LOCAL_C,
-                                  limit_guard=not args.no_limit_guard)
+                                  limit_guard=not args.no_limit_guard, poses=store, goto_speed=args.goto_speed)
         else:
             arm = crs.RealArm(args.port, args.baud, say=say, zero_at=zero_at)
     except RobotError as err:
@@ -114,6 +123,7 @@ async def run(args):
                 status = pad.status()
                 state["pad"] = {"connected": status["connected"], "name": status["name"], "l1": bool(status["enabled"])}
                 state["speed"] = arm.speed
+                state["selected"] = store.selected() if store is not None else None
                 return state
             try:
                 from a465 import indicator
@@ -121,7 +131,12 @@ async def run(args):
             except (ImportError, AttributeError) as err:
                 print(f"no status page ({err})", flush=True)
             else:
-                status_task = asyncio.ensure_future(indicator.serve(get_state, host="0.0.0.0", port=args.status_port))
+                actions = poses.PoseActions(arm, store) if store is not None else None
+                try:
+                    page = indicator.serve(get_state, host="0.0.0.0", port=args.status_port, actions=actions)
+                except TypeError:                    # a status page without pose support
+                    page = indicator.serve(get_state, host="0.0.0.0", port=args.status_port)
+                status_task = asyncio.ensure_future(page)
                 status_task.add_done_callback(lambda t: t.cancelled() or not t.exception() or say(f"the status page stopped: {t.exception()!r}"))
                 say(f"status page: http://{lan_address()}:{args.status_port}")
         stop = asyncio.Event()
@@ -137,10 +152,15 @@ async def run(args):
                     arm.set_frame(frame_seen)
                 except RobotError as err:
                     say(f"cannot change frame: {err}")
-            now = (status["connected"], status["name"], status["message"], status["enabled"], status["frame"], arm.speed, arm.notice)
+            goto = arm.state().get("goto") if args.jogd else None
+            goto_text = (f"{goto['name']} {'arrived' if goto['arrived'] else 'running' if goto['running'] else 'starting'}"
+                         + (" (line)" if goto["straight"] else "")) if goto else ""
+            now = (status["connected"], status["name"], status["message"], status["enabled"], status["frame"], arm.speed, arm.notice,
+                   store.selected() if store is not None else None, goto_text)
             if now != last:
                 say(f"pad: {'connected' if now[0] else 'NOT connected'} ({now[1]})  L1 {'held' if now[3] else 'up'}  mode {now[4]}  speed {now[5]}%"
-                    + (f"  | {now[2]}" if now[2] else "") + (f"  | arm: {now[6]}" if now[6] else ""))
+                    + (f"  | {now[2]}" if now[2] else "") + (f"  | arm: {now[6]}" if now[6] else "")
+                    + (f"  | pose {now[7]}" if now[7] else "") + (f"  | go-to {now[8]}" if now[8] else ""))
                 last = now
             await asyncio.sleep(0.1)
         if task.done() and not task.cancelled() and task.exception():
@@ -181,13 +201,18 @@ def main():
     ap.add_argument("--no-limit-guard", action="store_true",
                     help="with --jogd: turn the joint-limit guard off (in world and tool frames the PC otherwise stops a move before a joint "
                          "reaches its limit, and refuses a start that would push further into one)")
+    ap.add_argument("--poses", metavar="FILE", default=None,
+                    help=f"with --jogd: the file of saved poses (default {poses.DEFAULT_PATH})")
+    ap.add_argument("--goto-speed", type=int, default=jogd.DEFAULT_GOTO_SPEED, choices=range(1, 51), metavar="1-50",
+                    help="with --jogd: the speed (percent) of a go-to to a saved pose (default %(default)s; never above --max-speed)")
     ap.add_argument("--status-port", type=int, default=None, metavar="PORT",
                     help="serve the arm's status page on this port (default 8466 with --jogd; 0 turns it off)")
     ap.add_argument("--gamepad", metavar="DEVICE", help="input device to use instead of the first controller found")
     args = ap.parse_args()
     if not args.jogd and (args.max_speed != jogd.DEFAULT_MAX_SPEED or args.no_respeed or args.stick_speed
-                          or args.joint_cap is not None or args.frame_cap is not None or args.no_limit_guard):
-        ap.error("--max-speed, --no-respeed, --stick-speed, --joint-cap, --frame-cap and --no-limit-guard need --jogd")
+                          or args.joint_cap is not None or args.frame_cap is not None or args.no_limit_guard
+                          or args.poses is not None or args.goto_speed != jogd.DEFAULT_GOTO_SPEED):
+        ap.error("--max-speed, --no-respeed, --stick-speed, --joint-cap, --frame-cap, --no-limit-guard, --poses and --goto-speed need --jogd")
     try:
         args.joint_caps = None if args.joint_cap is None else jogd.parse_joint_caps(args.joint_cap)
         args.frame_caps = None if args.frame_cap is None else jogd.parse_frame_caps(args.frame_cap)

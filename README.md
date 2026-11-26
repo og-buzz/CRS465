@@ -18,10 +18,14 @@ carousel), worked from a Linux dev box.
 ## The interface
 
 ```sh
-sudo apt install python3-aiohttp python3-evdev python3-numpy python3-serial
+sudo apt install python3-aiohttp python3-evdev python3-numpy python3-serial python3-unicorn
 python3 -m a465.server              # http://<this machine>:8465
 python3 -m a465.server --track --carousel   # start with the track and the carousel fitted
 ```
+
+`python3-unicorn` is only for the RAPL-3 compiler: `scripts/a465-r3c prog.r3 -o prog -s` compiles on this
+computer with CRS's own compiler run inside an emulator (files in `vendor/crs/`, which are CRS's, not ours;
+see [docs/RAPL3-COMPILER.md](docs/RAPL3-COMPILER.md)). It sends nothing to the controller.
 
 Neither the track nor the carousel is assembled on the real machine, so the server **starts
 with both not fitted** unless `--track` and `--carousel` are given. The page's toggles change

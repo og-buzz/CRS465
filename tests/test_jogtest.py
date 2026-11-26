@@ -702,6 +702,8 @@ def six(tmp_path):
     def go(*argv, **kw):
         ctl = SixController(clock, **kw)
         start = list(ctl.joints)
+        if "--keepalive" not in argv:               # the VM runs the plain jogd image, which has no `g`
+            argv = (*argv, "--keepalive", "repeat")
         code = jogtest.main(["--local", str(local), *argv], repo=str(tmp_path), open_port=lambda a: ctl,
                             clock=clock, sleep=clock.sleep, log_dir=str(tmp_path))
         go.text = "\n".join(p.read_text() for p in sorted(tmp_path.glob("*-jogtest.log")))
@@ -1163,16 +1165,16 @@ def test_hold_up_to_5_seconds_in_modes_3_and_4(cart):
     assert code == 1 and "LIMIT" in cart.text                      # 4.5 s x 10 mm/s is past --max-tcp 40: the limit still works
     code, ctl = cart("--mode", "3", "A", "--hold", "4.5", "--max-tcp", "100", "--max-joint", "20")
     assert code == 0, cart.text
-    assert sent6(ctl).count(b"A02") >= 44
+    assert sent6(ctl).count(b"A02") == 1 and sent6(ctl).count(b"g") >= 43           # the command once, `g` between
 
 
 def test_vector_bytes_expected_echo_and_keepalives(cart):
     code, ctl = cart("--mode", "3", "--vector", "+1+1+0", "--speed", "2", "--hold", "1.0")
     assert code == 0, cart.text
     sent = sent6(ctl).replace(b"p", b"")
-    assert sent.startswith(b"@+1+1+0+0+0+002" * 10 + b".") and sent.endswith(b".q")
+    assert sent.startswith(b"@+1+1+0+0+0+002" + b"g" * 9 + b".") and sent.endswith(b".q")      # the vector once, then `g`
     assert {d for _, d in ctl.commands} == {"@+1+1+0+0+0+002"}
-    times = [t for t, d in ctl.writes if d == b"@+1+1+0+0+0+002"]
+    times = [t for t, d in ctl.writes if d in (b"@+1+1+0+0+0+002", b"g")]
     gaps = [b - a for a, b in zip(times, times[1:])]
     assert all(0.09 <= g <= 0.13 for g in gaps)
     assert "move 1/1: @+1+1+0+0+0+002: as expected" in cart.text
@@ -1432,7 +1434,7 @@ def test_toward_limit_ends_on_an_a_line(cart):
     assert code == 0, cart.text
     assert "WARNING: --toward-limit is meant to END IN A CONTROLLER ABORT" in cart.text
     assert "TOWARD-LIMIT ENDED BY: an `A` line" in cart.text and "ABORTED BY THE CONTROLLER" in cart.text
-    assert b"." not in sent6(ctl) and sent6(ctl).count(b"C02") > 20                  # kept going well past any fixed hold
+    assert b"." not in sent6(ctl) and sent6(ctl).count(b"C02") == 1 and sent6(ctl).count(b"g") > 20                  # kept going well past any fixed hold
 
 
 def test_toward_limit_ends_on_a_dash_by_itself(cart):
@@ -1470,8 +1472,9 @@ def test_toward_limit_with_after_abort_is_the_bench_check(cart):
     assert code == 0, cart.text
     assert "MOVED AFTER THE ABORT: yes" in cart.text
     assert re.search(r"after the abort: c02", cart.text)
-    c = [t for t, d in ctl.writes if d == b"c02"]
-    assert c and 1.9 <= (c[-1] - c[0]) <= 2.3                                          # the after-abort hold defaults to 2.0 s
+    first = next(t for t, d in ctl.writes if d == b"c02")
+    c = [first] + [t for t, d in ctl.writes if d == b"g" and t > first]
+    assert len(c) > 10 and 1.9 <= (c[-1] - c[0]) <= 2.3                                          # the after-abort hold defaults to 2.0 s
 
 
 def test_toward_limit_time_limit_default_and_range():
@@ -1519,3 +1522,30 @@ def test_an_abort_in_a_mode_1_run_ends_it_without_a_dot(tmp_path):
     text = "\n".join(p.read_text() for p in sorted(tmp_path.glob("*-jogtest.log")))
     assert "ABORTED BY THE CONTROLLER: A -67108870 Path error" in text, text
     assert b"." not in commands_sent(ctl).replace(b"p", b"") and not ctl.ctrlz and "prompt after `q`: back" in text
+
+
+def _ka(argv, tmp_path, name="jogd"):
+    (tmp_path / name).write_bytes(IMAGE)
+    return jogtest.parse_args([*argv, "--program", str(tmp_path / name)], str(tmp_path)).keepalive
+
+
+def test_keepalive_default_and_override(tmp_path):
+    assert _ka(["A"], tmp_path) == "repeat"
+    assert _ka(["--mode", "3", "A"], tmp_path) == "g"
+    assert _ka(["--mode", "4", "--vector", "+1+1+0"], tmp_path) == "g"
+    assert _ka(["--mode", "3", "A", "--toward-limit"], tmp_path) == "g"
+    assert _ka(["A"], tmp_path, name="jogd-c") == "g"
+    assert _ka(["--mode", "3", "A", "--keepalive", "repeat"], tmp_path) == "repeat"
+    assert _ka(["A", "--keepalive", "g"], tmp_path) == "g"
+
+
+def test_g_keepalive_is_sent_after_the_start_command_and_named_in_the_plan(six):
+    _, ctl = six("--mode", "3", "A", "--keepalive", "g")   # the plain jogd VM trips its dead-man on `g`; only the bytes matter here
+    assert "keep-alive: the single byte `g` every 100 ms (jogd-c)" in six.text
+    body = sent6(ctl)
+    assert body.count(b"A02") == 1 and body.count(b"g") >= 8
+
+
+def test_repeat_keepalive_is_named_in_the_plan(six):
+    six("--mode", "3", "A")
+    assert "keep-alive: the start command repeated every 100 ms" in six.text

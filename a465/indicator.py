@@ -9,7 +9,9 @@ import argparse
 import asyncio
 import math
 import pathlib
+import threading
 import time
+import datetime
 
 from aiohttp import web
 
@@ -18,7 +20,8 @@ from . import model
 PAGE = pathlib.Path(__file__).parent / "web" / "indicator.html"
 STALE_S = 1.5
 KEYS = ("backend", "frame", "speed", "max_speed", "joint_caps", "frame_caps", "joints", "joint_speeds",
-        "position_time", "moving", "command", "jogd", "notice", "controller_message", "pad", "limit")
+        "position_time", "moving", "command", "jogd", "notice", "controller_message", "pad", "limit",
+        "selected", "goto", "counts")
 
 
 def _joints(state):
@@ -57,7 +60,12 @@ def augment(state, prev=None, now=None):
     return out, prev
 
 
-async def serve(get_state, host="0.0.0.0", port=8466):
+def _json(data, status=200):
+    return web.json_response(data, status=status, headers={"Cache-Control": "no-store"})
+
+
+async def serve(get_state, host="0.0.0.0", port=8466, actions=None):
+    """actions None = read-only page. Otherwise see the pose routes below (all POSTs need Content-Type: application/json)."""
     holder = {"prev": None}
 
     async def page(request):
@@ -70,9 +78,88 @@ async def serve(get_state, host="0.0.0.0", port=8466):
         except Exception as e:  # keep serving
             return web.json_response({"error": f"{type(e).__name__}: {e}"})
 
+    async def run(fn, *args, **kw):
+        """Run an action method off the event loop (so a slow one cannot stall /state); map errors to HTTP."""
+        try:
+            return _json(await asyncio.to_thread(fn, *args, **kw))
+        except ValueError as e:
+            return _json({"error": str(e)}, 409)
+        except Exception as e:
+            return _json({"error": f"{type(e).__name__}: {e}"}, 500)
+
+    async def body(request, *fields):
+        """The JSON object body, or a 400/415 response; fields are the required string keys."""
+        if request.content_type != "application/json":
+            return None, _json({"error": "Content-Type must be application/json"}, 415)
+        try:
+            d = await request.json()
+        except Exception:
+            return None, _json({"error": "bad JSON"}, 400)
+        if not isinstance(d, dict):
+            return None, _json({"error": "JSON body must be an object"}, 400)
+        for f in fields:
+            if not isinstance(d.get(f), str) or not d[f].strip():
+                return None, _json({"error": f"missing field: {f}"}, 400)
+        return d, None
+
+    async def poses_get(request):
+        def f():
+            return {"poses": actions.list_poses(), "selected": actions.selected()}
+        return await run(f)
+
+    async def poses_save(request):
+        d, err = await body(request)
+        if err:
+            return err
+        name = d.get("name")
+        if name is not None and not isinstance(name, str):
+            return _json({"error": "name must be text"}, 400)
+        return await run(actions.save, name or None)
+
+    async def select(request):
+        d, err = await body(request, "name")
+        if err:
+            return err
+        return await run(lambda: (actions.select(d["name"]), {"ok": True})[1])
+
+    async def rename(request):
+        d, err = await body(request, "old", "new")
+        if err:
+            return err
+        return await run(lambda: (actions.rename(d["old"], d["new"]), {"ok": True})[1])
+
+    async def delete(request):
+        d, err = await body(request, "name")
+        if err:
+            return err
+        return await run(lambda: (actions.delete(d["name"]), {"ok": True})[1])
+
+    async def goto(request):
+        d, err = await body(request, "name")
+        if err:
+            return err
+        straight = d.get("straight", False)
+        if not isinstance(straight, bool):
+            return _json({"error": "straight must be true or false"}, 400)
+        return await run(lambda: (actions.goto_hold(d["name"], straight=straight), {"ok": True})[1])
+
+    async def stop(request):
+        d, err = await body(request)
+        if err:
+            return err
+        return await run(lambda: (actions.stop(), {"ok": True})[1])
+
     app = web.Application()
     app.router.add_get("/", page)
     app.router.add_get("/state", state)
+    if actions is not None:
+        app.router.add_get("/poses", poses_get)
+        app.router.add_post("/poses", poses_save)
+        app.router.add_post("/poses/select", select)
+        app.router.add_post("/poses/rename", rename)
+        app.router.add_post("/poses/delete", delete)
+        app.router.add_post("/goto", goto)
+        app.router.add_post("/stop", stop)
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()
     try:
@@ -114,7 +201,142 @@ def demo_state(t=None):
                                "at": t} if 40 <= sec < 46 else None,
         "limit": ({"joint": 3, "limit": -112.0, "angle": -110.4, "blocked": sec % 4 < 2} if 20 <= sec < 30 else None),
         "pad": {"connected": True, "name": "Wireless Controller", "l1": moving},
+        "selected": None, "goto": None, "counts": None,
     }
+
+
+class DemoArm:
+    """Fake state + fake pose actions for --demo: three poses; goto_hold moves the demo joints while it keeps being called."""
+    HOLD_S = 0.5            # the arm stops this long after the last goto_hold call
+    SPEED_DPS = 20.0
+
+    def __init__(self):
+        self.lock = threading.RLock()
+        self.joints = [0.0, -30.0, 30.0, 0.0, 20.0, 0.0]
+        self.poses = []
+        self.sel = None
+        self.goto = None            # {"name","straight","target","last","start_diff"}
+        self.last_t = time.time()
+        for n, j in (("Home", [0, 0, 0, 0, 0, 0]), ("Left", [40, -40, 40, 10, 30, 0]),
+                     ("Right", [-45, -20, 60, -10, 45, 20])):
+            self._add(n, j)
+
+    def _add(self, name, joints):
+        p, rot, _, _ = model.forward(joints)
+        yaw, pitch, roll = model.yaw_pitch_roll(rot)
+        d = {"name": name, "joints": [float(v) for v in joints], "counts": [int(round(v * 100)) for v in joints],
+             "x": float(p[0]), "y": float(p[1]), "z": float(p[2]), "yaw": yaw, "pitch": pitch, "roll": roll,
+             "saved": datetime.datetime.now().isoformat(timespec="seconds")}
+        self.poses.append(d)
+        return dict(d)
+
+    def _find(self, name):
+        for p in self.poses:
+            if p["name"] == name:
+                return p
+        raise ValueError(f"no pose named {name}")
+
+    def _diff(self, target):
+        return max(abs(a - b) for a, b in zip(self.joints, target))
+
+    def _step(self, now):
+        g = self.goto
+        dt = min(now - self.last_t, 0.5)
+        self.last_t = now
+        if not g:
+            return
+        if now - g["last"] > self.HOLD_S:
+            g["running"] = False
+            return
+        if g["arrived"]:
+            return
+        step = self.SPEED_DPS * dt
+        d = self._diff(g["target"])
+        if d <= step:
+            self.joints = list(g["target"])
+            g["arrived"], g["running"] = True, False
+        else:
+            f = step / d
+            self.joints = [a + (b - a) * f for a, b in zip(self.joints, g["target"])]
+            g["running"] = True
+
+    def list_poses(self):
+        with self.lock:
+            return [dict(p) for p in self.poses]
+
+    def selected(self):
+        with self.lock:
+            return self.sel
+
+    def select(self, name):
+        with self.lock:
+            self.sel = self._find(name)["name"]
+
+    def save(self, name=None):
+        with self.lock:
+            if name is None:
+                n = 1
+                while any(p["name"] == f"P{n}" for p in self.poses):
+                    n += 1
+                name = f"P{n}"
+            name = name.strip()
+            if any(p["name"] == name for p in self.poses):
+                raise ValueError(f"a pose named {name} already exists")
+            return self._add(name, self.joints)
+
+    def rename(self, old, new):
+        with self.lock:
+            p = self._find(old)
+            new = new.strip()
+            if new != old and any(q["name"] == new for q in self.poses):
+                raise ValueError(f"a pose named {new} already exists")
+            p["name"] = new
+            if self.sel == old:
+                self.sel = new
+
+    def delete(self, name):
+        with self.lock:
+            self.poses.remove(self._find(name))
+            if self.sel == name:
+                self.sel = None
+
+    def goto_hold(self, name, straight=False):
+        with self.lock:
+            now = time.time()
+            self._step(now)
+            p = self._find(name)
+            g = self.goto
+            if not g or g["name"] != name or g["straight"] != straight or now - g["last"] > self.HOLD_S:
+                if self._diff(p["joints"]) < 0.05:
+                    raise ValueError(f"already at {name}")
+                self.goto = g = {"name": name, "straight": straight, "target": list(p["joints"]),
+                                 "arrived": False, "running": True}
+            g["last"] = now
+            self.sel = name
+
+    def stop(self):
+        with self.lock:
+            self._step(time.time())
+            if self.goto and not self.goto["arrived"]:
+                self.goto = None
+
+    def state(self, t=None):
+        with self.lock:
+            now = time.time() if t is None else t
+            before = list(self.joints)
+            self._step(now)
+            st = demo_state(now)
+            st["joints"] = list(self.joints)
+            st["joint_speeds"] = [(a - b) / 0.2 for a, b in zip(self.joints, before)] if self.goto and self.goto["running"] else [0.0] * 6
+            st["moving"] = bool(self.goto and self.goto["running"])
+            st["command"] = None
+            st["selected"] = self.sel
+            st["counts"] = [int(round(v * 100)) for v in self.joints]
+            g = self.goto
+            st["goto"] = None if not g else {"name": g["name"], "straight": g["straight"], "speed": 20,
+                                             "running": bool(g["running"]), "arrived": bool(g["arrived"]),
+                                             "remaining_deg": self._diff(g["target"])}
+            return st
 
 
 def main():
@@ -127,7 +349,8 @@ def main():
         ap.error("standalone use needs --demo; the pad program calls serve() with the real state")
     print(f"demo indicator on http://{args.host}:{args.port}/")
     try:
-        asyncio.run(serve(demo_state, args.host, args.port))
+        arm = DemoArm()
+        asyncio.run(serve(arm.state, args.host, args.port, actions=arm))
     except KeyboardInterrupt:
         pass
 

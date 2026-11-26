@@ -16,8 +16,8 @@ does, with citations, and how each function compares with this repo is in
 - [~] Back up and restore controller files (a verified backup exists; no one-step command)
 - [ ] Make a directory on the controller as part of sending
 - [ ] Editor for RAPL-3 source
-- [ ] Compile RAPL-3 source to an object file, with errors, warnings and options (we have only an assembler, disassembler and test interpreter for the bytecode)
-- [ ] Multi-file programs and libraries (`.include`, `-L`)
+- [~] Compile RAPL-3 source to an object file, with errors, warnings and options (`scripts/a465-r3c`, CRS's compiler under an emulator; output not yet loaded on our controller: see docs/RAPL3-COMPILER.md)
+- [~] Multi-file programs and libraries (`.include`, `-L`) (`a465-r3c --extra`, `--lib`; same caveat: docs/RAPL3-COMPILER.md)
 - [ ] Application setups: saved source, controller directory, object name and options; compile and send in one step
 - [~] Version check (`crosver` by hand; no check of a program's library stamps before sending)
 - [~] Application variable (`.v3`) files: copied, not read or edited

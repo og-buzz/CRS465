@@ -50,7 +50,8 @@ HELP = {
     "before": [["L1", "hold to jog; with a button it starts a move that then runs by itself"],
                ["Square", "stop everything (no L1 needed)"],
                ["R1", "hold: right stick orbits the 3D view, left stick up / down zooms"],
-               ["Options", "next frame (joint / world / tool)"]],
+               ["Options", "next frame (joint / world / tool)"],
+               ["Share", "save the arm's pose under the next free name (P1, P2 ...) and select it"]],
     "joint": [["Left stick", "J1 waist (left/right), J2 shoulder (up/down)"],
               ["Right stick", "J4 wrist rotate (left/right), J3 elbow (up/down)"],
               ["D-pad", "J5 wrist pitch (up/down), J6 tool roll (left/right)"]],
@@ -62,7 +63,9 @@ HELP = {
               ["L1 + R1 + D-pad left / right", "carousel"],
               ["L1 + R1 + Circle", "arm power on / off"],
               ["L1 + Circle / Cross", "gripper open / close"],
-              ["L1 + Triangle", f"point straight up at {SAFE_SPEED}% speed"],
+              ["L1 + Triangle", f"point straight up at {SAFE_SPEED}% speed (with saved poses: hold to go to the selected pose, joint move)"],
+              ["L1 + R1 + Triangle", "with saved poses: hold to go to the selected pose in a straight line"],
+              ["L1 + R1 + Cross", "with saved poses: select the next saved pose"],
               ["L1 + L3 / R3 (stick click)", "home / run the pick-and-place cycle"]],
 }
 
@@ -121,6 +124,7 @@ class GamepadJog:
         self._held = set()
         self._parked = set()         # sticks that were steering the view and have not re-centred yet
         self._speed_change = 0.0     # fraction of a percent carried between ticks
+        self._going = False          # a go-to to a saved pose is being held (goto_hold was called this tick)
         self._rearm = False          # after a lost signal or a reconnect: L1 must be let go before it enables again
 
     def update(self, axes, buttons):
@@ -142,6 +146,9 @@ class GamepadJog:
         try:
             if "square" in pressed:                           # stop: never needs the enable, stops anyone's move
                 robot.halt()
+                self._going = False
+            if "share" in pressed:                            # save the pose: no enable needed, nothing moves
+                self._save_pose()
             if "options" in pressed:
                 self.frame = FRAMES[(FRAMES.index(self.frame) + 1) % len(FRAMES)]
             acts = pressed & {"circle", "cross", "triangle", "l3", "r3"}   # everything here needs the enable
@@ -156,8 +163,11 @@ class GamepadJog:
                     robot.set_gripper(True)
             if "cross" in acts and not r1:
                 robot.set_gripper(False)
+            elif "cross" in acts:                             # L1 + R1 + Cross: select the next saved pose
+                self._next_pose()
             starts = acts & {"triangle", "l3", "r3"}
-            if "triangle" in starts:
+            teach = hasattr(robot, "goto_hold")               # a robot with saved poses: Triangle goes to the selected one
+            if "triangle" in starts and not teach:
                 robot.set_speed(SAFE_SPEED)
                 robot.goto("calrdy", source="gamepad")
             elif "l3" in starts:
@@ -182,6 +192,13 @@ class GamepadJog:
             else:
                 self._speed_change = 0.0
 
+            if teach and l1 and "triangle" in buttons:        # held: the go-to lasts while the buttons do (R1: a straight line)
+                self._going = True
+                robot.goto_hold(self._selected_pose(), straight=r1, source="gamepad")
+            elif self._going:                                 # L1 or Triangle let go: stop the move
+                self._going = False
+                robot.halt()
+
             was_enabled, self.enabled = self.enabled, l1
             if self.enabled:
                 live = {k: (0.0 if k[0] in self._parked and k[1:] in ("x", "y") else v) for k, v in axes.items()}
@@ -194,13 +211,30 @@ class GamepadJog:
         except RobotError as err:
             self._say(str(err))
 
+    def _selected_pose(self):
+        name = self.robot.selected_pose() if hasattr(self.robot, "selected_pose") else None
+        if name is None:
+            raise RobotError("no pose selected: press Share to save one, L1 + R1 + Cross to pick one")
+        return name
+
+    def _save_pose(self):
+        if not hasattr(self.robot, "save_pose"):
+            raise RobotError("this robot cannot save poses")
+        self._say(f"saved {self.robot.save_pose()['name']} (selected)")
+
+    def _next_pose(self):
+        if not hasattr(self.robot, "next_pose"):
+            raise RobotError("this robot has no saved poses")
+        self._say(f"selected pose {self.robot.next_pose()}")
+
     def release(self):
         """Controller gone or silent: stop anything it started, and ask for a fresh press of L1."""
         self.enabled = False
         self._rearm = True
         self._held = set()
         self._parked = set()
-        if self._ours():
+        going, self._going = self._going, False
+        if going or self._ours():
             self.robot.halt()
 
     def _say(self, text):

@@ -25,3 +25,15 @@ def test_program_c_needs_a_cart_frame():
 def test_no_limit_guard_needs_jogd():
     done = padjog("--no-limit-guard")
     assert done.returncode == 2 and "--no-limit-guard" in done.stderr
+
+
+def test_pose_options_need_jogd_and_are_checked():
+    for args in (("--poses", "x.json"), ("--goto-speed", "20"), ("--jogd", "--goto-speed", "0"), ("--jogd", "--goto-speed", "51"),
+                 ("--jogd", "--goto-speed", "x")):
+        assert padjog(*args).returncode == 2, args
+    assert "--poses" in padjog("--poses", "x.json").stderr
+
+
+def test_the_pose_options_are_in_the_help():
+    done = padjog("--help")
+    assert done.returncode == 0 and "--poses FILE" in done.stdout and "--goto-speed 1-50" in done.stdout

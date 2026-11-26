@@ -57,6 +57,16 @@ class FakeController:
         self.ended = None                # the command whose move ended by itself: jogd-c ignores it until a `.`
         self.started = 0                 # moves jogd-c has started (`+` lines put)
         self.vectors_seen = []           # the vectors accepted, as bytes
+        self.has_w = True                # jogd-c answers `w` with `W x y z yaw pitch roll` (hundredths)
+        self.world = [-10650, -1280, 98770, 9290, -7030, 200]
+        self.gt = None                   # jogd-c go-to in force: (letter, numbers, speed)
+        self.gline = None                # a `G` / `L` line being received
+        self.gt_s = None                 # a go-to arrives (a bare `-`) this long after its `+` (None: never)
+        self.gt_end = None
+        self.gt_last = 0.0               # when the line or the last `g` came
+        self.gt_lines = []               # every start line accepted, as bytes (with the `\r`)
+        self.g_moves = 0                 # `g` keep-alives written while a letter jog / vector was in force
+        self.g_count = 0                 # `g` keep-alives written while a go-to was in force
 
     def set_joints(self, angles):
         """What the next `p` reports (and `w2`)."""
@@ -92,6 +102,17 @@ class FakeController:
 
     # ---- behaviour
     def _deadman(self):
+        if self.gt and self.gt_end is not None and self.clock() >= self.gt_end:
+            letter, nums, _ = self.gt
+            if letter == "G":
+                self.set_joints([c / k for c, k in zip(nums, CPD)])
+            self.gt, self.gt_end = None, None
+            self.put(b"-\r\n")
+            return
+        if self.gt and not self.ignore_stop and self.clock() - self.gt_last > 0.3:
+            self.gt, self.gt_end = None, None
+            self.put(b"T\r\n")
+            return
         if self.move and self.end_at is not None and self.clock() >= self.end_at:
             self.ended, self.move, self.end_at = self.move, None, None
             self.put(b"-\r\n")
@@ -141,15 +162,33 @@ class FakeController:
                 self.put(b"-\r\n$ " if moving else b"$ ", 0.05)
             else:
                 self.stuck = True
-        elif b == b".":
+        elif b == b"." and self.gline is None:
             self.ended = None
             self.line = b""
+            if self.gt and not self.ignore_stop:
+                self.gt, self.gt_end = None, None
+                self.put(b"-\r\n", 0.2)
             if self.move and not self.ignore_stop:
                 self.move, self.end_at = None, None
                 self.put(b"-\r\n", 0.2)
         elif b == b"p":
             if self.has_p:
                 self.put(("P " + " ".join(str(c) for c in self.counts) + "\r\n").encode(), 0.02)
+        elif self.cart and (self.gline is not None or (b in (b"G", b"L") and not self.line)):
+            self.gline = (self.gline or b"") + b
+            if b == b"\r":
+                text, self.gline = self.gline[:-1], None
+                self._goto_line(text)
+        elif self.cart and b == b"w":
+            if self.has_w:
+                self.put(("W " + " ".join(str(v) for v in self.world) + "\r\n").encode(), 0.02)
+        elif self.cart and b == b"g":
+            if self.gt:
+                self.gt_last = self.clock()
+                self.g_count += 1
+            elif self.move:                     # the keep-alive of a letter jog or a vector: restarts the dead-man clock only
+                self.last_cmd = self.clock()
+                self.g_moves += 1
         elif self.cart and (self.line.startswith(b"@") or b == b"@"):
             if b == b"@" or not re.match(rb"[A-Fa-f]", b):
                 self.line = b"@" if b == b"@" else self.line + b
@@ -168,16 +207,31 @@ class FakeController:
             elif len(self.line) >= 3:
                 self.line = b""
 
+    def _goto_line(self, text):
+        self.gt_last = self.clock()
+        m = re.fullmatch(rb"([GL])((?: -?\d+){6}) (\d\d)", text)
+        if not m:
+            self.put(b"E -22 invalid argument\r\n", 0.05)
+            return
+        if self.gt:
+            self.put(b"-\r\n", 0.2)
+        self.gt = (m.group(1).decode(), [int(n) for n in m.group(2).split()], int(m.group(3)))
+        self.gt_lines.append(text + b"\r")
+        self.put(b"+" + m.group(1) + b"\r\n", 0.28)
+        self.gt_end = self.clock() + 0.28 + self.gt_s if self.gt_s is not None else None
+
     def abort(self, after=0.0, line=b"A -67108870 Path error\r\n"):
         """The controller aborts the move in force (a joint limit, a collision, Ctrl-Z): jogd-c survives, ends the move, prints ONE
         `A` line after `after` seconds and then ignores repeats of the command that was in force until a `.` or another command."""
         self.ended, self.move, self.end_at = self.move, None, None
+        self.gt, self.gt_end = None, None
         self.put(line, after)
         self.aborts = getattr(self, "aborts", 0) + 1
 
     def kill(self):
         """What Ctrl-Z does on the real controller: stops the arm and kills the program that holds control."""
         self.move = None
+        self.gt = None
         self.ignore_stop = False          # a restarted jogd answers again
         self.mode = "shell"
         self.line = b""
@@ -853,7 +907,7 @@ def test_realarm_refusals_and_state_keys(rig):
     arm.set_speed(7)
     assert arm.speed == 7
     realkeys = {"backend", "joints", "true_joints", "speed", "command", "moving", "notice", "mode", "settling", "home_switches",
-                "frame", "max_speed", "joint_caps", "frame_caps", "joint_speeds", "position_time", "jogd", "controller_message", "limit", "guard_limits"}
+                "frame", "max_speed", "joint_caps", "frame_caps", "joint_speeds", "position_time", "jogd", "controller_message", "limit", "guard_limits", "goto", "counts"}
     assert set(arm.state()) == realkeys
     assert arm.state()["limit"] is None
     assert arm.state()["true_joints"] is None
@@ -1168,7 +1222,7 @@ def test_a_move_that_ends_by_itself_starts_again_while_the_stick_is_held(rig):
     for i, d in enumerate(seq):
         if d == b".":
             assert seq[i + 1] == b"A06"
-    assert {d for d in seq if d != b"." and d != b"p"} == {b"A06"}
+    assert {d for d in seq if d != b"." and d != b"p"} == {b"A06", b"g"}      # the letter once per start, `g` between
 
 
 def test_a_move_that_ends_by_itself_stays_stopped_when_the_stick_is_let_go(rig):
@@ -1202,8 +1256,10 @@ def test_a_diagonal_push_sends_a_vector_and_keeps_it_alive(rig):
     assert len(want) == 15
     vectors = rig.port.vectors(t)
     assert {d for _, d in vectors} == {want} and not rig.port.moves(t)
-    gaps = [b - a for (a, _), (b, _) in zip(vectors, vectors[1:])]
-    assert len(vectors) >= 17 and max(gaps) <= 0.151 and min(gaps) >= 0.099
+    assert len(vectors) == 1                                        # the vector once; `g` is the keep-alive
+    gs = [t_ for t_, d in rig.port.sent(t) if d == b"g"]
+    gaps = [b - a for a, b in zip(gs, gs[1:])]
+    assert len(gs) >= 15 and max(gaps) <= 0.151 and min(gaps) >= 0.099
     assert rig.port.vectors_seen == [want] and rig.port.started == 1
     cmd = arm.state()["command"]
     assert arm.state()["moving"] and cmd["vector"] == [9, 6, 0] and cmd["axis"] is None and cmd["sign"] is None and cmd["speed"] == sp
@@ -1253,7 +1309,7 @@ def test_a_sustained_change_of_60_degrees_gives_one_stop_and_one_new_vector(rig)
     assert len(dots) == 1 and not rig.port.moves(t)
     vectors = [d for d in dict.fromkeys(d for _, d in rig.port.vectors(t))]
     assert vectors == [first, b"@+3+9+0+0+0+0" + first[13:]]
-    assert seq.count(vectors[1]) >= 5 and rig.port.started == 2 and arm.state()["command"]["vector"] == [3, 9, 0]
+    assert seq.count(vectors[1]) == 1 and seq.count(b"g") >= 5 and rig.port.started == 2 and arm.state()["command"]["vector"] == [3, 9, 0]
     assert said(rig, "stopping, then starting vector +3 +9 +0")
     assert not arm.notice and not arm._dead
 
@@ -1344,7 +1400,7 @@ def test_the_fake_rejects_a_vector_with_rotation_components(rig):
 
 # ---- joint-limit guard (world and tool frames) ------------------------------------------------------------------------
 
-POSE = [44.0, -4.0, -111.0, -8.0, -48.5, -4.0]        # J3 inside the margin of its low limit (-112); where the operator pulled in
+POSE = [44.0, -4.0, -111.0, -8.0, -48.5, -4.0]        # J3 inside the margin of its low limit (-114.993); where the operator pulled in
 NEG_Y, POS_Y = [0, -0.6, 0, 0, 0, 0], [0, 0.6, 0, 0, 0, 0]
 NEG_VEC, POS_VEC = [0, -0.6, -0.33, 0, 0, 0], [0, 0.6, 0.33, 0, 0, 0]   # the vector (0, -9, -5): J3 toward its low limit
 
@@ -1368,10 +1424,10 @@ def drift(rig, start_j3, rate, seconds, vec, frame="world", base=POSE):
 
 
 def test_guard_constants_and_state_key_when_far_from_limits(rig):
-    assert jogd.GUARD_LIMITS_DEG[2] == (-112.0, 112.0) and jogd.GUARD_MARGIN_DEG == 4.0 and jogd.GUARD_LOOKAHEAD_S == 0.8
+    assert jogd.GUARD_LIMITS_DEG[2] == (-114.993, 114.993) and jogd.GUARD_MARGIN_DEG == 4.0 and jogd.GUARD_LOOKAHEAD_S == 0.8
     arm = cart_at(rig, [10.0, -20.0, 30.0, 40.0, -50.0, 60.0], "world")
     st = arm.state()
-    assert st["limit"] is None and st["guard_limits"][2] == [-112.0, 112.0]
+    assert st["limit"] is None and st["guard_limits"][2] == [-114.993, 114.993]
     assert {"joints", "joint_speeds", "notice", "command", "moving"} <= set(st)
 
 
@@ -1384,7 +1440,7 @@ def test_world_move_toward_a_limit_is_stopped_with_the_normal_stop(rig):
     drift(rig, -95.0, -10.0, 1.2, NEG_Y)                    # 10 deg/s: -100 + 10 * -0.8 = -108 is inside the margin
     seq = writes_of(rig, t)
     assert seq.count(b".") == 1 and CTRL_Z not in seq and not arm._dead
-    assert "J3 is at its limit (-112)" in arm.notice and "blocked" in arm.notice and said(rig, "J3 is at its limit")
+    assert "J3 is at its limit (-114.993)" in arm.notice and "blocked" in arm.notice and said(rig, "J3 is at its limit")
     assert len(said(rig, "J3 is at its limit")) == 1
     assert not rig.port.move
     n = len(rig.port.moves(t))
@@ -1404,9 +1460,9 @@ def test_a_start_that_pushes_further_into_a_limit_is_refused(rig):
     rig.run(1.5, NEG_Y, frame="world")
     assert not rig.port.moves(t) and not rig.port.vectors(t) and rig.port.started == 0
     assert [d for d in writes_of(rig, t) if d != b"p"] == []
-    assert "J3 is at its limit (-112)" in arm.notice and len(said(rig, "J3 is at its limit")) == 1
+    assert "J3 is at its limit (-114.993)" in arm.notice and len(said(rig, "J3 is at its limit")) == 1
     lim = arm.state()["limit"]
-    assert lim == {"joint": 3, "limit": -112.0, "angle": -111.0, "blocked": True}
+    assert lim == {"joint": 3, "limit": -114.993, "angle": -111.0, "blocked": True}
     rig.run(0.5, ZERO, frame="world")                       # let go: tried again, still refused (same direction)
     rig.run(1.0, NEG_Y, frame="world")
     assert rig.port.started == 0 and len(said(rig, "J3 is at its limit")) == 2
@@ -1443,7 +1499,7 @@ def test_a_vector_is_stopped_at_the_look_ahead(rig):
 
 def test_tool_frame_is_guarded_too(rig):
     arm = cart_at(rig, POSE, "tool")
-    assert arm._guard_joint_motion((0, 1))[2] < 0 < arm._guard_joint_motion((0, -1))[2]     # tool +X pushes J3 toward -112
+    assert arm._guard_joint_motion((0, 1))[2] < 0 < arm._guard_joint_motion((0, -1))[2]     # tool +X pushes J3 toward -114.993
     rig.run(1.0, [0.6, 0, 0, 0, 0, 0], frame="tool")
     assert rig.port.started == 0 and "J3 is at its limit" in arm.notice
     rig.run(0.5, ZERO, frame="tool")
@@ -1693,3 +1749,319 @@ def test_close_after_ctrl_z_finds_jogd_c_alive_and_quits_it(rig):
     seq = [d for d in writes_of(rig, t)]
     assert CTRL_Z in seq and said(rig, "jogd-c is alive after Ctrl-Z")
     assert seq[seq.index(CTRL_Z) + 1] == b"q"
+
+
+# ---- teach and replay: saved poses, go-to (G / L / g) -----------------------------------------------------------------
+
+from a465.poses import PoseStore                                  # noqa: E402
+
+TARGET = [20.0, -10.0, 40.0, 30.0, -40.0, 50.0]                   # inside the limits; the fake starts at [10, -20, 30, 40, -50, 60]
+
+
+def teach(rig, **kw):
+    """An arm with a pose store (so on jogd-c), pose A saved at TARGET, and a fresh position."""
+    store = PoseStore(str(rig.tmp / "poses.json"))
+    store.save("A", TARGET, [round(a * k) for a, k in zip(TARGET, CPD)])
+    arm = rig.build(poses=store, **kw)
+    rig.run(0.6)
+    return arm, store
+
+
+def hold(rig, seconds, name="A", straight=False, every=0.02, stick=None):
+    """Pump the thread and call goto_hold every `every` seconds (and jog with `stick` when given)."""
+    end, next_call = rig.clock() + seconds, rig.clock()
+    while rig.clock() < end:
+        if rig.clock() >= next_call:
+            if stick is not None:
+                rig.arm.jog("joint", stick, ttl=0.25, source="gamepad")
+            try:
+                rig.arm.goto_hold(name, straight=straight, source="gamepad")
+            except RobotError as err:
+                rig.refused = str(err)
+            next_call += every
+        assert rig.arm.step()
+        rig.clock.sleep(0.002)
+
+
+def test_a_pose_store_makes_the_driver_use_jogd_c(rig):
+    arm, _ = teach(rig)
+    assert rig.port.cart and b"/tmp/jogd-c 1 25 s\r" in [d for _, d in rig.port.writes]
+    rig.build()
+    assert not rig.port.cart                         # no store, joint only: jogd as before
+
+
+def test_the_guard_limits_are_the_controllers_own():
+    assert jogd.GUARD_LIMITS_DEG == ((-171.887, 171.887), (-90.012, 90.012), (-114.993, 114.993), (-180.0, 180.0),
+                                     (-104.995, 104.995), (-180.0, 180.0))
+    assert jogd.GUARD_MARGIN_DEG == 4.0
+
+
+def test_state_has_goto_and_counts(rig):
+    arm = rig.build(poses=PoseStore(str(rig.tmp / "poses.json")))
+    assert arm.state()["goto"] is None and arm.state()["counts"] is None
+    rig.run(0.6)
+    assert arm.state()["counts"] == rig.port.counts and arm.state()["goto"] is None
+
+
+def test_save_pose_names_selects_and_stores_counts(rig):
+    arm, store = teach(rig)
+    pose = arm.save_pose()
+    assert pose["name"] == "P1" and pose["counts"] == rig.port.counts and store.selected() == "P1"
+    assert [round(a, 2) for a in pose["joints"]] == [round(a, 2) for a in rig.port.joints]
+    assert arm.save_pose()["name"] == "P2"
+    assert arm.save_pose("Home")["name"] == "Home" and arm.selected_pose() == "Home"
+    with pytest.raises(RobotError, match="already exists"):
+        arm.save_pose("Home")
+    assert arm.next_pose() == "A" and arm.next_pose() == "P1"      # saved order, wrapping
+
+
+def test_save_pose_is_refused_while_moving_and_without_a_fresh_position(rig):
+    arm, store = teach(rig)
+    rig.run(0.5, V1)
+    with pytest.raises(RobotError, match="moving"):
+        arm.save_pose()
+    rig.run(1.0, [0] * 6)
+    assert arm.save_pose()["name"] == "P1"
+    rig.clock.sleep(2.0)                                           # no `P` for longer than 1.5 s
+    with pytest.raises(RobotError, match="fresh position"):
+        arm.save_pose()
+    plain = rig.build()
+    with pytest.raises(RobotError, match="no pose store"):
+        plain.save_pose()
+
+
+def test_go_to_start_line_keepalive_and_state(rig):
+    arm, _ = teach(rig)
+    t = rig.clock()
+    hold(rig, 0.6)
+    counts = [round(a * k) for a, k in zip(TARGET, CPD)]
+    expected = ("G " + " ".join(str(c) for c in counts) + " 10\r").encode()
+    assert rig.port.gt_lines == [expected] and [d for d in writes_of(rig, t) if d.startswith(b"G")] == [expected]
+    gs = [at for at, d in rig.port.sent(t) if d == b"g"]
+    assert len(gs) >= 3 and all(0.09 <= b - a <= 0.13 for a, b in zip(gs, gs[1:]))
+    goto = arm.state()["goto"]
+    assert goto["name"] == "A" and goto["straight"] is False and goto["speed"] == 10 and goto["running"] is True and goto["arrived"] is False
+    assert goto["remaining_deg"] == pytest.approx(max(abs(a - b) for a, b in zip(rig.port.joints, TARGET)), abs=0.1)
+    assert arm.state()["command"]["kind"] == "goto" and arm.state()["command"]["source"] == "gamepad"
+    assert not rig.port.moves(t) and rig.port.mode == "jogd"
+
+
+def test_straight_go_to_sends_l_from_the_tool_point(rig):
+    arm, store = teach(rig)
+    pose = store.get("A")
+    assert pose["world_hundredths"] is None and pose["world_source"] == "model"
+    hold(rig, 0.5, straight=True)
+    nums = [pose[k] for k in ("x", "y", "z", "yaw", "pitch", "roll")]
+    assert rig.port.gt_lines == [("L " + " ".join(str(int(round(v * 100))) for v in nums) + " 10\r").encode()]
+    assert arm.state()["goto"]["straight"] is True and arm.state()["goto"]["running"]
+
+
+def test_speed_is_goto_speed_capped_by_max_speed(rig):
+    arm, _ = teach(rig, goto_speed=40, max_speed=25)
+    hold(rig, 0.4)
+    assert rig.port.gt_lines[0].endswith(b" 25\r")
+    with pytest.raises(RobotError):
+        rig.build(goto_speed=0)
+    with pytest.raises(RobotError):
+        rig.build(goto_speed=100)
+
+
+def test_arrival_is_reported_once_and_the_same_hold_does_not_restart_it(rig):
+    arm, _ = teach(rig)
+    rig.port.gt_s = 0.5
+    hold(rig, 2.0)
+    assert len(rig.port.gt_lines) == 1
+    goto = arm.state()["goto"]
+    assert goto["arrived"] is True and goto["running"] is False and goto["remaining_deg"] < 0.05
+    assert len(said(rig, "arrived")) == 1 and arm.state()["command"] is None
+    n = rig.port.g_count
+    hold(rig, 0.5)
+    assert rig.port.g_count == n and len(rig.port.gt_lines) == 1       # still nothing: the button has not been let go
+    rig.run(0.6)                                                       # let go of the button
+    hold(rig, 0.6)
+    assert len(rig.port.gt_lines) == 2                                 # pressed again: starts again
+
+
+def test_go_to_stops_when_the_holds_stop(rig):
+    arm, _ = teach(rig)
+    hold(rig, 0.6)
+    t = rig.clock()
+    rig.run(0.6)
+    seq = writes_of(rig, t)
+    assert seq.count(b".") == 1 and CTRL_Z not in seq and rig.port.gt is None
+    assert arm.state()["goto"] is None and arm.state()["command"] is None and not arm._dead
+    assert b"g" not in seq[seq.index(b"."):]
+
+
+def test_halt_stops_a_go_to_and_a_held_button_does_not_restart_it(rig):
+    arm, _ = teach(rig)
+    hold(rig, 0.5)
+    t = rig.clock()
+    arm.halt()
+    rig.run(0.4)
+    seq = writes_of(rig, t)
+    assert seq.count(b".") == 1 and rig.port.gt is None and arm.state()["goto"] is None
+    hold(rig, 0.4)                                                     # halt() let the button count as released: pressing starts again
+    assert len(rig.port.gt_lines) == 2
+
+
+def test_a_stick_wins_over_a_go_to(rig):
+    arm, _ = teach(rig)
+    hold(rig, 0.5)
+    t = rig.clock()
+    hold(rig, 0.8, stick=V1)
+    seq = writes_of(rig, t)
+    assert seq.index(b".") < min(i for i, d in enumerate(seq) if re.fullmatch(rb"[A-Fa-f]\d\d", d))
+    assert rig.port.gt is None and rig.port.move and len(rig.port.gt_lines) == 1
+    hold(rig, 0.5)                                                     # sticks let go, button still down: the go-to does not start
+    assert len(rig.port.gt_lines) == 1 and not rig.port.gt
+
+
+def test_refusals(rig):
+    arm, store = teach(rig)
+    store.save("Far", [175.0, 0, 0, 0, 0, 0], [0] * 6)                 # J1 beyond +/-171.887
+    store.save("Low", [0, 0, -115.0, 0, 0, 0], [0] * 6)
+    for name, text in (("Nope", "no pose"), ("Far", "outside the joint limits"), ("Low", "J3")):
+        with pytest.raises(RobotError, match=text):
+            arm.goto_hold(name)
+    assert not rig.port.gt_lines
+    rig.run(0.5, V1)                                                   # a jog in force
+    with pytest.raises(RobotError, match="jog"):
+        arm.goto_hold("A")
+    rig.run(0.8, [0] * 6)
+    rig.run(0.5)
+    plain = rig.build()
+    with pytest.raises(RobotError):
+        plain.goto_hold("A")
+
+
+def test_a_frame_change_refuses_a_go_to(rig):
+    arm, _ = teach(rig, frames=ALL_FRAMES)
+    arm.set_frame("world")
+    with pytest.raises(RobotError, match="frame"):
+        arm.goto_hold("A")
+    rig.run(4.0)
+    arm.goto_hold("A")                                                 # world frame is fine once it is up
+    rig.run(0.2)
+    assert len(rig.port.gt_lines) == 1
+
+
+@pytest.mark.parametrize("line,text", [(b"T\r\n", "dead-man"), (b"A -67108870 Path error\r\n", "Path error"),
+                                       (b"E 5 joint at its limit\r\n", "refused")])
+def test_t_a_and_e_end_a_go_to_and_the_same_hold_does_not_restart_it(rig, line, text):
+    arm, _ = teach(rig)
+    hold(rig, 0.5)
+    rig.port.gt = None
+    rig.port.inject(line)
+    hold(rig, 0.6)
+    assert arm.state()["goto"] is None and text in arm.notice and not arm._dead
+    assert len(rig.port.gt_lines) == 1
+    rig.run(0.6)
+    hold(rig, 0.5)
+    assert len(rig.port.gt_lines) == 2
+
+
+def test_a_malformed_line_answer_is_a_refusal(rig):
+    arm, _ = teach(rig)
+    hold(rig, 0.3)
+    rig.port.gt = None
+    rig.port.inject(b"E -22 invalid argument\r\n")
+    hold(rig, 0.4)
+    assert "E -22" in arm.notice and arm.state()["goto"] is None
+
+
+def test_no_dash_after_the_stop_is_the_emergency_stop(rig):
+    arm, _ = teach(rig, ignore_stop=True)
+    arm._attempts = jogd.MAX_RESTARTS                       # left dead for the checks
+    hold(rig, 0.5)
+    t = rig.clock()
+    rig.run(1.8)
+    dot = [tt for tt, d in rig.port.sent(t) if d == b"."]
+    z = [tt for tt, d in rig.port.sent(t) if d == CTRL_Z]
+    assert len(dot) == 1 and len(z) == 1 and 1.5 <= z[0] - dot[0] < 1.52
+    assert said(rig, "NO `-`, `T` OR `E` WITHIN 1.5 s") and arm.notice.startswith("jogd is not running")
+    assert arm.state()["goto"] is None
+
+
+def test_save_pose_asks_the_controller_for_its_own_pose(rig):
+    arm, store = teach(rig)
+    t = rig.clock()
+    pose = arm.save_pose("W1")
+    assert writes_of(rig, t).count(b"w") == 1
+    assert pose["world_hundredths"] == rig.port.world and pose["world_source"] == "controller"
+    assert store.get("W1")["world_hundredths"] == rig.port.world
+    assert not arm.controller_message and arm.notice == ""            # a `W` line is protocol, not a controller message
+    rig.run(0.5)
+    hold(rig, 0.5, name="W1", straight=True)                          # the L line carries exactly those numbers
+    assert rig.port.gt_lines[-1] == ("L " + " ".join(str(v) for v in rig.port.world) + " 10\r").encode()
+
+
+def test_save_pose_without_a_w_answer_uses_the_model(rig):
+    arm, _ = teach(rig)
+    rig.port.has_w = False
+    t = rig.clock()
+    pose = arm.save_pose("M1")
+    assert rig.clock() - t >= 1.0 and pose["world_hundredths"] is None and pose["world_source"] == "model"
+    rig.run(0.5)
+    hold(rig, 0.5, name="M1", straight=True)
+    nums = [int(round(pose[k] * 100)) for k in ("x", "y", "z", "yaw", "pitch", "roll")]
+    assert rig.port.gt_lines[-1] == ("L " + " ".join(str(v) for v in nums) + " 10\r").encode()
+
+
+def test_a_letter_jog_on_jogd_c_sends_the_letter_once_and_then_g(rig):
+    arm = rig.build(frames=ALL_FRAMES)
+    rig.run(4.0, ZERO)
+    assert rig.port.cart
+    t = rig.clock()
+    rig.run(2.0, [0.6, 0, 0, 0, 0, 0], frame="joint")
+    assert len(rig.port.moves(t)) == 1 and rig.port.g_moves >= 15 and arm.state()["moving"]
+
+
+def test_a_vector_on_jogd_c_sends_the_vector_once_and_then_g(rig):
+    arm = cart(rig)
+    t = rig.clock()
+    rig.run(2.0, [0.6, 0.4, 0, 0, 0, 0], frame="world")
+    assert len(rig.port.vectors(t)) == 1 and rig.port.g_moves >= 15 and arm.state()["moving"]
+    gs = [t_ for t_, d in rig.port.sent(t) if d == b"g"]
+    assert gs and gs[0] > rig.port.vectors(t)[0][0]
+
+
+def test_the_fake_jogd_c_dead_man_trips_when_g_stops(rig):
+    rig.build(frames=ALL_FRAMES)
+    port = rig.port
+    port.mode, port.cart, port.cmode = "jogd", True, 3
+    port.write(b"A06")
+    for _ in range(5):                              # `g` keeps it alive past the 0.3 s
+        rig.clock.sleep(0.1)
+        port.write(b"g")
+        port._deadman()
+    assert port.move is not None and port.g_moves == 5
+    rig.clock.sleep(0.31)                           # `g` stops
+    port._deadman()
+    assert port.move is None and b"T" in b"".join(d for _, d in port.out)
+
+
+def test_plain_jogd_still_repeats_the_letter(rig):
+    rig.build()
+    rig.run(4.0, ZERO)
+    t = rig.clock()
+    rig.run(1.0, [0.6, 0, 0, 0, 0, 0])
+    assert len(rig.port.moves(t)) >= 8 and b"g" not in writes_of(rig, t)
+
+
+def test_e_minus_4_during_a_move_is_handled_as_an_abort(rig):
+    arm = cart(rig)
+    rig.run(1.0, [0.6, 0, 0, 0, 0, 0], frame="world")
+    assert arm.state()["moving"]
+    rig.port.move = None
+    rig.port.put(b"E -4 Interrupted system call\r\n")
+    rig.run(0.5, [0.6, 0, 0, 0, 0, 0], frame="world")
+    assert arm.notice.startswith("the controller stopped the move: Interrupted system call")
+    assert not arm.state()["moving"] and not arm._dead
+
+
+def test_e_minus_4_with_no_move_is_not_an_abort(rig):
+    arm = cart(rig)
+    rig.port.put(b"E -4 Interrupted system call\r\n")
+    rig.run(0.5, ZERO, frame="world")
+    assert arm.notice.startswith("the controller reported:") or "stopped the move" not in arm.notice

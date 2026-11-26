@@ -149,6 +149,29 @@ online(OFF 0) at every exit that runs finish() (q, an input error); a letter is 
         online(ON) again (modes 3, 4) and reads on. The command in force stays, so its repeats are ignored. Control is
         kept: robotsrv's error path does not touch G557, online (G563) or manual mode. Ctrl-E (fastacid 0x012e:
         sigfifo SIGINT 7 to the console's readers) still ends jogd-c.
+Go-to lines (jogd-c, every mode): `G c1 c2 c3 c4 c5 c6 NN` then CR (or LF; a following LF or CR is ignored):
+absolute motor counts for axes 1..6 as `p` prints them; one move() (robotlib 0x2c, joint-interpolated) to pos_get(2)
+with axes 1..6 replaced (7 and 8 as they are). `L x y z yaw pitch roll NN` then CR: hundredths of a mm / of a degree,
+the cloc words 1..6 (ash's WORLD row prints loc_cdata words 1..6 as X Y Z Z-Rot Y-Rot X-Rot, ash 0x142a-0x1436); one
+moves() (straight) to here() as a cloc with those words replaced (words 7, 8 as here() gave them). Both at
+speed_set(NN) clamped to maxspeed, online (switched on for the move and off at its end in modes 1, 2), answered `+G` /
+`+L` when the call returned 0; a refusal prints `E n text`, then the stop (halt, `-`). Grammar: the letter, then six
+times one space and a number (an optional '-' and 1..9 digits), then one space, two digits, the end of line. A byte
+that does not fit drops the line: `.`, `q`, `@`, `G`, `L` and A..F / a..f silently (and are then taken as usual),
+`p` is answered and keeps the line, anything else prints `E -22 bad go-to line` (speed 00 too). `G` or `L` ends a
+half-received jog command or vector. While a go-to is in force `g` is its keep-alive (the jog dead-man rules: `T`
+after a halt); any jog letter, vector, G / L line, `.`, `q` stops it first (halt first, as for a jog); its arrival is
+robotisfinished from the idle loop at most every GOTO_FIN_MS (250) ms, which prints `-`; `g` after that is ignored.
+`w` (jogd-c): `W x y z yaw pitch roll`, here() as a cloc in the L line's units (rounded), so a pose can be noted and
+replayed; during an online move it is answered once no input is waiting, as `p`.
+jogd-c input: one reads() takes every waiting byte (up to CBUF, 120) and they are worked through in order with no
+clock or library call per byte (the dead-man clock is read once per reads()); measured in r3vm on a 106-byte burst of
+vector keep-alives: 56 instructions, 0.01 reads() and 0.08 mtime() per byte, against 60, 1 and 1.07 before. `g` is
+the keep-alive of any move in force (jog, vector, go-to); repeats of the letter or vector still are too.
+Interrupted calls: syslib's delay retries msleep on -4 (syslib 0x0140), but a robot call or reads() interrupted by
+SIGABRT returns -4 (EINTR). In jogd-c report() turns -4, or any error while an abort is pending, into the abort
+(no `E` line), stop() and the starts do nothing while one is pending, and an interrupted reads() is the abort too, so
+the one `A` line comes whatever call the signal hit.
 `@` vectors (jogd-c, all modes but 2): `@` then six components, each a sign and a digit (+0..+9, -0..-9), then
 two speed digits: `@+3+4+0+0+0+002` (15 bytes). A letter, `.`, `q`, `@` or any character that does not fit its
 place drops a half-received vector (then it is taken as usual); `p` does not. `+@...` echoes it as used (signs and
@@ -180,6 +203,7 @@ MAN_MODE_SET, MAN_MOVE_START, MAN_MOVE_STOP, ROBOT_MODE_GET = 0x52, 0x53, 0x54, 
 MOVE, MOVES, JOG_WS, JOG_TS, ROBOTISFINISHED, ONLINE, HERE, SHIFT_T = 0x2C, 0x2D, 0x34, 0x36, 0x3E, 0x3F, 0x62, 0x80
 STR_ERROR, DELAY = 0x07, 0x14    # syslib
 VEC_AXIS = 99                    # jogd-c: `axis` while an `@` vector is the command in force
+GOTO_AXIS = 98                   # jogd-c: `axis` while a G / L go-to is the command in force
 
 
 @dataclass(frozen=True)
@@ -202,6 +226,7 @@ class Options:
     fin_ms: int = 1000           # jogd-c: robotisfinished (end by itself) at most this often, only with no input waiting
     settle_ms: int = 1500        # jogd-c: after halt, robotisfinished until 1 for at most this long
     abort_wait_ms: int = 1100    # jogd-c: after SIGABRT, when the server answers -42 (its 1000 ms lock-out)
+    goto_fin_ms: int = 250       # jogd-c: G / L go-to: robotisfinished (arrival) at most this often
     build_time: int = BUILD_TIME
 
 
@@ -211,11 +236,14 @@ def _float_word(x):
 
 def _cart(opts):
     """jogd-c's pieces of source, keyed by the place in source() they go; all empty for other builds."""
-    keys = ("equ", "data", "setup", "loop", "vbyte", "keep", "start", "stop", "tprint", "idle", "finish", "code")
+    keys = ("equ", "data", "setup", "loop", "vbyte", "keep", "start", "stop", "tprint", "idle", "finish", "gk", "report",
+            "code")
     if not opts.cart:
         return dict.fromkeys(keys, "")
-    if not opts.speed_set:
-        raise ValueError("the cart option needs speed_set")
+    if not opts.speed_set or opts.maxvel:
+        raise ValueError("the cart option needs speed_set and not maxvel")
+    if not 1 <= opts.goto_fin_ms <= 10000:
+        raise ValueError("goto_fin_ms 1..10000")
     if not (1 <= opts.cart_mm <= 1000 and 1 <= opts.cart_deg <= 180 and 1 <= opts.vec_deg <= 90
             and 1 <= opts.fin_ms <= 10000 and 1 <= opts.settle_ms <= 10000):
         raise ValueError("cart_mm 1..1000, cart_deg 1..180, vec_deg 1..90, fin_ms and settle_ms 1..10000")
@@ -232,16 +260,40 @@ def _cart(opts):
 .equ SETTLE_MS {opts.settle_ms}
 .equ ABORT_WAIT_MS {opts.abort_wait_ms}
 .equ SIGABRT 6
-.equ VEC_AXIS {VEC_AXIS}"""
+.equ VEC_AXIS {VEC_AXIS}
+.equ GOTO_AXIS {GOTO_AXIS}
+.equ GOTO_FIN_MS {opts.goto_fin_ms}
+.equ CBUF 120
+.equ EINTR_R -4"""
     p["data"] = f"""
 cart:       word 0                  ; jogd-c: 1 in modes 3, 4 (online ON from start to exit)
 mkind:      word 0                  ; the move in force is an online move (jog_ws, jog_ts, moves, move): halt stops it
 lastfin:    word 0, 0               ; mtime() of the last robotisfinished (or of the start)
 ppend:      word 0                  ; a `p` read during an online move, answered once no input is waiting
+cbuf:       string 124 ""           ; jogd-c reads up to CBUF waiting bytes at once ...
+ci:         word 0                  ; ... and works through them: the next one
+cn:         word 0                  ; ... and how many there are
 settle0:    word 0, 0               ; mtime() when settle() began
 aborted:    word 0                  ; set by the SIGABRT handler, acted on at the top of the main loop
 errw:       zeros 2                 ; robot_error_get's word: the server's last board error (robotsrv G654)
 s_abort:    string "A abort\\n"
+finms:      word {opts.fin_ms}               ; finpoll's interval for the move in force: FIN_MS, or GOTO_FIN_MS for a go-to
+gk:         word 0                  ; a G / L line being received: 0 none, 1 G, 2 L ...
+gsub:       word 0                  ; ... where in it: 0 the space after the letter, 1 a number's first character,
+gfield:     word 0                  ;     2 after its '-', 3 in its digits, 4 / 5 the speed digits, 6 the end of line;
+gneg:       word 0                  ;     the number being read (field, sign, digit count, value)
+gdig:       word 0
+gval:       word 0
+gtens:      word 0
+gkind:      word 0                  ; the go-to in force or last started: 1 G, 2 L
+gnums:      zeros 6                 ; its six numbers
+wpend:      word 0                  ; a `w` read during an online move, answered once no input is waiting
+wloc:       zeros 9                 ; `w`: here() as a cloc ...
+wf:         zeros 8                 ; ... and its eight floats
+s_pg:       string "+G\\n"
+s_pl:       string "+L\\n"
+s_gbad:     string "E -22 bad go-to line\\n"
+s_w:        string "W {{}} {{}} {{}} {{}} {{}} {{}}\\n"
 s_aborte:   string "A {{}} {{}}\\n"
 vpos:       word 0                  ; `@` parser: 0 none, else the position (1..14) of the next character
 vtens:      word 0
@@ -278,11 +330,217 @@ ktab:                               ; CART_MM / sqrt(n) as floats, n = 0..243 (n
 c_setup_done:"""
     p["loop"] = """
     getg L6, aborted
-    ifnot L6, l_read
+    ifnot L6, l_buf
     pushi 0
-    call onabort                    ; jogd-c: a SIGABRT came
-l_read:"""
+    call onabort                    ; jogd-c: a SIGABRT came (or a call was interrupted)
+l_buf:
+    getg L6, ci
+    getg L5, cn
+    lt L4, L6, L5
+    if L4, l_next                   ; bytes left from the last reads()
+    pushi CBUF
+    pushleag cbuf
+    getg L6, fd
+    push L6
+    pushi 3
+    builtin reads                   ; every byte that is waiting, up to CBUF, in one call
+    pop L5
+    gtc L4, L5, 0
+    ifnot L4, l_none
+    putg L5, cn
+    ldi L6, 0
+    putg L6, ci
+l_next:
+    getg L6, ci
+    push L6
+    pushleag cbuf
+    pushi 2
+    builtin str_chr_get
+    pop L7
+    addc L6, L6, 1
+    putg L6, ci
+    push L7
+    pushi 1
+    call byte
+    pop L4
+    if L4, quit
+    getg L6, ci
+    getg L5, cn
+    lt L4, L6, L5
+    if L4, loop                     ; the rest of them, in order (the abort check runs between bytes)
+    ldi L4, DEADMAN_LONG_MS
+    goto deadman                    ; one clock read per reads(), not per byte
+l_none:
+    eqc L4, L5, EINTR_R
+    ifnot L4, no_byte               ; -35 or 0: idle; anything else: the input failed, as in jogd
+    ldi L6, 1
+    putg L6, aborted                ; an interrupted reads(): the abort is handled next
+    goto loop"""
     p["vbyte"] = """
+    getg L6, gk                     ; ---- jogd-c: a G / L line being received
+    ifnot L6, gl_none
+    getg L6, gsub
+    eqc L5, L6, 0
+    if L5, gl_space1
+    eqc L5, L6, 1
+    if L5, gl_start
+    eqc L5, L6, 2
+    if L5, gl_first
+    eqc L5, L6, 3
+    if L5, gl_digits
+    eqc L5, L6, 4
+    if L5, gl_tens
+    eqc L5, L6, 5
+    if L5, gl_units
+    goto gl_term
+gl_space1:                          ; right after the letter: one space
+    eqc L5, A3, 32
+    ifnot L5, gl_bad
+    ldi L5, 1
+    putg L5, gsub
+    goto gl_ok
+gl_start:                           ; a number's first character: '-' or a digit
+    ldi L5, 0
+    putg L5, gneg
+    eqc L5, A3, '-'
+    ifnot L5, gl_first
+    ldi L5, 1
+    putg L5, gneg
+    ldi L5, 2
+    putg L5, gsub
+    goto gl_ok
+gl_first:                           ; its first digit
+    gec L5, A3, '0'
+    lec L4, A3, '9'
+    land L5, L5, L4
+    ifnot L5, gl_bad
+    subc L4, A3, '0'
+    putg L4, gval
+    ldi L5, 1
+    putg L5, gdig
+    ldi L5, 3
+    putg L5, gsub
+    goto gl_ok
+gl_digits:                          ; more digits (9 at most), or the space that ends the number
+    eqc L5, A3, 32
+    if L5, gl_endnum
+    gec L5, A3, '0'
+    lec L4, A3, '9'
+    land L5, L5, L4
+    ifnot L5, gl_bad
+    getg L6, gdig
+    gtc L5, L6, 8
+    if L5, gl_bad
+    addc L6, L6, 1
+    putg L6, gdig
+    getg L6, gval
+    mulc L6, L6, 10
+    subc L4, A3, '0'
+    add L6, L6, L4
+    putg L6, gval
+    goto gl_ok
+gl_endnum:
+    getg L6, gval
+    getg L5, gneg
+    ifnot L5, gl_signed
+    neg L6, L6
+gl_signed:
+    getg L5, gfield
+    leag L4, gnums
+    stx L6, L4, L5
+    addc L5, L5, 1
+    putg L5, gfield
+    ldi L6, 1
+    ltc L4, L5, 6
+    if L4, gl_sub
+    ldi L6, 4                       ; after the sixth number and its space: the two speed digits
+gl_sub:
+    putg L6, gsub
+    goto gl_ok
+gl_tens:
+    gec L5, A3, '0'
+    lec L4, A3, '9'
+    land L5, L5, L4
+    ifnot L5, gl_bad
+    subc L4, A3, '0'
+    putg L4, gtens
+    ldi L5, 5
+    putg L5, gsub
+    goto gl_ok
+gl_units:
+    gec L5, A3, '0'
+    lec L4, A3, '9'
+    land L5, L5, L4
+    ifnot L5, gl_bad
+    subc L4, A3, '0'
+    getg L5, gtens
+    mulc L5, L5, 10
+    add L4, L5, L4
+    putg L4, gval                   ; the speed
+    ldi L5, 6
+    putg L5, gsub
+    goto gl_ok
+gl_term:                            ; the end of the line: CR (or LF)
+    eqc L5, A3, 13
+    eqc L4, A3, 10
+    lor L5, L5, L4
+    ifnot L5, gl_bad
+    getg L6, gk
+    ldi L5, 0
+    putg L5, gk
+    getg L5, gval
+    push L5
+    push L6
+    pushi 2
+    call gocommand
+gl_ok:
+    ldi L5, 0
+    retv L5
+gl_bad:                             ; a byte that does not fit
+    eqc L5, A3, 'p'
+    if L5, gl_none                  ; `p`: answered, the line kept
+    ldi L5, 0
+    putg L5, gk                     ; the line is dropped: silently for a command byte, taken as usual next ...
+    eqc L5, A3, '.'
+    if L5, gl_none
+    eqc L5, A3, 'q'
+    if L5, gl_none
+    eqc L5, A3, '@'
+    if L5, gl_none
+    eqc L5, A3, 'G'
+    if L5, gl_none
+    eqc L5, A3, 'L'
+    if L5, gl_none
+    gec L5, A3, 'A'
+    lec L4, A3, 'F'
+    land L5, L5, L4
+    if L5, gl_none
+    gec L5, A3, 'a'
+    lec L4, A3, 'f'
+    land L5, L5, L4
+    if L5, gl_none
+    pushi 0                         ; ... with E for anything else
+    pushleag s_gbad
+    pushi 2
+    builtinx printf
+gl_none:
+    eqc L5, A3, 'G'
+    ifnot L5, gl_notg
+    ldi L6, 1
+    goto gl_begin
+gl_notg:
+    eqc L5, A3, 'L'
+    ifnot L5, gl_end
+    ldi L6, 2
+gl_begin:                           ; G or L: a new line; it ends a half-received jog command or vector
+    putg L6, gk
+    ldi L5, 0
+    putg L5, gsub
+    putg L5, gfield
+    putg L5, pstate
+    putg L5, vpos
+    retv L5
+gl_end:
     eqc L5, A3, 'p'                 ; ---- jogd-c: `p` during an online move is answered later (main loop, idle)
     ifnot L5, vb_notp
     getg L6, mkind
@@ -371,11 +629,17 @@ vb_end:"""
     goto c_done                     ; ... and its letter again, at any speed: a keep-alive (the speed is fixed per move)
 c_kj:"""
     p["start"] = f"""
+    getg L6, aborted
+    ifnot L6, s_live
+    ret                             ; an abort is pending: no new move before onabort
+s_live:
     getg L6, cart
     ifnot L6, s_manual              ; jogd-c modes 3, 4: one straight-line move, online
     ldi L6, 1
     putg L6, moving
     putg L6, mkind
+    ldi L6, FIN_MS
+    putg L6, finms
     put A3, L7                      ; put SRC, DST: L7 = A3
     ltc L5, A3, 0
     ifnot L5, s_cabs
@@ -412,6 +676,10 @@ s_ccalled:
     goto s_moving
 s_manual:"""
     p["stop"] = f"""
+    getg L6, aborted
+    ifnot L6, t_live
+    ret                             ; an abort is pending: onabort ends the move and says A
+t_live:
     getg L6, mkind
     ifnot L6, t_manual              ; jogd-c: an online move stops with halt (robotsrv 0x0b2b: message 1999)
     ldi L6, 0
@@ -424,6 +692,8 @@ s_manual:"""
     pushi 1
     call report
 t_halted:
+    getg L6, aborted
+    if L6, t_done                   ; halt was interrupted by the abort: onabort says A
     ifnot A3, t_cdash               ; the line as soon as halt has returned
     pushi 0
     pushleag s_dead
@@ -461,10 +731,49 @@ t_manual:"""
     call position
     goto loop
 i_poll:
+    getg L6, wpend
+    ifnot L6, i_fin
+    ldi L6, 0
+    putg L6, wpend
+    pushi 0
+    call wpose
+    goto loop
+i_fin:
     pushi 0
     call finpoll
     pop L5
     if L5, loop"""
+    p["gk"] = """
+    goto b_none
+b_cg:
+    eqc L5, A3, 'g'
+    ifnot L5, b_cw
+    getg L6, moving                 ; jogd-c: `g` is the keep-alive of whatever move is in force
+    ifnot L6, b_none
+    pushleag last
+    pushi 1
+    builtinx mtime
+    goto b_none
+b_cw:
+    eqc L5, A3, 'w'
+    ifnot L5, b_none
+    getg L6, mkind
+    ifnot L6, b_cw_now
+    ldi L6, 1
+    putg L6, wpend                  ; during an online move: answered once no input is waiting
+    goto b_none
+b_cw_now:
+    pushi 0
+    call wpose"""
+    p["report"] = """
+    eqc L5, A3, EINTR_R
+    getg L6, aborted
+    lor L5, L5, L6
+    ifnot L5, rp_print
+    ldi L6, 1
+    putg L6, aborted                ; jogd-c: an interrupted call (-4) or an abort pending: no E; onabort says A
+    ret
+rp_print:"""
     p["finish"] = """
     getg L6, cart
     ifnot L6, f_online
@@ -500,7 +809,7 @@ finpoll:                            ; finpoll(): robotisfinished at most every F
     getg L5, now
     getg L6, lastfin
     sub L4, L5, L6
-    ldi L3, FIN_MS
+    getg L3, finms
     lt L3, L4, L3
     if L3, fp_none
     putg L5, lastfin
@@ -576,6 +885,215 @@ st_wait:
     chkpop
     goto st_poll
 st_done:
+    ret
+
+gocommand:                          ; gocommand(kind, speed): a whole G (1) or L (2) line has arrived (gnums)
+    enter 10
+    ltc L5, A4, 1
+    ifnot L5, go_speed
+    pushi 0                         ; 00 is not a speed
+    pushleag s_gbad
+    pushi 2
+    builtinx printf
+    ret
+go_speed:
+    getg L6, maxspeed
+    gt L5, A4, L6
+    ifnot L5, go_clamped
+    put L6, A4
+go_clamped:
+    pushleag last
+    pushi 1
+    builtinx mtime
+    getg L6, moving
+    ifnot L6, go_idle
+    pushi 0
+    pushi 1
+    call stop                       ; whatever is moving: the whole stop first (halt first), as for a jog
+go_idle:
+    ldi L6, GOTO_AXIS
+    putg L6, axis
+    putg A4, speed
+    putg A3, gkind
+    push A4
+    pushi 1
+    call gostart
+    ret
+
+gostart:                            ; gostart(speed): one move() (G) or moves() (L) to the target in gnums, online
+    enter 30
+    getg L6, aborted
+    if L6, go_none                  ; an abort is pending: no new move before onabort
+    push A3
+    pushi 1
+    call vspeed
+    pop L5
+    ltc L4, L5, 0
+    if L4, go_report
+    getg L6, gkind
+    eqc L5, L6, 2
+    if L5, go_cart
+    pushleag vloc                   ; ---- G: the commanded location (pos_get 2), axes 1..6 replaced
+    pushi 2
+    pushi 2{lib}pos_get
+    pop L5
+    ltc L4, L5, 0
+    if L4, go_report
+    pushleag vf
+    pushleag vloc
+    pushi 2
+    builtin loc_pdata_get
+    leag L7, vf
+    leag L6, gnums
+    ldi L5, 6
+    memcopy L7, L6, L5              ; axes 7 and 8 as they are
+    pushleag vf
+    pushleag vloc
+    pushi 2
+    builtin loc_pdata_set
+    pushleag vloc
+    pushi 1
+    builtin loc_re_check
+    goto go_online
+go_cart:                            ; ---- L: here() as a cloc (world), words 1..6 replaced by the numbers / 100
+    pushi 1
+    pushleag vloc
+    pushi 2
+    builtin loc_class_set
+    pushleag vloc
+    pushi 1{lib}here
+    pop L5
+    ltc L4, L5, 0
+    if L4, go_report
+    pushleag vf
+    pushleag vloc
+    pushi 2
+    builtin loc_cdata_get
+    ldi L8, 100
+    itof L8, L8
+    ldi L9, 0
+go_conv:
+    leag L7, gnums
+    ldx L6, L7, L9
+    itof L6, L6
+    fdiv L6, L6, L8
+    leag L7, vf
+    stx L6, L7, L9
+    addc L9, L9, 1
+    ltc L5, L9, 6
+    if L5, go_conv
+    pushleag vf
+    pushleag vloc
+    pushi 2
+    builtin loc_cdata_set
+    pushleag vloc
+    pushi 1
+    builtin loc_re_check
+go_online:
+    getg L6, cart
+    if L6, go_move
+    pushi 1
+    pushi 1
+    call setonline                  ; modes 1, 2: online(ON) for this move only
+    pop L5
+    ltc L4, L5, 0
+    if L4, go_report
+go_move:
+    ldi L6, 1
+    putg L6, moving
+    putg L6, mkind
+    ldi L6, GOTO_FIN_MS
+    putg L6, finms
+    getg9 L20, vloc
+    getg L6, gkind
+    eqc L5, L6, 2
+    if L5, go_moves
+    push9 L20
+    pushi 9{lib}move               ; joint-interpolated (robotlib 0x0702)
+    goto go_called
+go_moves:
+    push9 L20
+    pushi 9{lib}moves              ; straight line (robotlib 0x0714)
+go_called:
+    pop L5
+    ltc L4, L5, 0
+    if L4, go_failed
+    pushleag last
+    pushi 1
+    builtinx mtime
+    pushleag lastfin
+    pushi 1
+    builtinx mtime
+    leag L5, s_pg
+    getg L6, gkind
+    eqc L4, L6, 2
+    ifnot L4, go_said
+    leag L5, s_pl
+go_said:
+    pushi 0
+    push L5
+    pushi 2
+    builtinx printf
+    ret
+go_failed:
+    push L5
+    pushi 1
+    call report
+    pushi 0
+    pushi 1
+    call stop                       ; halt, `-`, and online OFF again in modes 1, 2
+    ret
+go_report:
+    push L5
+    pushi 1
+    call report
+go_none:
+    ret
+
+wpose:                              ; wpose(): W x y z yaw pitch roll, hundredths, from here() as a cloc (the L units)
+    enter 20
+    pushi 1
+    pushleag wloc
+    pushi 2
+    builtin loc_class_set
+    pushleag wloc
+    pushi 1{lib}here
+    pop L5
+    ltc L4, L5, 0
+    ifnot L4, w_got
+    push L5
+    pushi 1
+    call report
+    ret
+w_got:
+    pushleag wf
+    pushleag wloc
+    pushi 2
+    builtin loc_cdata_get
+    ldi L8, 100
+    itof L8, L8
+    ldlit L7, {_float_word(0.5)}
+    ldi L9, 5
+w_value:
+    leag L6, wf
+    ldx L5, L6, L9
+    fmul L5, L5, L8
+    ltc L3, L5, 0                   ; the float's sign bit
+    if L3, w_neg
+    fadd L5, L5, L7
+    goto w_round
+w_neg:
+    fsub L5, L5, L7
+w_round:
+    ftoi L5, L5                     ; rounded half away from zero
+    push L5 tag 1
+    subc L9, L9, 1
+    gec L6, L9, 0
+    if L6, w_value
+    pushi 6
+    pushleag s_w
+    pushi 14
+    builtinx printf
     ret
 
 on_sigabrt:                         ; on_sigabrt(sig): the handler. robotsrv sends 6 to its controlling process on a
@@ -751,6 +1269,8 @@ vc_done:
 
 vstart:                             ; vstart(speed): one move toward the vector vc
     enter 30
+    getg L6, aborted
+    if L6, v_done                   ; an abort is pending: no new move before onabort
     getg L6, mode
     eqc L5, L6, 2
     if L5, v_bad                    ; no vector in cylindrical mode
@@ -852,6 +1372,8 @@ v_move:
     ldi L6, 1
     putg L6, moving
     putg L6, mkind
+    ldi L6, FIN_MS
+    putg L6, finms
     getg9 L20, vloc
     push9 L20
     pushi 9{lib}moves              ; straight line (robotlib 0x0714, request 18, message 1002); a cloc only
@@ -920,6 +1442,8 @@ v_joints:
     ldi L6, 1
     putg L6, moving
     putg L6, mkind
+    ldi L6, FIN_MS
+    putg L6, finms
     getg9 L20, vloc
     push9 L20
     pushi 9{lib}move               ; joint-interpolated (robotlib 0x0702)
@@ -1064,7 +1588,7 @@ b_v2:
     call vel
     goto b_none
 b_vno:""" if mv else ""
-    after_p = "b_vel" if mv else "b_none"
+    after_p = "b_vel" if mv else "b_cg" if opts.cart else "b_none"
     c = _cart(opts)
     mv_byte = """
     goto b_none
@@ -1469,7 +1993,7 @@ b_pos:
     eqc L5, A3, 'p'
     ifnot L5, {after_p}
     pushi 0
-    call position                   ; no pstate change, no dead-man feed{mv_byte}
+    call position                   ; no pstate change, no dead-man feed{mv_byte}{c['gk']}
 b_none:
     ldi L5, 0
     retv L5
@@ -1698,7 +2222,7 @@ p_got:
     ret
 
 report:                             ; report(r): print "E <r> <text>" for a result r < 0
-    enter 10
+    enter 10{c['report']}
     neg L5, A3
     push L5
     pushi 1

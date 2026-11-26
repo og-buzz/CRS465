@@ -406,3 +406,148 @@ def test_a_controller_that_connects_with_l1_held_does_not_enable(monkeypatch):
     original = FakeNode.active_keys
     monkeypatch.setattr(FakeNode, "active_keys", lambda self: list(robot_keys) if self.name == "pad" else original(self))
     run_pad(monkeypatch, scenario)
+
+
+# ---- teach and replay buttons -----------------------------------------------------------------------------------------
+
+from a465.sim import RobotError  # noqa: E402
+
+
+class TeachRobot:
+    """Has the pose methods JogdArm has; records what the pad calls."""
+    arm_power, speed = True, 10
+
+    def __init__(self):
+        self.calls, self.selected, self.refuse = [], None, None
+
+    def state(self):
+        return {"command": None}
+
+    def halt(self):
+        self.calls.append(("halt",))
+
+    def jog(self, *a, **k):
+        self.calls.append(("jog",))
+
+    def set_speed(self, p):
+        self.calls.append(("set_speed", p))
+
+    def goto(self, *a, **k):
+        self.calls.append(("goto",))
+
+    def selected_pose(self):
+        return self.selected
+
+    def save_pose(self, name=None):
+        if self.refuse:
+            raise RobotError(self.refuse)
+        self.calls.append(("save",))
+        self.selected = "P3"
+        return {"name": "P3"}
+
+    def next_pose(self):
+        self.calls.append(("next",))
+        self.selected = "P1"
+        return "P1"
+
+    def goto_hold(self, name, straight=False, source="rest"):
+        if self.refuse:
+            raise RobotError(self.refuse)
+        self.calls.append(("hold", name, straight, source))
+
+
+@pytest.fixture
+def teach_pad():
+    robot = TeachRobot()
+    robot.selected = "P2"
+    return GamepadJog(robot)
+
+
+def test_share_saves_the_pose_without_l1(teach_pad):
+    teach_pad.update(NEUTRAL, {"share"})
+    assert teach_pad.robot.calls == [("save",)] and "saved P3" in teach_pad.message
+    teach_pad.update(NEUTRAL, {"share"})                     # held: not a second press
+    assert teach_pad.robot.calls == [("save",)]
+
+
+def test_share_refusal_is_shown(teach_pad):
+    teach_pad.robot.refuse = "cannot save a pose while the arm is moving"
+    teach_pad.update(NEUTRAL, {"share"})
+    assert "while the arm is moving" in teach_pad.message
+
+
+def test_triangle_held_goes_to_the_selected_pose_as_a_joint_move(teach_pad):
+    teach_pad.update(NEUTRAL, {"l1"})
+    for _ in range(3):
+        teach_pad.update(NEUTRAL, {"l1", "triangle"})
+    holds = [c for c in teach_pad.robot.calls if c[0] == "hold"]
+    assert holds == [("hold", "P2", False, "gamepad")] * 3
+    assert ("goto",) not in teach_pad.robot.calls and ("set_speed", 10) not in teach_pad.robot.calls     # not "point straight up"
+
+
+def test_r1_triangle_is_a_straight_line(teach_pad):
+    teach_pad.update(NEUTRAL, {"l1", "r1"})
+    teach_pad.update(NEUTRAL, {"l1", "r1", "triangle"})
+    assert ("hold", "P2", True, "gamepad") in teach_pad.robot.calls
+
+
+def test_letting_go_of_triangle_or_l1_halts_the_go_to(teach_pad):
+    teach_pad.update(NEUTRAL, {"l1"})
+    teach_pad.update(NEUTRAL, {"l1", "triangle"})
+    teach_pad.robot.calls.clear()
+    teach_pad.update(NEUTRAL, {"l1"})                        # Triangle up
+    assert teach_pad.robot.calls == [("halt",)]
+    teach_pad.update(NEUTRAL, {"l1", "triangle"})
+    teach_pad.robot.calls.clear()
+    teach_pad.update(NEUTRAL, {"triangle"})                  # L1 up
+    assert ("halt",) in teach_pad.robot.calls and not [c for c in teach_pad.robot.calls if c[0] == "hold"]
+    teach_pad.update(NEUTRAL, set())
+    assert teach_pad.robot.calls.count(("halt",)) == 1       # one halt, not one per tick
+
+
+def test_signal_loss_halts_a_go_to(teach_pad):
+    teach_pad.update(NEUTRAL, {"l1"})
+    teach_pad.update(NEUTRAL, {"l1", "triangle"})
+    teach_pad.robot.calls.clear()
+    teach_pad.release()
+    assert teach_pad.robot.calls == [("halt",)]
+
+
+def test_triangle_without_l1_or_a_selection_is_refused(teach_pad):
+    teach_pad.update(NEUTRAL, {"triangle"})
+    assert "hold L1" in teach_pad.message and not [c for c in teach_pad.robot.calls if c[0] == "hold"]
+    teach_pad.robot.selected = None
+    teach_pad.update(NEUTRAL, {"l1"})
+    teach_pad.update(NEUTRAL, {"l1", "triangle"})
+    assert "no pose selected" in teach_pad.message and not [c for c in teach_pad.robot.calls if c[0] == "hold"]
+
+
+def test_a_refused_go_to_shows_the_message(teach_pad):
+    teach_pad.robot.refuse = "a jog is in force"
+    teach_pad.update(NEUTRAL, {"l1"})
+    teach_pad.update(NEUTRAL, {"l1", "triangle"})
+    assert "a jog is in force" in teach_pad.message
+
+
+def test_l1_r1_cross_selects_the_next_pose(teach_pad):
+    teach_pad.update(NEUTRAL, {"l1", "r1"})
+    teach_pad.update(NEUTRAL, {"l1", "r1", "cross"})
+    assert teach_pad.robot.calls == [("next",)] and "selected pose P1" in teach_pad.message
+
+
+def test_a_robot_without_pose_methods_keeps_its_behaviour_and_refuses_the_new_buttons(pad):
+    pad.update(NEUTRAL, {"share"})
+    assert "cannot save poses" in pad.message
+    pad.update(NEUTRAL, set())
+    pad.update(NEUTRAL, {"l1", "r1"})
+    pad.update(NEUTRAL, {"l1", "r1", "cross"})
+    assert "no saved poses" in pad.message
+    pad.update(NEUTRAL, set())
+    pad.update(NEUTRAL, {"l1"})
+    pad.update(NEUTRAL, {"l1", "triangle"})
+    assert pad.robot.speed == 10 and command(pad) == {"kind": "goto", "source": "gamepad"}      # point straight up, as before
+
+
+def test_help_lists_the_new_buttons():
+    text = " ".join(" ".join(row) for rows in gamepad.HELP.values() for row in rows)
+    assert "Share" in text and "straight line" in text and "next saved pose" in text

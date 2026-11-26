@@ -470,8 +470,9 @@ class JogTest:
             cmd = f"{letter}{speed:02d}".encode()
             mark, first = len(self.rd.lines), None
             while True:
-                t = self.write(cmd)
-                test.sent.append((t, cmd.decode() + (" (first)" if first is None else " (keep-alive)")))
+                out = cmd if first is None or self.args.keepalive != "g" else b"g"      # `g`: jogd-c's one-byte keep-alive
+                t = self.write(out)
+                test.sent.append((t, out.decode() + (" (first)" if first is None else " (keep-alive)")))
                 if first is None:
                     test.phases.append((t, cmd.decode()))
                 if last is not None:
@@ -746,6 +747,8 @@ class JogTest:
                          "also switch arm power off). Keep a hand on the E-stop.")
         if a.after_abort:
             extra.append(f"--after-abort {a.after_abort}: 1.5 s after an `A` line, {a.after_abort}{a.speed:02d} for {a.hold:g} s")
+        extra.append("keep-alive: " + ("the single byte `g` every 100 ms (jogd-c)" if a.keepalive == "g"
+                                       else "the start command repeated every 100 ms"))
         return extra + [f"MODE {a.mode} ({'world' if a.mode == 3 else 'tool'} frame): {what}",
                 f"limits in force (checked on every sample, `.` at once): tool point (model) {a.max_tcp:g} mm from the first sample, "
                 f"any joint {a.max_joint:g} degrees from the first sample; speed {a.speed}% (jogd ceiling {a.max}); "
@@ -1315,9 +1318,15 @@ def parse_args(argv, repo):
     ap.add_argument("--remote-name", "--remote", dest="remote", default="/tmp/jogd", help="jogd on the controller (default %(default)s)")
     ap.add_argument("--program", "--local", dest="local", default=os.path.join(repo, "controller", "programs", "jogd"),
                     help="the local copy it must equal (default %(default)s)")
+    ap.add_argument("--keepalive", choices=("g", "repeat"), default=None,
+                    help="the keep-alive after the start command: `g` (jogd-c: one byte) or `repeat` (the command again; plain jogd). "
+                         "Default g with --mode 3/4 or a jogd-c program, else repeat")
     ap.add_argument("--port", default=os.environ.get("A465_PORT", "/dev/ttyUSB0"))
     args = ap.parse_args(argv)
     six = args.mode in (3, 4)
+    if args.keepalive is None:
+        is_c = os.path.basename(args.local).startswith("jogd-c") or os.path.basename(args.remote).startswith("jogd-c")
+        args.keepalive = "g" if six or is_c else "repeat"
     if args.vector is not None:
         if not six:
             ap.error("--vector needs --mode 3 or --mode 4 (it cannot be combined with mode 1)")

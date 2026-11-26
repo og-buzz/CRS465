@@ -1,0 +1,8 @@
+;; This is the installed base of libraries
+;; $Id: ldconf 1.4 1998/03/13 18:47:43 RMF Exp $
+;;
+syslib   /lib/syslib.r
+robotlib /lib/robotlib.r
+v3access /lib/v3access.r
+stp	 /lib/stp.r
+acid	 /lib/acid.r

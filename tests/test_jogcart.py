@@ -509,3 +509,277 @@ def test_sigabrt_in_joint_mode_puts_manual_mode_off():
 def test_sigint_still_kills_jogd_c():
     r = Run([(100, b"A02")] + keepalives(b"A02", 200, 600), signals=[(450, 7)])
     assert r.killed == 7
+
+
+# ---- G / L go-to lines -----------------------------------------------------------------------------
+
+GLINE = b"G 11025 -63 -31947 0 6248 -1277 10\r"
+LLINE = b"L 38411 -19 58115 -3 4499 -2260 05\r"
+BAD = "E -22 bad go-to line"
+
+
+def gkeep(start, stop, every=100):
+    return [(t, b"g") for t in range(start, stop, every)]
+
+
+def test_G_is_one_move_to_the_counts_in_joint_mode():
+    r = Run([(100, GLINE)] + gkeep(200, 1000) + [(1000, b"."), (1300, b"q")], argv=("1",))
+    assert r.lines == ["jogd ready", "+G", "-"]
+    names = [n for n in r.names if n != "robotisfinished"]
+    assert names == ["ctl_get", "speed_get", "speed_set", "pos_get", "online", "move", "halt", "online",
+                     "speed_set", "ctl_rel"]
+    assert r.args("speed_set")[0] == (10,) and r.args("pos_get")[0][0] == 2
+    assert r.args("online") == [(1,), (0,)]
+    (loc,) = r.args("move")
+    assert [r3vm.s32(w) for w in loc[1:9]] == [11025, -63, -31947, 0, 6248, -1277] + PULSES[6:8]
+    assert loc[0] & 0xFF == 2
+
+
+@pytest.mark.parametrize("mode", ["3", "4"])
+def test_L_is_one_straight_move_to_the_pose(mode):
+    r = Run([(100, LLINE)] + gkeep(200, 1000) + [(1000, b"."), (1300, b"q")], argv=(mode,))
+    assert r.lines == ["jogd ready", "+L", "-"]
+    names = [n for n in r.names if n != "robotisfinished"]
+    assert names == ["ctl_get", "speed_get", "online", "speed_set", "here", "moves", "halt", "online", "speed_set",
+                     "ctl_rel"]
+    (loc,) = r.args("moves")
+    assert loc[0] & 0xFF == 1
+    assert [f(w & 0xFFFFFFFF) for w in loc[1:7]] == pytest.approx([384.11, -0.19, 581.15, -0.03, 44.99, -22.60],
+                                                                   abs=1e-4)
+    assert loc[7:9] == (0, 0)
+
+
+def test_L_in_joint_mode_switches_online_for_the_move():
+    r = Run([(100, LLINE), (200, b"."), (500, b"q")], argv=("1",))
+    assert r.lines == ["jogd ready", "+L", "-"]
+    assert [n for n in r.names if n != "robotisfinished"][2:8] == ["speed_set", "here", "online", "moves", "halt",
+                                                                   "online"]
+    assert r.args("online") == [(1,), (0,)]
+
+
+def test_G_in_world_mode_and_L_in_cylindrical_mode():
+    r = Run([(100, GLINE), (200, b"."), (500, b"q")], argv=("3",))
+    assert r.lines == ["jogd ready", "+G", "-"] and "move" in r.names
+    r = Run([(100, LLINE), (200, b"."), (500, b"q")], argv=("2",))
+    assert r.lines == ["jogd ready", "+L", "-"] and "moves" in r.names
+
+
+def test_arrival_prints_a_dash_and_later_keepalives_are_ignored():
+    arm = Arm(joint_ms=500)
+    r = Run([(100, GLINE)] + gkeep(200, 2000) + [(2100, b"q")], argv=("1",), arm=arm)
+    assert r.lines == ["jogd ready", "+G", "-"]
+    t_dash, = r.printed("-")
+    goto = jogprog.Options().goto_fin_ms
+    assert 600 <= t_dash <= 100 + 500 + goto + 20
+    assert "halt" not in r.names
+    assert r.args("online") == [(1,), (0,)], "online OFF again at the arrival in mode 1"
+    assert arm.pulses[:6] == [11025, -63, -31947, 0, 6248, -1277]
+
+
+def test_the_dead_man_stops_a_go_to_without_g():
+    r = Run([(100, GLINE), (1500, b"q")], argv=("1",))
+    assert r.lines == ["jogd ready", "+G", "T"]
+    t_halt, = r.at("halt")
+    assert 300 <= t_halt - 100 <= 320
+
+
+@pytest.mark.parametrize("mode,cmd", [("3", b"A02"), ("4", b"e05"), ("3", b"@+1+1+0+0+0+002"), ("1", b"B03"),
+                                      ("1", b"@+0+1+0+0+0+002")])
+def test_g_keeps_any_move_alive_and_the_dead_man_trips_without_it(mode, cmd):
+    r = Run([(100, cmd)] + gkeep(200, 1000) + [(1000, b"."), (1500, b"q")], argv=(mode,))
+    assert r.lines[2:] == ["-"], "no T while g comes"
+    stops = r.at("halt") or r.at("man_move_stop")
+    assert 1000 <= stops[-1] <= 1010
+    r = Run([(100, cmd)] + gkeep(200, 500) + [(1500, b"q")], argv=(mode,))
+    assert r.lines[2:] == ["T"], "the dead-man after the last g"
+
+
+def test_g_with_nothing_moving_is_ignored():
+    r = Run([(100, b"g"), (200, b"g"), (400, b"q")])
+    assert r.lines == ["jogd ready"]
+    assert r.names == ["ctl_get", "speed_get", "online", "online", "ctl_rel"]
+
+
+@pytest.mark.parametrize("mode,then,starts", [("1", b"A02", "man_move_start"), ("3", b"c03", "jog_ws"),
+                                               ("3", b"@+1+0+0+0+0+002", "moves"), ("3", LLINE, "moves")])
+def test_a_jog_vector_or_line_stops_a_go_to_first(mode, then, starts):
+    keep = b"g" if then[:1] in b"GL" else then          # the new command's own keep-alive
+    r = Run([(100, GLINE), (200, b"g"), (300, then), (400, keep), (450, b"."), (700, b"q")], argv=(mode,))
+    names = [n for n in r.names if n not in ("robotisfinished", "pos_get", "here")]
+    i = names.index("move")
+    assert names[i + 1] == "halt"
+    assert starts in names[i + 2:]
+    assert r.lines[:3] == ["jogd ready", "+G", "-"]
+
+
+def test_another_G_while_moving_halts_then_starts_it():
+    line2 = b"G 1 2 3 4 5 6 07\r"
+    r = Run([(100, GLINE), (200, b"g"), (300, line2), (400, b"g"), (450, b"."), (700, b"q")], argv=("1",))
+    assert r.lines == ["jogd ready", "+G", "-", "+G", "-"]
+    moves = r.args("move")
+    assert [r3vm.s32(w) for w in moves[1][1:7]] == [1, 2, 3, 4, 5, 6]
+    assert r.args("speed_set")[:2] == [(10,), (7,)]
+
+
+def test_an_abort_during_a_go_to():
+    r = Run([(100, GLINE)] + gkeep(200, 600) + [(1000, b"q")], argv=("1",), signals=[(350, 6)])
+    assert r.lines == ["jogd ready", "+G", "A abort"]
+    assert r.args("online") == [(1,), (0,)]
+
+
+def test_p_during_a_go_to_and_w():
+    r = Run([(100, LLINE), (150, b"p"), (200, b"w"), (300, b"."), (500, b"w"), (700, b"q")])
+    assert r.lines[1] == "+L"
+    assert r.lines[2].startswith("P ")
+    assert r.lines[3].startswith("W ")
+    assert r.lines[4] == "-"
+    assert r.lines[5].startswith("W ")
+
+
+def test_w_prints_the_pose_in_the_L_units():
+    r = Run([(100, b"w"), (300, b"q")])
+    assert r.lines == ["jogd ready", "W 30000 -2000 50000 1000 8000 -500"]
+    arm = Arm()
+    arm.pose = [0.004, -0.006, 1.2349, -0.0051, 179.996, -0.3]
+    r = Run([(100, b"w"), (300, b"q")], arm=arm)
+    assert r.lines[1] == "W 0 -1 123 -1 18000 -30"
+
+
+@pytest.mark.parametrize("line", [
+    b"G 1 2 3 4 5 10\r",                 # five numbers
+    b"G 1 2 3 4 5 6 7 10\r",             # seven
+    b"G  1 2 3 4 5 6 10\r",              # two spaces
+    b"G 1 2  3 4 5 6 10\r",
+    b"G1 2 3 4 5 6 10\r",                # no space after the letter
+    b"G 1234567890 2 3 4 5 6 10\r",      # ten digits
+    b"G 1 --2 3 4 5 6 10\r",
+    b"G 1 +2 3 4 5 6 10\r",
+    b"G 1 - 3 4 5 6 10\r",
+    b"G 1 2 3 4 5 6 1\r",                # one speed digit
+    b"G 1 2 3 4 5 6 100\r",
+    b"G 1 2 3 4 5 6 10 \r",
+    b"G 1 2 3 4 5 6 00\r",               # speed 00
+    b"L 1 2 3 4 5 x 10\r",
+    b"L 1 2 3 4 5 6 10g",
+    b"G 1 2 3 4 5 6\r",
+])
+def test_a_malformed_line_gives_E_and_starts_nothing(line):
+    r = Run([(100, line), (400, b"q")], argv=("1",))
+    assert r.lines == ["jogd ready", BAD]
+    assert [n for n in r.names if n not in ("ctl_get", "speed_get", "speed_set", "ctl_rel")] == []
+
+
+@pytest.mark.parametrize("cut", [b".", b"q", b"A02", b"@+1+0+0+0+0+002"])
+def test_a_half_line_is_dropped_silently_by_a_command_byte(cut):
+    r = Run([(100, b"G 11025 -63 -31"), (150, cut), (250, b"947 0 6248 -1277 10\r"), (300, b"."), (700, b"q")],
+            argv=("3",))
+    assert BAD not in r.lines and "+G" not in r.lines
+    assert "move" not in r.names
+
+
+def test_p_inside_a_line_is_answered_and_the_line_kept():
+    r = Run([(100, b"G 11025 -63 -31"), (150, b"p"), (200, b"947 0 6248 -1277 10\r"), (300, b"."), (600, b"q")],
+            argv=("1",))
+    assert r.lines[1].startswith("P ") and r.lines[2:] == ["+G", "-"]
+
+
+def test_lf_ends_a_line_and_a_crlf_leaves_no_trace():
+    r = Run([(100, GLINE[:-1] + b"\n"), (200, b"."), (300, GLINE + b"\n"), (400, b"."), (600, b"q")], argv=("1",))
+    assert r.lines == ["jogd ready", "+G", "-", "+G", "-"]
+
+
+def test_the_line_speed_is_clamped():
+    r = Run([(100, b"G 1 2 3 4 5 6 60\r"), (200, b"."), (400, b"q")], argv=("1", "15"))
+    assert r.args("speed_set")[0] == (15,)
+
+
+def test_a_refused_move_gives_E_then_the_stop():
+    arm = Arm(results={0x2C: -5})
+    r = Run([(100, GLINE), (200, b"g"), (500, b"q")], argv=("1",), arm=arm)
+    assert r.lines == ["jogd ready", "E -5 I/O error", "-"]
+    assert r.args("online") == [(1,), (0,)]
+    assert arm.halts == 1
+
+
+# ---- interrupted calls are the abort, not an E line ------------------------------------------------
+
+def minus4_at(t_from, ok=0):
+    def call(vm, args):
+        return -4 if vm.clock >= t_from else ok
+    return call
+
+
+@pytest.mark.parametrize("signal", [True, False])
+@pytest.mark.parametrize("number,inputs", [
+    (0x3E, [(100, b"A02")] + gkeep(200, 1500)),                          # robotisfinished (the arrival poll)
+    (0x0E, [(100, b"A02"), (300, b"p")] + gkeep(200, 1500)),             # pos_get for `p`
+    (0x21, [(100, b"A02"), (200, b"g"), (300, b".")]),                     # halt
+    (0x34, [(100, b"A02")]),                                              # the move call
+    (0x62, [(100, b"@+1+0+0+0+0+002")]),                                  # here() for a vector
+])
+def test_an_interrupted_call_gives_A_not_E(number, inputs, signal):
+    arm = Arm(error_word=-0x4000006)
+    real = arm.results()[number]
+    t4 = 1100 if number == 0x3E else 0
+
+    done = []
+
+    def interrupted(vm, args):                   # once: the call the SIGABRT interrupted
+        if vm.clock >= t4 and not done:
+            done.append(vm.clock)
+            if signal:
+                vm.post_signal(vm.clock, 6)      # the handler runs as the call returns
+            return -4
+        return real(vm, args)
+    arm.override[number] = interrupted
+    r = Run(inputs + [(2500, b"q")], arm=arm, until=10_000)
+    assert done
+    assert r.code == 0, "it carries on and leaves on q"
+    assert not [l for l in r.lines if l.startswith("E ")]
+    assert [l for l in r.lines if l.startswith("A ")] == ["A -67108870 Path error"]
+    assert "-" not in r.lines[r.lines.index("A -67108870 Path error"):]
+    assert r.args("online")[-2:] == [(1,), (0,)], "online ON again after the abort, OFF at q"
+
+
+class Interrupted(r3vm.Input):
+    fired = False
+
+    def read(self, now, n):
+        if now >= 400 and not self.fired:
+            self.fired = True
+            return -4
+        return super().read(now, n)
+
+
+def test_an_interrupted_reads_is_the_abort_and_jogd_c_reads_on():
+    r = Run([], files={"/dev/cin": Interrupted([(100, b"A02")] + [(t, b"g") for t in range(200, 1000, 100)]
+                                               + [(1000, b"."), (1500, b"q")])})
+    assert r.code == 0
+    assert r.lines == ["jogd ready", "+A02", "A abort"]
+
+
+# ---- many bytes per read --------------------------------------------------------------------------
+
+class Counting(r3vm.Input):
+    def __init__(self, arrivals):
+        super().__init__(arrivals)
+        self.reads = []
+
+    def read(self, now, n):
+        got = super().read(now, n)
+        if got:
+            self.reads.append((now, len(got)))
+        return got
+
+
+@pytest.mark.parametrize("burst", [b"g" * 100 + b".", b"@+1+1+0+0+0+002" * 7 + b"."])
+def test_a_burst_of_keepalives_then_a_dot_halts_in_one_pass(burst):
+    cmd = b"A02" if burst[:1] == b"g" else burst[:15]
+    inp = Counting([(100, cmd)] + [(t, b"g") for t in range(500, 800, 100)] + [(800, burst), (2000, b"q")])
+    r = Run([], files={"/dev/cin": inp}, latency_ms=80, until=5000)
+    t_halt, = r.at("halt")
+    after = [(t, n) for t, n in inp.reads if t >= 800]
+    assert after[0] == (t_halt, len(burst)), "the whole burst in one reads(), the halt in the same pass"
+    assert 800 <= t_halt <= 810
+    assert [n for (n, _), t in zip(r.raw, r.robot.times) if 800 <= t < t_halt] == [], "no call in front of it"
+    assert r.lines[-1] == "-"

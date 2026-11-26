@@ -48,6 +48,12 @@ front-panel advice when a recent controller line said `Arm power is OFF`), the d
 and a single `.` goes out before the next start (`_rearm`). After its own Ctrl-Z the driver waits CTRL_Z_WAIT_S for the old death signs
 or an `A` line (jogd-c only: the plain jogd has no handler); `A` means jogd-c is alive and is not restarted.
 
+Go-to (jogd-c only, so the driver uses jogd-c whenever a pose store is given): `G c1 c2 c3 c4 c5 c6 NN\r` (absolute motor counts, joint
+move) or `L x y z yaw pitch roll NN\r` (hundredths of mm and of degrees, world frame, straight line), answered `+G` / `+L`. While it is
+in force the single byte `g` keeps it alive (every 100 ms from the thread while goto_hold() calls keep coming, at least every 300 ms);
+the controller prints `-` by itself on arrival. `.` (when the calls stop, or halt()) stops it; a stick wins over it; after it ends the
+same hold does not start it again (the button must be let go first). T, A, E end it as they end a jog.
+
 Not done here: soft limits (jogd knows none; zero_at only gives true_joints()), fine steps (L2: the stick
 simply gives low speeds), the status/home-switch display (state()["home_switches"] is None).
 """
@@ -97,12 +103,16 @@ DIR_CHANGE_S = 0.3                # ... continuously for this long before it is 
 SELF_END_MIN_S = 0.25             # a move that ends by itself sooner than this after its `+` is a refusal (a limit): not started again until the stick is let go
 VEC = 6                           # the "axis" of a command tuple that is an `@` vector; its "sign" is then the (x, y, z) digits
 POLL_S = 0.002
+GOTO_HOLD_S = 0.3                 # a go-to is wanted this long after the last goto_hold() call (the pad calls every 20 ms)
+DEFAULT_GOTO_SPEED = 10           # percent
+STALE_POSE_S = 1.5                # save_pose needs a `P` line newer than this
 
 # Joint-limit guard (world and tool frames only; in joint frame a joint just stops at its limit). The controller aborts a
 # straight-line move that needs a joint beyond its travel ("Error 0x4000006 / Path error") and KILLS the jog program, so the
-# PC stops the move first. This table is the guard's own copy (model.LIMITS_DEG is the model's): correct it here. J3's real
-# limit is about +/-114 on this arm (seen 2026-11-25); 112 until the controller's value is looked up.
-GUARD_LIMITS_DEG = ((-175.0, 175.0), (-90.0, 90.0), (-112.0, 112.0), (-180.0, 180.0), (-105.0, 105.0), (-180.0, 180.0))
+# PC stops the move first. This table is the guard's own copy (model.LIMITS_DEG is the model's): correct it here. These are
+# the controller's own limits, read from its servo board on 2026-11-25 (read with controller/programs/jointlim). A go-to is
+# refused when a target joint is outside them too.
+GUARD_LIMITS_DEG = ((-171.887, 171.887), (-90.012, 90.012), (-114.993, 114.993), (-180.0, 180.0), (-104.995, 104.995), (-180.0, 180.0))
 GUARD_MARGIN_DEG = 4.0            # a joint is "near" a limit when it is within this of it, or would be GUARD_LOOKAHEAD_S from now ...
 GUARD_LOOKAHEAD_S = 0.8           # ... (a stop takes about 0.6 s on this controller)
 GUARD_MIN_SPEED_DPS = 0.5         # a joint counts as moving toward a limit only above this speed (position quantisation is ~0.004 degree)
@@ -138,7 +148,7 @@ MESSAGE_WINDOW_S = 1.0                     # controller lines this close before 
 MESSAGES_KEPT = 40
 SPEED_STALE_S = 1.5                        # joint_speeds are zero when the newest position sample is older than this
 POWER_OFF_ADVICE = "arm power is off: turn it on at the controller's front panel"
-_ECHO = re.compile(r"^(?:[A-Fa-f]\d\d|@[+\d-]+|[.pq]|w2|PULSES.*|JOINTS.*|[\s\d.+-]*)$")
+_ECHO = re.compile(r"^(?:[A-Fa-f]\d\d|@[+\d-]+|[GL][\s\d+-]*|g+|[.pqw]|w2|W[\s\d+-]*|PULSES.*|JOINTS.*|[\s\d.+-]*)$")
 
 
 def _check_cap(value, what):
@@ -185,9 +195,11 @@ LINE_PATTERNS = (                 # searched at the END of a line, so an echoed 
     ("E", re.compile(r"E (-?\d+) (.*)$")),
     ("A", re.compile(r"(?<![A-Za-z0-9+@])A (?:(-?\d+) (.*)|abort)$")),
     ("P", re.compile(r"(?<![A-Za-z])P((?:\s+[-+]?\d+){6})\s*$")),
+    ("W", re.compile(r"(?<![A-Za-z])W((?:\s+[-+]?\d+){6})\s*$")),
     ("ready", re.compile(r"jogd ready$")),
     ("+", re.compile(r"\+@(?:[+-]\d){6}\d\d$")),
     ("+", re.compile(r"\+([A-Fa-f]\d\d)$")),
+    ("+G", re.compile(r"\+([GL])$")),
     ("T", re.compile(r"(?<![A-Za-z])T$")),
     ("-", re.compile(r"-$")),
 )
@@ -202,6 +214,16 @@ def speed_for(deflection, full):
 
 def counts_to_angles(counts):
     return [c / k for c, k in zip(counts, COUNTS_PER_DEGREE)]
+
+
+def goto_bytes(pose, straight, speed):
+    """The start line of a go-to for a saved pose: `G c1..c6 NN\\r` (motor counts), or `L x y z yaw pitch roll NN\\r` (hundredths)."""
+    if straight:     # the controller's own numbers when the pose has them (`w` at save time), else the model's
+        values = list(pose.get("world_hundredths") or [int(round(pose[k] * 100)) for k in ("x", "y", "z", "yaw", "pitch", "roll")])
+        letter = "L"
+    else:
+        values, letter = [int(c) for c in pose["counts"]], "G"
+    return (f"{letter} " + " ".join(str(v) for v in values) + f" {int(speed):02d}\r").encode()
 
 
 def command_bytes(axis, sign, speed):
@@ -227,9 +249,13 @@ class JogdArm:
     def __init__(self, port="/dev/ttyUSB0", baud=38400, say=print, zero_at=None, max_speed=DEFAULT_MAX_SPEED,
                  log_dir=None, serial_port=None, clock=time.monotonic, sleep=time.sleep, threaded=True,
                  local=LOCAL, remote=REMOTE, upload=None, local_c=LOCAL_C, remote_c=REMOTE_C, respeed=True, stick_speed=True,
-                 joint_caps=None, frame_caps=None, wall=time.time, frames=None, limit_guard=True, guard_limits=None):
+                 joint_caps=None, frame_caps=None, wall=time.time, frames=None, limit_guard=True, guard_limits=None, poses=None, goto_speed=DEFAULT_GOTO_SPEED):
         if not 1 <= max_speed <= TOP_SPEED:
             raise RobotError(f"max_speed must be 1 to {TOP_SPEED}")
+        if isinstance(goto_speed, bool) or not isinstance(goto_speed, int) or not 1 <= goto_speed <= TOP_SPEED:
+            raise RobotError(f"goto_speed must be a whole number 1 to {TOP_SPEED}")
+        self.poses = poses                  # a poses.PoseStore, or None (then there is no go-to and jogd-c is used only for world / tool)
+        self.goto_speed = goto_speed
         self.joint_caps = {int(j): _check_cap(c, f"joint {j}") for j, c in (DEFAULT_JOINT_CAPS if joint_caps is None else joint_caps).items()}
         if not all(1 <= j <= 6 for j in self.joint_caps):
             raise RobotError("joint caps are for joints 1 to 6")
@@ -246,8 +272,8 @@ class JogdArm:
         self.frames = tuple(FRAME_MODE) if frames is None else tuple(frames)   # the frames the pad may use
         if "joint" not in self.frames or any(f not in FRAME_MODE for f in self.frames):
             raise RobotError(f"frames must include joint and come from {', '.join(FRAME_MODE)}")
-        self._cart = any(f in ("world", "tool") for f in self.frames)
-        if self._cart:                      # jogd-c does every frame (mode 1 is jogd's)
+        self._cart = any(f in ("world", "tool") for f in self.frames) or poses is not None   # True: the program is jogd-c
+        if self._cart:                      # jogd-c does every frame (mode 1 is jogd's) and the go-to
             local, remote = local_c, remote_c
         self.frame = "joint"
         self._frame_req = None              # a frame change asked for and not done yet
@@ -266,6 +292,10 @@ class JogdArm:
         self.arm_power = True
         self.notice = ""
         self.joints = [0.0] * 6
+        self._w_req = False                 # save_pose wants a `w` written (the thread writes it)
+        self._w_result = None               # the six integers of the `W` line that answered
+        self._w_wait = False
+        self._counts = None                 # the six motor counts of the newest `P` line
         self._lock = threading.Lock()
         self._want, self._want_mag, self._want_until, self._source = None, 0.0, 0.0, None
         self._pick, self._pick_since, self._pick_peak = None, 0.0, 0.0
@@ -280,6 +310,11 @@ class JogdArm:
         self._rearm = False                 # jogd-c ended a move: the next start is preceded by `.` (it ignores the command it last started)
         self._plus_at = -1e9                # when the `+` of the move in force came
         self._halt_req = False
+        self._gt_req = None                 # (pose, straight, bytes, speed, source) while goto_hold() calls keep coming
+        self._gt_until = 0.0                # the hold is fresh until this
+        self._gt_blocked = False            # a go-to ended (or was refused for a stick): the same hold does not start it again
+        self._gt = None                     # the go-to in force (thread): {"phase": "await" | "running" | "stopping", "bytes", ...}
+        self._gt_view = None                # what state()["goto"] shows (None, or running / arrived)
         self._closing = self._shut = False
         self._crashed = None
         # jogd state, touched by the thread only
@@ -501,6 +536,7 @@ class JogdArm:
                 return
             self._frame_req = frame
             self._want, self._pick = None, None
+            self._gt_req = None
             self._need_release = True
         self.notice = f"changing to {frame.upper()} frame"
 
@@ -514,6 +550,10 @@ class JogdArm:
 
     def jog(self, frame, vec, ttl=0.3, source="rest", aux=(0.0, 0.0)):
         vec = [float(v) for v in vec]
+        if vec and max(abs(v) for v in vec) >= crs.STICK_ON:
+            with self._lock:
+                if self._gt_req is not None or self._gt is not None:      # jogs win: a go-to stops at the first deflection
+                    self._gt_req, self._gt_blocked, self._gt_until = None, True, self._clock() + GOTO_HOLD_S
         if self._frame_req is not None:
             return                              # a frame change is under way: the pad is not listened to
         if frame not in FRAME_MODE:
@@ -677,6 +717,7 @@ class JogdArm:
     def halt(self):
         with self._lock:
             self._want, self._pick = None, None
+            self._gt_req, self._gt_blocked = None, False
             self._halt_req = True               # the thread writes `.` (never Ctrl-Z: that kills jogd)
 
     def set_speed(self, percent):
@@ -695,6 +736,108 @@ class JogdArm:
     def goto(self, pose, source="rest"):
         raise RobotError("go-to moves need a homed arm: not available yet")
 
+    # ---- named poses: save, select, go to ----------------------------------------------------------------
+
+    def _store(self):
+        if self.poses is None:
+            raise RobotError("no pose store is in use (start with --jogd)")
+        return self.poses
+
+    def selected_pose(self):
+        return self.poses.selected() if self.poses is not None else None
+
+    def select_pose(self, name):
+        try:
+            self._store().select(name)
+        except ValueError as err:
+            raise RobotError(str(err))
+
+    def next_pose(self):
+        """Select the next saved pose (wrapping); returns its name."""
+        try:
+            return self._store().select_next()
+        except ValueError as err:
+            raise RobotError(str(err))
+
+    def save_pose(self, name=None):
+        """Save the current position under `name` (None: P1, P2, ...) and select it; returns the pose dict. Refused while a move is
+        in force and without a position newer than STALE_POSE_S."""
+        store = self._store()
+        with self._lock:
+            wanted = self._want is not None and self._clock() < self._want_until
+            req = self._gt_req is not None
+        if (wanted or req or self._cmd is not None or self._moving or self._stopping_since is not None or self._gt is not None
+                or self._await_since is not None):
+            raise RobotError("cannot save a pose while the arm is moving")
+        if self._dead:
+            raise RobotError("cannot save a pose: jogd is not running")
+        if self._report_at is not None or self._report_wait:
+            raise RobotError("the arm has only just stopped: try again in a moment")
+        samples, counts = list(self._samples), self._counts
+        if not samples or counts is None or self._wall() - samples[-1][0] > STALE_POSE_S:
+            raise RobotError("no fresh position from the controller: cannot save a pose")
+        world = self._ask_world()
+        try:
+            pose = store.save(name, samples[-1][1], counts, world=world)
+            store.select(pose["name"])
+        except ValueError as err:
+            raise RobotError(str(err))
+        self.say(f"  pose {pose['name']} saved: " + "  ".join(f"J{i + 1} {a:8.2f}" for i, a in enumerate(pose["joints"])))
+        return pose
+
+    def _ask_world(self):
+        """The controller's own pose (`w` -> `W x y z yaw pitch roll`, hundredths) as six integers, or None when no `W` comes within 1 s
+        (plain jogd, an older jogd-c). The thread writes the `w`; this waits (and runs the thread's passes itself when there is none)."""
+        with self._lock:
+            self._w_result, self._w_req = None, True
+        end = self._clock() + 1.0
+        while self._clock() < end:
+            if self._thread is None:
+                if not self.step():
+                    break
+            self._sleep(POLL_S)
+            if self._w_result is not None:
+                break
+        with self._lock:
+            self._w_req = self._w_wait = False
+            result, self._w_result = self._w_result, None
+        return result
+
+    def goto_hold(self, name, straight=False, source="rest"):
+        """Go to the saved pose `name`. The caller repeats this at least every 300 ms while the button is held; the first call starts
+        the go-to (`G` from the pose's counts, `L` from its tool point when straight), the repeats keep it alive, and when they stop
+        (or halt() is called) the thread writes `.`. Refused (RobotError) when there is no such pose, a jog is in force or wanted,
+        jogd-c is not running, a joint of the pose is outside the guard's limits, or the frame is being changed."""
+        now = self._clock()
+        with self._lock:
+            if now >= self._gt_until:
+                self._gt_blocked, self._gt_req = False, None
+            if self._gt_blocked or self._gt_req is not None:
+                self._gt_until = now + GOTO_HOLD_S      # the same hold goes on (or must be let go first): nothing new starts
+                return
+        store = self._store()
+        try:
+            pose = store.get(name)
+        except ValueError as err:
+            raise RobotError(str(err))
+        if not self._cart:
+            raise RobotError("go-to needs jogd-c (start with a pose store)")
+        if self._dead or self._launch_state or self._frame_req is not None:
+            raise RobotError("go-to is not available now: jogd is not running or the frame is being changed")
+        with self._lock:
+            jog = self._want is not None and now < self._want_until
+        if jog or self._cmd is not None or self._gt is not None or self._stopping_since is not None:
+            with self._lock:
+                self._gt_blocked, self._gt_until = True, now + GOTO_HOLD_S
+            raise RobotError("a jog is in force: sticks win over a go-to (let go of the button, then press it again)")
+        for i, (a, (lo, hi)) in enumerate(zip(pose["joints"], self.guard_limits)):
+            if not lo <= a <= hi:
+                raise RobotError(f"pose {name} is outside the joint limits (J{i + 1} {a:.1f}, limits {lo:g} to {hi:g}): not going")
+        speed = max(MIN_SPEED_PCT, min(self.goto_speed, self.max_speed))
+        with self._lock:
+            self._gt_req = (pose, bool(straight), goto_bytes(pose, straight, speed), speed, source)
+            self._gt_until = now + GOTO_HOLD_S
+
     def home(self, source="rest"):
         raise RobotError("homing is not started from the controller pad yet")
 
@@ -706,9 +849,13 @@ class JogdArm:
             wanted = self._want is not None and self._clock() < self._want_until
             source = self._source
         cmd, target = self._cmd, self._last_target
-        command = ({"kind": "jog", "source": source} if (wanted or cmd or self._moving or self._stopping_since is not None)
+        gt, view, counts = self._gt, self._gt_view, self._counts
+        command = ({"kind": "jog", "source": source} if (wanted or cmd or self._moving or self._stopping_since is not None or gt)
                    and not self._dead else None)
-        if command is not None:
+        if command is not None and gt is not None:
+            command.update(kind="goto", source=gt["source"], axis=None, sign=None, vector=None, name=gt["name"],
+                           straight=bool(view and view["straight"]), speed=view["speed"] if view else None, frame=self.frame)
+        elif command is not None:
             shown = cmd or target
             vector = shown is not None and shown[0] == VEC
             command.update(axis=shown[0] + 1 if shown and not vector else None,
@@ -733,7 +880,15 @@ class JogdArm:
                 "joint_caps": {str(j): c for j, c in sorted(self.joint_caps.items())}, "frame_caps": dict(self.frame_caps),
                 "joint_speeds": speeds, "position_time": samples[-1][0] if samples else None,
                 "jogd": jogd_state, "controller_message": self.controller_message,
-                "limit": self._limit_state(), "guard_limits": [list(l) for l in self.guard_limits] if self.limit_guard else None}
+                "limit": self._limit_state(), "guard_limits": [list(l) for l in self.guard_limits] if self.limit_guard else None,
+                "goto": self._goto_state(view), "counts": list(counts) if counts is not None else None}
+
+    def _goto_state(self, view):
+        if view is None:
+            return None
+        remaining = max(abs(a - b) for a, b in zip(self.joints, view["target"]))
+        return {"name": view["name"], "straight": view["straight"], "speed": view["speed"], "running": view["running"],
+                "arrived": view["arrived"], "remaining_deg": round(remaining, 3)}
 
     def _joint_speeds(self):
         """Degrees per second from the last two position samples (zeros when there are not two, or the newest is stale)."""
@@ -897,6 +1052,9 @@ class JogdArm:
             if want is not None and now >= self._want_until:
                 want = self._want = self._pick = None
             start = self._want_start
+            if now >= self._gt_until:           # the button was let go (no goto_hold() call for GOTO_HOLD_S)
+                self._gt_req, self._gt_blocked = None, False
+            gt_req = self._gt_req
         if self._dead:
             with self._lock:
                 req, self._frame_req = self._frame_req, None
@@ -906,6 +1064,10 @@ class JogdArm:
                     self.notice = ""
             self._dead_step(want)
             return
+        if self._w_req and not self._w_wait and self._idle():
+            self._write(b"w")
+            self._w_wait, self._w_req = True, False
+        halt = self._goto_step(gt_req, want, halt, now)      # a go-to in force takes the halt itself
         if halt and self._stopping_since is None and (self._cmd is not None or self._moving or now - self._last_move_write < 1.0):
             self._write(b".")                   # the ordinary stop. Never Ctrl-Z here: that kills jogd.
             self._after_write(now)
@@ -938,7 +1100,7 @@ class JogdArm:
             self.say(f"  no `+` within {RESPEED_WAIT_S:.0f} s of the speed change: the move is taken as stopped (it is started again if the stick is held)")
             self._respeed_pending, self._cmd, self._moving, self._await_since = None, None, False, None
             self._report_at = now + REPORT_DELAY_S
-        stop_wait = STOP_WAIT_S if self.frame == "joint" else STOP_WAIT_CART_S
+        stop_wait = STOP_WAIT_S if self.frame == "joint" and self._gt is None else STOP_WAIT_CART_S
         if self._stopping_since is not None and now - self._stopping_since >= stop_wait:
             self._write(CTRL_Z)
             self._last_ctrlz = now
@@ -948,6 +1110,69 @@ class JogdArm:
             self._mark_dead(now, f"no answer to `.` within {stop_wait} s; Ctrl-Z written", loud=False)
             return
         self._positions(now)
+
+    # ---- go-to (thread) ------------------------------------------------------------------------------------
+
+    def _goto_step(self, req, want, halt, now):
+        """Start, keep alive or stop the go-to. Returns `halt` as it is left for the ordinary halt code (False when taken here)."""
+        gt = self._gt
+        if gt is not None:
+            if gt["phase"] != "stopping":
+                why = None
+                if halt:
+                    why = "halted"
+                elif want is not None:
+                    why = "a stick was pushed"
+                    self._gt_blocked = True
+                elif req is None:
+                    why = "the button was let go"
+                if why:
+                    self._write(b".")
+                    self._after_write(now, move=True)
+                    gt["phase"] = "stopping"
+                    self._stopping_since = now
+                    self._gt_view = None
+                    self.say(f"  go-to {gt['name']}: stopping ({why})")
+                elif now - self._last_write >= KEEPALIVE_S:
+                    self._write(b"g")
+                    self._after_write(now, move=True)
+            return False if gt["phase"] == "stopping" or halt else halt
+        if (req is not None and not self._gt_blocked and want is None and not halt and self._cmd is None and not self._moving
+                and self._stopping_since is None and self._await_since is None and self._respeed_pending is None
+                and self._frame_req is None):
+            pose, straight, data, speed, source = req
+            if self._rearm:                     # jogd-c ignores the command of a move that has ended: `.` forgets it
+                self._rearm = False
+                self._write(b".")
+                self._after_write(now)
+            if self._abort_notice is not None and self.notice.startswith(self._abort_notice):
+                self.notice = ""
+            self._abort_notice = self._guard_notice = None
+            self._write(data)
+            self._after_write(now, move=True)
+            self._gt = {"phase": "await", "name": pose["name"], "bytes": data, "source": source}
+            self._gt_view = {"name": pose["name"], "straight": straight, "speed": speed, "running": False, "arrived": False,
+                             "source": source, "target": list(pose["joints"])}
+            self.say(f"  go-to {pose['name']} ({'straight line' if straight else 'joint move'}, {speed}%): {data.decode().strip()}")
+            return False
+        return halt
+
+    def _goto_end(self, now, notice=None, arrived=False):
+        """The go-to is over (the controller's `-`, `T`, `A` or `E`): nothing is owed, the same hold does not start it again."""
+        gt, self._gt = self._gt, None
+        if gt is None:
+            return
+        self._gt_blocked, self._rearm = True, True
+        self._moving, self._await_since, self._stopping_since = False, None, None
+        self._report_at = now + REPORT_DELAY_S
+        if arrived and self._gt_view is not None:
+            self._gt_view.update(running=False, arrived=True)
+            self.say(f"  go-to {gt['name']}: arrived")
+        else:
+            self._gt_view = None
+        if notice:
+            self.notice = notice
+            self.say("  " + notice)
 
     def _cap_for(self, axis):
         """The speed cap (percent) for a jogd axis index 0..5 in the current frame."""
@@ -977,7 +1202,7 @@ class JogdArm:
 
     def _idle(self):
         return (self._cmd is None and not self._moving and self._stopping_since is None and self._await_since is None
-                and self._respeed_pending is None)
+                and self._respeed_pending is None and self._gt is None)
 
     def _change_frame(self, now):
         """Nothing is moving or wanted: `q`, wait for `$`, start jogd in the new mode. Blocks the thread (nothing is written
@@ -1020,6 +1245,7 @@ class JogdArm:
         said_by = self._recent_messages(now)
         self._msgs.clear()
         self._dead = True
+        self._gt, self._gt_view, self._gt_req, self._gt_blocked = None, None, None, True
         self._death_extra = ""
         self._cmd, self._moving, self._await_since, self._stopping_since = None, False, None, None
         self._respeed_pending = None
@@ -1095,7 +1321,7 @@ class JogdArm:
             self._cmd, self._await_since, self._respeed_pending, self._diff_since = None, None, None, None
             self._stopping_since = now
             return
-        if target is None or self._stopping_since is not None:
+        if target is None or self._stopping_since is not None or self._gt is not None:
             return
         if cmd is None:
             self._send(target, now)
@@ -1114,7 +1340,9 @@ class JogdArm:
                 self.say(f"  speed {cmd[2]}% -> {wanted}%: jogd stops the move and starts it again")
                 return
         if now - self._last_write >= KEEPALIVE_S:
-            self._write(command_bytes(*cmd))
+            # jogd-c: the start command was written once (in _send); the single byte `g` keeps any move in force alive
+            # (repeating a 15-byte vector swamped it). Plain jogd does not know `g`: it takes the letter again.
+            self._write(b"g" if self._cart else command_bytes(*cmd))
             self._after_write(now, move=True)
 
     def _send(self, target, now):
@@ -1127,6 +1355,7 @@ class JogdArm:
         if self._abort_notice is not None and self.notice.startswith(self._abort_notice):
             self.notice = ""
         self._abort_notice = self._guard_notice = None
+        self._gt_view = None                    # a jog starts: the last go-to's result is no longer shown
         self._write(command_bytes(*target))
         self._after_write(now, move=True)
         self._await_since, self._last_change = now, now
@@ -1151,7 +1380,27 @@ class JogdArm:
             self._plus_at = now
             if self._stopping_since is not None:
                 self._stopping_since = now      # the answer to a command written just before the `.`: its `-` follows
+        elif kind == "+G":
+            if self._gt is not None:
+                self.controller_message = None
+                if self._gt["phase"] == "await":
+                    self._gt["phase"] = "running"
+                    if self._gt_view is not None:
+                        self._gt_view["running"] = True
+                self._moving, self._await_since = True, None
+                self._plus_at = now
+                if self._stopping_since is not None:
+                    self._stopping_since = now
         elif kind == "-":
+            if self._gt is not None:
+                if self._gt["phase"] == "stopping":     # the answer to our `.`
+                    self._gt = None
+                    self._gt_view = None
+                    self._moving, self._stopping_since = False, None
+                    self._report_at = now + REPORT_DELAY_S
+                else:                                   # by itself: it has arrived
+                    self._goto_end(now, arrived=True)
+                return
             if self._respeed_pending is not None and self._stopping_since is None:
                 self._moving = False            # the stop half of a speed change: its `+` follows, this is not the end of the jog
                 return
@@ -1164,11 +1413,23 @@ class JogdArm:
         elif kind == "A":
             self._on_abort(found, now)
         elif kind == "T":
+            if self._gt is not None:
+                self._goto_end(now, "go-to stopped: the controller's dead-man tripped (a keep-alive was late)")
+                return
             self._moving, self._cmd, self._await_since, self._stopping_since = False, None, None, None
             self._respeed_pending = None
             self._rearm = self.frame != "joint"
             self.say("  jogd's dead-man stopped the move (a keep-alive was late); the next command restarts it")
+        elif kind == "E" and found.group(1) == "-4" and (
+                self._cmd is not None or self._moving or self._await_since is not None or self._stopping_since is not None
+                or self._gt is not None):
+            self._on_abort(found, now)          # EINTR: an older jogd-c build reported an abort this way
         elif kind == "E":
+            if self._gt is not None:
+                self._write(b".")
+                self._after_write(now)
+                self._goto_end(now, f"controller refused: E {found.group(1)} {found.group(2)}  (go-to stopped; let go of the button before trying again)")
+                return
             if self._cmd is not None or now - self._last_move_write < 1.0:      # not an answer to `p` alone
                 self._blocked = self._cmd[:2] if self._cmd else self._last_key
             was_moving = self._moving
@@ -1178,8 +1439,13 @@ class JogdArm:
             self._stopping_since = now if was_moving else None
             self.notice = f"controller refused: E {found.group(1)} {found.group(2)}"
             self.say("  " + self.notice + "  (stopped; the stick must be released before this move is tried again)")
+        elif kind == "W":
+            if self._w_wait:
+                self._w_wait = False
+                self._w_result = [int(n) for n in found.group(1).split()]
         elif kind == "P":
             counts = [int(n) for n in found.group(1).split()]
+            self._counts = counts
             self._p_seen = True
             self.joints = counts_to_angles(counts)
             self._samples = (self._samples + [(self._wall(), list(self.joints))])[-2:]
@@ -1192,7 +1458,10 @@ class JogdArm:
         """jogd-c's `A <code> <text>` / `A abort`: the controller aborted the move; jogd-c has ended it, re-armed itself and reads on."""
         line = found.group(0)
         text = (found.group(2) or "").strip() or "abort"
-        in_force = self._cmd is not None or self._moving or self._await_since is not None or self._stopping_since is not None
+        in_force = (self._cmd is not None or self._moving or self._await_since is not None or self._stopping_since is not None
+                    or self._gt is not None)
+        if self._gt is not None:
+            self._goto_end(now)
         self.controller_message = {"text": line, "at": self._wall()}
         if after_ctrlz:
             self.say("  jogd-c is alive after Ctrl-Z (it printed an `A` line): it is not restarted")
@@ -1241,7 +1510,7 @@ class JogdArm:
             else:
                 self._write_p(now)
                 self._report_wait = True
-        elif now - self._last_p >= (POSITION_MOVING_EVERY_S if self._cmd is not None else POSITION_EVERY_S):
+        elif now - self._last_p >= (POSITION_MOVING_EVERY_S if self._cmd is not None or self._gt is not None else POSITION_EVERY_S):
             self._write_p(now)
         if not self._p_seen and not self._p_said and self._first_p is not None and now - self._first_p >= NO_POSITION_S:
             self._p_said = True

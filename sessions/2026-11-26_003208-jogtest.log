@@ -1,0 +1,383 @@
+log: /tmp/claude-1000/-home-buzz-dev/1aa7efb4-83d6-4b44-8584-24aebe5b3c9c/scratchpad/benchrun3/sessions/2026-11-26_003208-jogtest.log
+    0.00 -> \r
+    0.03 <- \r
+    0.04 <- \n$ 
+    0.95 -> cksum /tmp/jogd-c\r
+    1.03 <- c
+    1.04 <- k
+    1.07 <- s
+    1.13 <- u
+    1.14 <- m
+    1.20 <-  
+    1.21 <- /t
+    1.22 <- m
+    1.26 <- p/
+    1.30 <- j
+    1.31 <- o
+    1.34 <- gd
+    1.38 <- -c\r
+    1.39 <- \n
+   10.15 <- 0x000ab
+   10.15 <- 1
+   10.15 <- c
+   10.16 <- c 
+   10.17 <- 7688 /tm
+   10.18 <- p/jogd-c\r\n
+   10.19 <- $
+   10.20 <-  
+/tmp/jogd-c is on the controller: 7688 bytes, sum 0xab1cc, the same as controller/programs/jogd-c
+   10.30 -> w2\r
+   10.36 <- w2
+   10.40 <- \r\n
+   10.89 <- Actual Position :\r
+   10.90 <- \n
+   11.16 <- \r
+   11.21 <- \n          Axis 1/7
+   11.21 <-  
+   11.22 <-   Axis 2/8   
+   11.23 <-   Axis 3     Axis 4     Axis 5     
+   11.24 <- Axis 6\r\nPULSES       +1057      -1301  
+   11.24 <-  
+   11.25 <-   +29152       +503      +6739       -7
+   11.26 <- 11\r\n                +0       
+   11.27 <-   +0\r\n
+   11.28 <- \r\n          Axis 1/7   
+   11.29 <- Axis 2/8     Axis 3     Axis 4   
+   11.32 <-   Axi
+   11.33 <- s 5     Axis 6\r\nJOINTS       3.805     
+   11.34 <- -
+   11.35 <- 4.684   -104.994     -3.586    
+   11.36 <- -48.521      5.06
+   11.37 <- 9\r\n             0.000      0.000\r\n\r\n 
+   11.37 <-  
+   11.38 <-         X/TrackX   Y
+   11.39 <- /TrackY          Z      Z-Ro
+   11.40 <- t      Y-Rot      X-
+   11.41 <- Ro
+   11.42 <- t\r\nWORLD      363.577     20.604    452
+   11.42 <- .
+   11.43 <- 150     -3.376     67.986     -3.97
+   11.43 <- 1
+   11.44 <- \r\n             0.000      0.000\r\n$
+   11.45 <-  
+before: joints 3.805 -4.684 -104.994 -3.586 -48.521 5.069 counts +1057 -1301 +29152 +503 +6739 -711
+WARNING: --toward-limit is meant to END IN A CONTROLLER ABORT (a `Path error` at a joint limit; the controller may also switch arm power off). Keep a hand on the E-stop.
+--after-abort A: 1.5 s after an `A` line, A02 for 2 s
+MODE 3 (world frame): one move: a02 kept going until an `A` line, a `-` by itself, an E line, a limit below or --time-limit 30 s
+limits in force (checked on every sample, `.` at once): tool point (model) 200 mm from the first sample, any joint 45 degrees from the first sample; speed 2% (jogd ceiling 5); no fixed hold (--time-limit 30 s)
+the exact jogd command line: /tmp/jogd-c 3 5 s
+starting: /tmp/jogd-c 3 5 s
+   11.55 -> /tmp/jogd-c 3 5 s\r
+   11.62 <- /
+   11.63 <- t
+   11.69 <- m
+   11.69 <- p
+   11.75 <- /
+   11.76 <- jo
+   11.80 <- g
+   11.81 <- d
+   11.84 <- -
+   11.84 <- c
+   11.88 <-  
+   11.88 <- 3
+   11.92 <-  
+   11.93 <- 5
+   11.95 <-  
+   11.98 <- s
+   11.99 <- \r\n
+  [    436.2 ms] jogd line (other): /tmp/jogd-c 3 5 s
+   12.80 <- j
+   12.81 <- ogd rea
+   12.81 <- dy\r\n
+  [   1260.9 ms] jogd line (ready): jogd ready
+jogd ready after 1260.4 ms
+   12.81 -> p
+   12.91 <- P
+   12.92 <-  105
+   12.92 <- 7 -1301
+   12.93 <-  291
+   12.93 <- 52 503 6
+   12.93 <- 739 -711
+   12.93 <- \r\n
+sampling every 200 ms; first sample: joints 3.805 -4.684 -104.946 -3.586 -48.520 5.068 tool point (model) 363.5 20.6 452.7 mm
+MODE 3 LETTER a ABOUT TO MOVE THE ARM (axes unknown). Keep a hand on the E-stop.
+   12.93 -> a02
+   13.01 -> p
+   13.04 -> a02
+   13.14 -> a02
+   13.16 <- +
+   13.16 <- a02\r
+   13.17 <- \n
+  [   1618.0 ms] jogd line (+): +a02
+   13.21 -> p
+   13.24 -> a02
+   13.34 -> a02
+   13.34 <- P
+   13.34 <-  1059 
+   13.35 <- -1198 
+   13.36 <- 2926
+   13.36 <- 2 503 673
+   13.37 <- 9 -711\r\n
+   13.41 -> p
+   13.44 -> a02
+   13.50 <- P
+   13.50 <-  106
+   13.50 <- 6 -1042 2
+   13.53 <- 9434
+   13.53 <-  503 67
+   13.53 <- 39 -715\r\n
+   13.54 -> a02
+   13.61 -> p
+   13.64 -> a02
+   13.68 <- P
+   13.68 <-  10
+   13.71 <- 83
+   13.71 <-  -842 29
+   13.71 <- 645 506 6
+   13.72 <- 735 -728
+   13.72 <- \r\n
+   13.74 -> a02
+   13.81 -> p
+   13.84 -> a02
+   13.86 <- P
+   13.87 <-  
+   13.87 <- 1098 -
+   13.87 <- 642 298
+   13.90 <- 5
+   13.90 <- 5 513 67
+   13.91 <- 24 -737\r
+   13.91 <- \n
+   13.94 -> a02
+   14.01 -> p
+   14.04 -> a02
+   14.06 <- P
+   14.06 <-  1111 
+   14.07 <- -455 30
+   14.07 <- 0
+   14.09 <- 52
+   14.09 <-  520 671
+   14.10 <- 8 -748\r\n
+   14.14 -> a02
+   14.21 -> p
+   14.24 -> a02
+   14.24 <- P
+   14.25 <-  112
+   14.26 <- 4
+   14.27 <-  -265 3
+   14.27 <- 0247 522
+   14.27 <-  6716 -75
+   14.27 <- 3\r\n
+   14.34 -> a02
+   14.39 <- P
+   14.40 <-  
+   14.41 -> p
+   14.42 <- 11
+   14.42 <- 36 -97 
+   14.42 <- 30421 523
+   14.43 <-  6715 -76
+   14.43 <- 5\r\n
+   14.44 -> a02
+   14.54 -> a02
+   14.58 <- P
+   14.59 <-  115
+   14.59 <- 0 103 306
+   14.59 <- 21 526 6
+   14.59 <- 71
+   14.61 -> p
+   14.62 <- 5 -
+   14.62 <- 770\r\n
+   14.64 -> a02
+   14.74 -> a02
+   14.75 <- P
+   14.76 <-  116
+   14.76 <- 5 304 
+   14.76 <- 308
+   14.79 <- 22 531 
+   14.79 <- 6715 -78
+   14.80 <- 5\r\n
+   14.81 -> p
+   14.84 -> a02
+   14.94 -> a02
+   15.01 -> p
+   15.04 -> a02
+   15.06 <- P
+   15.07 <-  1187
+   15.07 <-  605 311
+   15.07 <- 19 53
+   15.10 <- 5 6
+   15.10 <- 715 -798
+   15.10 <- \r\n
+   15.14 -> a02
+   15.21 -> p
+   15.24 -> a02
+   15.25 <- P
+   15.25 <-  
+   15.25 <- 1202 798
+   15.26 <-  31306 5
+   15.26 <- 39 
+   15.29 <- 6715 -8
+   15.29 <- 05\r\n
+   15.34 -> a02
+   15.41 -> p
+   15.43 <- P
+   15.43 <-  12
+   15.43 <- 19 1014 3
+   15.44 <- 1513 544
+   15.44 -> a02
+   15.44 <-  6
+   15.46 <- 721 -
+   15.46 <- 812\r\n
+   15.54 -> a02
+   15.61 <- P
+   15.61 -> p
+   15.62 <-  1234
+   15.62 <-  1210 316
+   15.62 <- 96 55
+   15.63 -> a02
+   15.64 <- 1 6736 
+   15.64 <- -827\r\n
+   15.74 -> a02
+   15.81 <- P
+   15.81 -> p
+   15.82 <-  
+   15.82 <- 1252 143
+   15.82 <- 0 31
+   15.84 -> a02
+   15.84 <- 9
+   15.84 <- 00 55
+   15.84 <- 2 6748 -
+   15.84 <- 837\r\n
+   15.90 <- Err
+   15.91 <- or 0x4000
+   15.91 <- 006\r\n
+  [   4360.4 ms] jogd line (other): Error 0x4000006
+   15.94 -> a02
+   16.01 -> p
+   16.04 -> a02
+   16.05 <- P
+   16.06 <- ath err
+   16.06 <- or\r\n
+  [   4509.3 ms] jogd line (other): Path error
+   16.13 -> a02
+   16.20 <- E
+   16.21 <-  
+   16.21 <- -4 inter
+   16.21 <- rup
+   16.21 -> p
+   16.23 <- t
+   16.23 <- ed sy
+   16.24 <- stem cal
+   16.24 -> a02
+   16.24 <- l
+   16.24 <- \r\n
+  [   4689.1 ms] jogd line (E): E -4 interrupted system call
+STOPPING: EError: E -4 interrupted system call
+TOWARD-LIMIT ENDED BY: an `E` line
+   16.44 <- -
+   16.44 <- \r
+   16.44 <- \n
+  [   4894.5 ms] jogd line (-): -
+   16.54 -> .
+   16.54 -> q
+sent `.` then `q`
+   16.69 <- A
+   16.69 <-  -67
+   16.69 <- 108870 Pa
+   16.70 <- th erro
+   16.70 <- r\r\n
+  [   5149.8 ms] jogd line (A): A -67108870 Path error
+   16.87 <- P
+   16.88 <-  1259
+   16.88 <-  1501 31
+   16.88 <- 967 55
+   16.90 <- 3
+   16.90 <-  6754 -83
+   16.91 <- 8\r\n
+   17.01 <- P
+   17.01 <-  12
+   17.02 <- 58 1501 3
+   17.02 <- 1967 553
+   17.02 <-  
+   17.03 <- 67
+   17.03 <- 54 -838\r
+   17.04 <- \n
+   17.15 <- P
+   17.15 <-  1
+   17.15 <- 258 1501 
+   17.15 <- 31
+   17.17 <- 96
+   17.17 <- 6 553 67
+   17.17 <- 54 -837\r\n
+   17.39 <- $
+   17.40 <-  
+   17.50 -> w2\r
+   17.57 <- w2
+   17.61 <- \r\n
+   18.09 <- A
+   18.10 <- ctual Position :\r\n
+   18.36 <- \r
+   18.42 <- \n          Axis 1/7   Axis 2/
+   18.42 <- 8
+   18.43 <-      Axis 3
+   18.44 <-      Axis 4     Axis 5     Axis 6\r\nPULS
+   18.44 <- E
+   18.45 <- S       +1257      +1501     +31966  
+   18.45 <-  
+   18.46 <-     +552      +6754       -837\r\n    
+   18.47 <-             +0         +0\r\n
+   18.49 <- \r\n          Axis 1/7   Axis 2/8   
+   18.50 <-   Axis 3  
+   18.53 <-    Axis 4     Axis 5   
+   18.54 <-   Axis 6\r\nJOINTS       4.525      5.404
+   18.55 <-    -115.024
+   18.56 <-      -3.935    -48.629      5.967\r\n
+   18.56 <-  
+   18.57 <-             0.000  
+   18.58 <-     0.000\r\n\r\n 
+   18.58 <-  
+   18.59 <-         X/TrackX   Y/TrackY          
+   18.59 <- Z
+   18.60 <-       Z-Rot      Y-Rot      X-
+   18.62 <- Rot\r\nWORLD      309.950     2
+   18.63 <- 0.594    452.123     -3.374     67.993 
+   18.63 <-  
+   18.64 <-    -3.967\r\n             0.000      0.00
+   18.65 <- 0\r\n$ 
+after: joints 4.525 5.404 -115.024 -3.935 -48.629 5.967 counts +1257 +1501 +31966 +552 +6754 -837
+
+SUMMARY
+
+MOVE REPORT, mode 3 (world frame). These axes are from the PC's model (a465/model.py), whose frame has not been checked against the controller's.
+  move 1/1: a02
+    START: start acknowledged after 232 ms
+    joint change (degrees, from counts): J1 +0.724  J2 +10.087  J3 -10.130  J4 -0.356  J5 -0.108  J6 +0.898
+    tool point displacement (model world frame): dx -54.0  dy -0.0  dz -0.6 mm; length 54.0 mm
+    change of yaw / pitch / roll: -0.04 / +0.11 / -0.05 degrees
+    mean tool-point speed 13.7 mm/s, mean rotation rate 0.02 deg/s (first to last moving sample, 17 moving samples)
+    total rotation 0.11 degrees about -0.11 +0.99 +0.04 (world frame)
+    VERDICT: mostly -X translation (54.0 mm; off-axis 0.6 mm; rotation 0.1 deg)
+move 1/1: a02: NOT AS EXPECTED
+          0.2 ms  sent a02 (first)
+        232.5 ms  jogd: +a02
+       2974.9 ms  jogd: Error 0x4000006
+       3123.7 ms  jogd: Path error
+       3301.2 ms  sent the last keep-alive (33 keep-alives after the first command)
+       3303.5 ms  jogd: E -4 interrupted system call
+    expected lines ['+a02', '-'], got ['+a02', 'E -4 interrupted system call']
+    keep-alive gaps: max 102.2 ms; none late
+other lines seen: Error 0x4000006 | Path error
+change from before to after:
+    joint 1: +0.720 degrees, +200 counts   (3.805 -> 4.525)
+    joint 2: +10.088 degrees, +2802 counts   (-4.684 -> 5.404)
+    joint 3: -10.030 degrees, +2814 counts   (-104.994 -> -115.024)
+    joint 4: -0.349 degrees, +49 counts   (-3.586 -> -3.935)
+    joint 5: -0.108 degrees, +15 counts   (-48.521 -> -48.629)
+    joint 6: +0.898 degrees, -126 counts   (5.069 -> 5.967)
+E lines: E -4 interrupted system call
+
+AFTER THE ABORT (--after-abort A):
+  no `A` line came, so the after-abort move was NOT run (nothing was checked)
+STOPPED EARLY: EError: E -4 interrupted system call
+jogd ready seen: yes
+prompt after `q`: back
+Ctrl-Z sent: no; Ctrl-E sent: no

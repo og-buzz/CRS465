@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Compile a RAPL-3 source file on this PC with CRS's own compiler (rpp + rc1) run inside an emulator.
+
+    scripts/a465-r3c hello.r3 -o hello -s                 # against this unit's libraries (default)
+    scripts/a465-r3c prog.r3 --libs c500c -Wall           # against the C500C's libraries
+    scripts/a465-r3c hello.r3 -o hello -s --stamp-check   # also print the library stamps the output carries
+
+Anything it does not know is handed to rc1 unchanged (-Wall -s -x -l -fstack=N ...). Prints the compiler's
+messages; exits non-zero if the compile failed. Sends nothing to the controller and never opens the serial
+port: use scripts/a465-putfile for that. Needs python3-unicorn. See docs/RAPL3-COMPILER.md.
+"""
+import argparse
+import os
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("source", help="the .r3 source file")
+    ap.add_argument("-o", dest="out", help="output file (default: the source name without extension, here)")
+    ap.add_argument("--libs", choices=("ours", "c500c"), default="ours",
+                    help="library set: ours = this unit's CROS 1.16.471 syslib+robotlib (default); c500c = CROS 3.1")
+    ap.add_argument("--lib", action="append", default=[], metavar="FILE", help="another library to link (repeatable)")
+    ap.add_argument("--extra", action="append", default=[], metavar="FILE", help="a file the source .includes (repeatable)")
+    ap.add_argument("-D", dest="defines", action="append", default=[], metavar="NAME[=V]", help="define for the preprocessor")
+    ap.add_argument("--time", type=lambda s: int(s, 0), help="build time to write into the header (default: now)")
+    ap.add_argument("--no-rpp", action="store_true", help="skip the preprocessor")
+    ap.add_argument("--stamp-check", action="store_true", help="print the library stamps of the output")
+    ap.add_argument("--keep-work", action="store_true", help="keep the temporary work directory and print its path")
+    args, rc1_opts = ap.parse_known_args()
+    try:
+        import unicorn  # noqa: F401
+    except ImportError:
+        sys.exit("a465-r3c needs the unicorn module: sudo apt install python3-unicorn")
+    from a465 import r3c
+    try:
+        res = r3c.compile(args.source, out=args.out, libs=args.libs, extra_libs=args.lib, extra=args.extra,
+                          options=rc1_opts, time=args.time, use_rpp=not args.no_rpp, defines=args.defines,
+                          keep_work=args.keep_work)
+    except (FileNotFoundError, ValueError) as e:
+        sys.exit(f"a465-r3c: {e}")
+    sys.stdout.write(res.messages)
+    if res.work:
+        print(f"work directory kept: {res.work}")
+    if res.output is None:
+        print(f"a465-r3c: compile failed (status {res.status})", file=sys.stderr)
+        return res.status or 1
+    print(f"{res.output}: {os.path.getsize(res.output)} bytes")
+    if args.stamp_check:
+        print("\n".join(r3c.stamp_report(res.output, res.libs)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
